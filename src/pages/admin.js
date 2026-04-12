@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 export default function Admin() {
   const [password, setPassword] = useState('');
@@ -9,16 +8,11 @@ export default function Admin() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [editingService, setEditingService] = useState(null);
-  const [newCategory, setNewCategory] = useState('');
+  const [uploading, setUploading] = useState(false);
   
-  // Form state
   const [formData, setFormData] = useState({
     name: '', category: '', market_price: '', hubby_price: '', logo_file: null
   });
-
-  // Storage bucket for logos
-  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -131,12 +125,13 @@ export default function Admin() {
   };
 
   const addCategory = async () => {
-    if (!newCategory.trim()) return;
+    const newCat = prompt('Enter new category name:');
+    if (!newCat || !newCat.trim()) return;
     
     const maxOrder = Math.max(...categories.map(c => c.sort_order || 0), 0);
     
     const { error } = await supabase.from('categories').insert([{
-      name: newCategory,
+      name: newCat,
       sort_order: maxOrder + 1
     }]);
     
@@ -145,56 +140,42 @@ export default function Admin() {
     } else {
       setMessage('✅ Category added!');
       fetchData();
-      setNewCategory('');
     }
   };
 
-  const deleteCategory = async (categoryName) => {
-    if (categoryName === 'Others') {
-      setMessage('❌ Cannot delete default category');
-      return;
+  const moveServiceUp = async (index) => {
+    if (index === 0) return;
+    
+    const newServices = [...services];
+    [newServices[index - 1], newServices[index]] = [newServices[index], newServices[index - 1]];
+    
+    for (let i = 0; i < newServices.length; i++) {
+      await supabase.from('services').update({ sort_order: i }).eq('id', newServices[i].id);
     }
     
-    const servicesInCat = services.filter(s => s.category === categoryName);
-    if (servicesInCat.length > 0) {
-      setMessage(`❌ Move ${servicesInCat.length} services from "${categoryName}" first`);
-      return;
-    }
-    
-    const { error } = await supabase.from('categories').delete().eq('name', categoryName);
-    if (error) {
-      setMessage('❌ ' + error.message);
-    } else {
-      setMessage('✅ Category deleted!');
-      fetchData();
-    }
+    setServices(newServices);
+    setMessage('✅ Order updated!');
+    setTimeout(() => setMessage(''), 2000);
   };
 
-  const onDragEnd = async (result) => {
-    if (!result.destination) return;
+  const moveServiceDown = async (index) => {
+    if (index === services.length - 1) return;
     
-    const items = Array.from(services);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    const newServices = [...services];
+    [newServices[index + 1], newServices[index]] = [newServices[index], newServices[index + 1]];
     
-    // Update sort_order for all items
-    const updates = items.map((item, idx) => ({
-      id: item.id,
-      sort_order: idx
-    }));
-    
-    for (const update of updates) {
-      await supabase.from('services').update({ sort_order: update.sort_order }).eq('id', update.id);
+    for (let i = 0; i < newServices.length; i++) {
+      await supabase.from('services').update({ sort_order: i }).eq('id', newServices[i].id);
     }
     
-    setServices(items);
-    setMessage('✅ Order saved!');
+    setServices(newServices);
+    setMessage('✅ Order updated!');
     setTimeout(() => setMessage(''), 2000);
   };
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (password === 'hubby2024') {
+    if (password === 'Hubby2026@') {
       setIsAuthenticated(true);
     } else {
       alert('Wrong password!');
@@ -232,7 +213,7 @@ export default function Admin() {
         <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">🛸 Admin Dashboard</h1>
-            <p className="text-gray-400 text-sm">Manage Services | Upload Logos | Sort Items | Edit Everything</p>
+            <p className="text-gray-400 text-sm">Manage Services | Upload Logos | Edit Everything</p>
           </div>
           <div className="flex gap-3">
             <button onClick={() => window.open('/', '_blank')} className="bg-blue-600/30 text-blue-400 px-4 py-2 rounded-lg text-sm">
@@ -290,6 +271,131 @@ export default function Admin() {
               className="p-3 rounded-lg bg-white/10 text-white border border-white/20"
               required
             />
+            <div>
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={(e) => setFormData({...formData, logo_file: e.target.files[0]})}
+                className="p-2 rounded-lg bg-white/10 text-white border border-white/20 w-full text-sm"
+              />
+            </div>
+            <button type="submit" disabled={uploading} className="bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-lg font-semibold col-span-full md:col-span-1">
+              {uploading ? 'Uploading...' : '+ Add Service'}
+            </button>
+          </form>
+        </div>
+
+        {/* Category Management */}
+        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 mb-6">
+          <h2 className="text-xl font-bold text-white mb-4">📂 Categories</h2>
+          <button onClick={addCategory} className="bg-purple-600/30 text-purple-400 px-4 py-2 rounded-lg text-sm mb-4">
+            + Add New Category
+          </button>
+          <div className="flex flex-wrap gap-2">
+            {categories.map(cat => (
+              <span key={cat.name} className="px-3 py-1 bg-white/10 rounded-full text-sm text-gray-300">
+                {cat.name}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Service List */}
+        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
+            📦 All Services ({services.length})
+            <span className="text-xs text-gray-400 ml-2">(Use ↑↓ to reorder)</span>
+          </h2>
+          
+          <div className="space-y-3">
+            {services.map((service, index) => (
+              <div key={service.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="flex flex-wrap gap-3 items-start">
+                  {/* Reorder Buttons */}
+                  <div className="flex flex-col gap-1">
+                    <button onClick={() => moveServiceUp(index)} className="text-gray-400 hover:text-white text-sm">↑</button>
+                    <button onClick={() => moveServiceDown(index)} className="text-gray-400 hover:text-white text-sm">↓</button>
+                  </div>
+                  
+                  {/* Logo Preview */}
+                  <div className="w-12 h-12 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
+                    {service.logo_url ? (
+                      <img src={service.logo_url} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold">
+                        {service.name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Editable Fields */}
+                  <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <input
+                      value={service.name}
+                      onChange={(e) => updateService(service.id, { name: e.target.value })}
+                      className="bg-white/10 text-white p-2 rounded border border-white/20"
+                    />
+                    <select
+                      value={service.category}
+                      onChange={(e) => updateService(service.id, { category: e.target.value })}
+                      className="bg-white/10 text-white p-2 rounded border border-white/20"
+                    >
+                      {categories.map(cat => (
+                        <option key={cat.name} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      value={service.market_price}
+                      onChange={(e) => updateService(service.id, { market_price: parseInt(e.target.value) })}
+                      className="bg-white/10 text-white p-2 rounded border border-white/20"
+                    />
+                    <input
+                      type="number"
+                      value={service.hubby_price}
+                      onChange={(e) => updateService(service.id, { hubby_price: parseInt(e.target.value) })}
+                      className="bg-white/10 text-[#FF6B35] p-2 rounded border border-white/20 font-semibold"
+                    />
+                  </div>
+                  
+                  {/* Delete Button */}
+                  <button
+                    onClick={() => deleteService(service.id)}
+                    className="bg-red-600/30 text-red-400 px-3 py-2 rounded-lg text-sm hover:bg-red-600/50"
+                  >
+                    Delete
+                  </button>
+                </div>
+                
+                {/* Logo Upload for existing service */}
+                <div className="mt-2 ml-8">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={async (e) => {
+                      if (e.target.files[0]) {
+                        setUploading(true);
+                        const url = await uploadLogo(e.target.files[0]);
+                        await updateService(service.id, { logo_url: url });
+                        setUploading(false);
+                      }
+                    }}
+                    className="text-xs text-gray-400"
+                  />
+                  <span className="text-xs text-gray-500 ml-2">Upload new logo</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {services.length === 0 && (
+            <div className="text-center py-8 text-gray-500">No services yet. Add your first service above!</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+        }          />
             <div>
               <input
                 type="file"
