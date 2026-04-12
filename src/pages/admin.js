@@ -17,14 +17,21 @@ export default function Admin() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchData();
-      createStorageBucket();
+      setupStorage();
     }
   }, [isAuthenticated]);
 
-  const createStorageBucket = async () => {
-    const { data: buckets } = await supabase.storage.listBuckets();
-    if (!buckets?.find(b => b.name === 'logos')) {
-      await supabase.storage.createBucket('logos', { public: true });
+  const setupStorage = async () => {
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets();
+      if (!buckets?.find(b => b.name === 'logos')) {
+        await supabase.storage.createBucket('logos', { 
+          public: true,
+          fileSizeLimit: 5242880 // 5MB
+        });
+      }
+    } catch (error) {
+      console.error('Storage setup error:', error);
     }
   };
 
@@ -34,12 +41,12 @@ export default function Admin() {
     const { data: servicesData } = await supabase
       .from('services')
       .select('*')
-      .order('sort_order');
+      .order('sort_order', { ascending: true });
     
     const { data: categoriesData } = await supabase
       .from('categories')
       .select('*')
-      .order('sort_order');
+      .order('sort_order', { ascending: true });
     
     if (servicesData) setServices(servicesData);
     if (categoriesData) setCategories(categoriesData);
@@ -48,26 +55,51 @@ export default function Admin() {
   };
 
   const uploadLogo = async (file) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    if (!file) return null;
     
-    const { error: uploadError } = await supabase.storage
-      .from('logos')
-      .upload(filePath, file);
+    setUploading(true);
+    setMessage('Uploading logo...');
     
-    if (uploadError) throw uploadError;
-    
-    const { data: { publicUrl } } = supabase.storage
-      .from('logos')
-      .getPublicUrl(filePath);
-    
-    return publicUrl;
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+      
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(filePath);
+      
+      setMessage('Logo uploaded!');
+      return publicUrl;
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      setMessage('❌ Upload failed: ' + error.message);
+      return null;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const addService = async (e) => {
     e.preventDefault();
-    setUploading(true);
+    if (!formData.name || !formData.category || !formData.market_price || !formData.hubby_price) {
+      setMessage('❌ Please fill all fields');
+      return;
+    }
+    
+    setLoading(true);
     setMessage('Adding service...');
     
     try {
@@ -76,7 +108,9 @@ export default function Admin() {
         logoUrl = await uploadLogo(formData.logo_file);
       }
       
-      const maxOrder = Math.max(...services.map(s => s.sort_order || 0), 0);
+      const maxOrder = services.length > 0 
+        ? Math.max(...services.map(s => s.sort_order || 0)) + 1 
+        : 1;
       
       const { error } = await supabase.from('services').insert([{
         name: formData.name,
@@ -85,20 +119,22 @@ export default function Admin() {
         hubby_price: parseInt(formData.hubby_price),
         discount: Math.round((1 - parseInt(formData.hubby_price)/parseInt(formData.market_price)) * 100),
         logo_url: logoUrl,
-        sort_order: maxOrder + 1
+        sort_order: maxOrder
       }]);
       
       if (error) throw error;
       
       setMessage('✅ Service added successfully!');
-      fetchData();
       setFormData({ name: '', category: categories[0]?.name || '', market_price: '', hubby_price: '', logo_file: null });
+      fetchData();
       
-      setTimeout(() => setMessage(''), 3000);
+      // Reset file input
+      document.getElementById('logoInput').value = '';
+      
     } catch (error) {
       setMessage('❌ Error: ' + error.message);
     }
-    setUploading(false);
+    setLoading(false);
   };
 
   const updateService = async (id, updates) => {
@@ -124,15 +160,45 @@ export default function Admin() {
     }
   };
 
+  const reorderServices = async (newOrder) => {
+    setLoading(true);
+    for (let i = 0; i < newOrder.length; i++) {
+      await supabase
+        .from('services')
+        .update({ sort_order: i })
+        .eq('id', newOrder[i].id);
+    }
+    setServices(newOrder);
+    setMessage('✅ Order saved!');
+    setTimeout(() => setMessage(''), 2000);
+    setLoading(false);
+  };
+
+  const moveUp = (index) => {
+    if (index === 0) return;
+    const newServices = [...services];
+    [newServices[index - 1], newServices[index]] = [newServices[index], newServices[index - 1]];
+    reorderServices(newServices);
+  };
+
+  const moveDown = (index) => {
+    if (index === services.length - 1) return;
+    const newServices = [...services];
+    [newServices[index + 1], newServices[index]] = [newServices[index], newServices[index + 1]];
+    reorderServices(newServices);
+  };
+
   const addCategory = async () => {
     const newCat = prompt('Enter new category name:');
     if (!newCat || !newCat.trim()) return;
     
-    const maxOrder = Math.max(...categories.map(c => c.sort_order || 0), 0);
+    const maxOrder = categories.length > 0 
+      ? Math.max(...categories.map(c => c.sort_order || 0)) + 1 
+      : 1;
     
     const { error } = await supabase.from('categories').insert([{
       name: newCat,
-      sort_order: maxOrder + 1
+      sort_order: maxOrder
     }]);
     
     if (error) {
@@ -143,34 +209,35 @@ export default function Admin() {
     }
   };
 
-  const moveServiceUp = async (index) => {
-    if (index === 0) return;
+  const handleLogoUpload = async (serviceId, file) => {
+    if (!file) return;
     
-    const newServices = [...services];
-    [newServices[index - 1], newServices[index]] = [newServices[index], newServices[index - 1]];
-    
-    for (let i = 0; i < newServices.length; i++) {
-      await supabase.from('services').update({ sort_order: i }).eq('id', newServices[i].id);
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${serviceId}_${Date.now()}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(filePath);
+      
+      await updateService(serviceId, { logo_url: publicUrl });
+      setMessage('✅ Logo updated!');
+      
+    } catch (error) {
+      setMessage('❌ Logo upload failed: ' + error.message);
     }
-    
-    setServices(newServices);
-    setMessage('✅ Order updated!');
-    setTimeout(() => setMessage(''), 2000);
-  };
-
-  const moveServiceDown = async (index) => {
-    if (index === services.length - 1) return;
-    
-    const newServices = [...services];
-    [newServices[index + 1], newServices[index]] = [newServices[index], newServices[index + 1]];
-    
-    for (let i = 0; i < newServices.length; i++) {
-      await supabase.from('services').update({ sort_order: i }).eq('id', newServices[i].id);
-    }
-    
-    setServices(newServices);
-    setMessage('✅ Order updated!');
-    setTimeout(() => setMessage(''), 2000);
+    setUploading(false);
   };
 
   const handleLogin = (e) => {
@@ -213,7 +280,7 @@ export default function Admin() {
         <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">🛸 Admin Dashboard</h1>
-            <p className="text-gray-400 text-sm">Manage Services | Upload Logos | Edit Everything</p>
+            <p className="text-gray-400 text-sm">Manage Services | Upload Logos | Drag to Reorder</p>
           </div>
           <div className="flex gap-3">
             <button onClick={() => window.open('/', '_blank')} className="bg-blue-600/30 text-blue-400 px-4 py-2 rounded-lg text-sm">
@@ -273,14 +340,15 @@ export default function Admin() {
             />
             <div>
               <input
+                id="logoInput"
                 type="file"
-                accept="image/png,image/jpeg"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
                 onChange={(e) => setFormData({...formData, logo_file: e.target.files[0]})}
                 className="p-2 rounded-lg bg-white/10 text-white border border-white/20 w-full text-sm"
               />
             </div>
-            <button type="submit" disabled={uploading} className="bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-lg font-semibold col-span-full md:col-span-1">
-              {uploading ? 'Uploading...' : '+ Add Service'}
+            <button type="submit" disabled={loading || uploading} className="bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-lg font-semibold col-span-full md:col-span-1">
+              {loading ? 'Adding...' : uploading ? 'Uploading...' : '+ Add Service'}
             </button>
           </form>
         </div>
@@ -300,29 +368,41 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Service List */}
+        {/* Service List with Simple Sort Buttons */}
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6">
           <h2 className="text-xl font-bold text-white mb-4">
             📦 All Services ({services.length})
-            <span className="text-xs text-gray-400 ml-2">(Use ↑↓ to reorder)</span>
+            <span className="text-xs text-gray-400 ml-2">(Click ↑↓ to reorder)</span>
           </h2>
           
           <div className="space-y-3">
             {services.map((service, index) => (
               <div key={service.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
                 <div className="flex flex-wrap gap-3 items-start">
-                  {/* Reorder Buttons */}
-                  <div className="flex flex-col gap-1">
-                    <button onClick={() => moveServiceUp(index)} className="text-gray-400 hover:text-white text-sm">↑</button>
-                    <button onClick={() => moveServiceDown(index)} className="text-gray-400 hover:text-white text-sm">↓</button>
+                  {/* Sort Buttons */}
+                  <div className="flex flex-col gap-1 bg-white/10 rounded-lg p-1">
+                    <button 
+                      onClick={() => moveUp(index)} 
+                      disabled={index === 0}
+                      className="text-gray-400 hover:text-green-400 disabled:opacity-30 disabled:cursor-not-allowed text-sm px-2"
+                    >
+                      ↑
+                    </button>
+                    <button 
+                      onClick={() => moveDown(index)} 
+                      disabled={index === services.length - 1}
+                      className="text-gray-400 hover:text-green-400 disabled:opacity-30 disabled:cursor-not-allowed text-sm px-2"
+                    >
+                      ↓
+                    </button>
                   </div>
                   
                   {/* Logo Preview */}
-                  <div className="w-12 h-12 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
+                  <div className="w-14 h-14 rounded-full bg-white/10 overflow-hidden flex-shrink-0 border-2 border-white/20">
                     {service.logo_url ? (
                       <img src={service.logo_url} className="w-full h-full object-cover" alt={service.name} />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold">
+                      <div className="w-full h-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl">
                         {service.name.charAt(0)}
                       </div>
                     )}
@@ -368,21 +448,19 @@ export default function Admin() {
                 </div>
                 
                 {/* Logo Upload for existing service */}
-                <div className="mt-2 ml-8">
+                <div className="mt-3 ml-16">
+                  <label className="text-xs text-gray-400 block mb-1">Change Logo:</label>
                   <input
                     type="file"
-                    accept="image/png,image/jpeg"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
                     onChange={async (e) => {
                       if (e.target.files[0]) {
-                        setUploading(true);
-                        const url = await uploadLogo(e.target.files[0]);
-                        await updateService(service.id, { logo_url: url });
-                        setUploading(false);
+                        await handleLogoUpload(service.id, e.target.files[0]);
+                        e.target.value = '';
                       }
                     }}
-                    className="text-xs text-gray-400"
+                    className="text-xs text-gray-400 bg-white/5 p-1 rounded"
                   />
-                  <span className="text-xs text-gray-500 ml-2">Upload new logo</span>
                 </div>
               </div>
             ))}
@@ -395,4 +473,4 @@ export default function Admin() {
       </div>
     </div>
   );
-                }
+      }
