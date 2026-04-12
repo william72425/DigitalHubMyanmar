@@ -1,22 +1,11 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { createClient } from '@supabase/supabase-js'
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCHGG8jXfwQ4yPKatcngvTA85N_u2gDJYM",
-  authDomain: "digital-hub-myanmar.firebaseapp.com",
-  projectId: "digital-hub-myanmar",
-  storageBucket: "digital-hub-myanmar.firebasestorage.app",
-  messagingSenderId: "980288552830",
-  appId: "1:980288552830:web:a9141510d03110be1d3d2f"
-};
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Check if environment variables are set
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase environment variables. Please check your .env.local file or Vercel Environment Variables.')
+}
 
-// Export services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
