@@ -4,6 +4,14 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/utils/supabase';
 
+// Cache duration: 1 hour (3600000 milliseconds)
+const CACHE_DURATION = 3600000;
+const CACHE_KEYS = {
+  SERVICES: 'cached_services',
+  CATEGORIES: 'cached_categories',
+  TIMESTAMP: 'cache_timestamp'
+};
+
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [services, setServices] = useState([]);
@@ -11,7 +19,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // Load theme from localStorage on mount
+  // Load theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
@@ -21,31 +29,67 @@ export default function Home() {
     }
   }, []);
 
-  // Save theme to localStorage
   const toggleTheme = () => {
     const newTheme = !isDarkMode;
     setIsDarkMode(newTheme);
     localStorage.setItem('theme', newTheme ? 'dark' : 'light');
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // Check if cache is valid
+  const isCacheValid = () => {
+    const timestamp = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
+    if (!timestamp) return false;
+    const now = Date.now();
+    return (now - parseInt(timestamp)) < CACHE_DURATION;
+  };
 
+  // Load data from cache or Supabase
   const fetchData = async () => {
     setLoading(true);
+    
+    // Check cache first
+    if (isCacheValid()) {
+      const cachedServices = localStorage.getItem(CACHE_KEYS.SERVICES);
+      const cachedCategories = localStorage.getItem(CACHE_KEYS.CATEGORIES);
+      
+      if (cachedServices && cachedCategories) {
+        setServices(JSON.parse(cachedServices));
+        setCategories([{ name: 'All', sort_order: 0 }, ...JSON.parse(cachedCategories)]);
+        setLoading(false);
+        return;
+      }
+    }
+    
+    // Cache expired or not exists - fetch from Supabase
     const { data: servicesData } = await supabase
       .from('services')
       .select('*')
       .order('sort_order', { ascending: true });
+    
     const { data: categoriesData } = await supabase
       .from('categories')
       .select('*')
       .order('sort_order', { ascending: true });
-    if (categoriesData) setCategories([{ name: 'All', sort_order: 0 }, ...categoriesData]);
-    if (servicesData) setServices(servicesData);
+    
+    if (servicesData) {
+      setServices(servicesData);
+      localStorage.setItem(CACHE_KEYS.SERVICES, JSON.stringify(servicesData));
+    }
+    
+    if (categoriesData) {
+      setCategories([{ name: 'All', sort_order: 0 }, ...categoriesData]);
+      localStorage.setItem(CACHE_KEYS.CATEGORIES, JSON.stringify(categoriesData));
+    }
+    
+    // Update timestamp
+    localStorage.setItem(CACHE_KEYS.TIMESTAMP, Date.now().toString());
+    
     setLoading(false);
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const filteredServices = activeCategory === 'All'
     ? services
@@ -81,17 +125,17 @@ export default function Home() {
           isDarkMode ? 'bg-[#00D4FF]/10' : 'bg-cyan-200/50'
         }`}></div>
 
-        {/* Theme Toggle Button - NOT fixed, scrolls with page */}
-<div className="flex justify-end mb-2 px-4">
-  <button
-    onClick={toggleTheme}
-    className={`p-3 rounded-full backdrop-blur-md transition-all shadow-lg ${
-      isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200/80 hover:bg-gray-300/80'
-    }`}
-  >
-    {isDarkMode ? '☀️' : '🌙'}
-  </button>
-</div>
+        {/* Theme Toggle Button */}
+        <div className="fixed top-4 right-4 z-50">
+          <button
+            onClick={toggleTheme}
+            className={`p-3 rounded-full backdrop-blur-md transition-all shadow-lg ${
+              isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200/80 hover:bg-gray-300/80'
+            }`}
+          >
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
 
         <div className="container mx-auto px-4 py-4 max-w-7xl relative z-10">
           
@@ -140,36 +184,25 @@ export default function Home() {
             {/* Title - 2 LINES with Professional Style */}
             <div className="inline-block relative px-4">
               <div className="text-center">
-                {/* Line 1 - Digital Hub */}
                 <h1 className={`text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-2 ${
-                  isDarkMode 
-                    ? 'text-white drop-shadow-lg' 
-                    : 'text-gray-800'
+                  isDarkMode ? 'text-white drop-shadow-lg' : 'text-gray-800'
                 }`}
-                style={{
-                  fontFamily: "'Playfair Display', serif",
-                  textShadow: isDarkMode ? '0 2px 10px rgba(0,0,0,0.3)' : 'none'
-                }}>
+                style={{ fontFamily: "'Playfair Display', serif" }}>
                   <span className="bg-gradient-to-r from-[#FF6B35] via-[#FF8C42] to-[#FFB347] bg-clip-text text-transparent">
                     Digital
                   </span>
                   <span className={`mx-2 ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Hub</span>
                 </h1>
                 
-                {/* Line 2 - Myanmar */}
                 <h2 className={`text-3xl md:text-5xl lg:text-6xl font-bold tracking-wide ${
                   isDarkMode ? 'text-white/90' : 'text-gray-700'
                 }`}
-                style={{
-                  fontFamily: "'Playfair Display', serif",
-                  letterSpacing: '2px'
-                }}>
+                style={{ fontFamily: "'Playfair Display', serif", letterSpacing: '2px' }}>
                   <span className="bg-gradient-to-r from-[#00D4FF] via-[#00B8FF] to-[#0099CC] bg-clip-text text-transparent">
                     Myanmar
                   </span>
                 </h2>
                 
-                {/* Decorative line under title */}
                 <div className="flex justify-center mt-4">
                   <div className="w-20 h-0.5 bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] rounded-full"></div>
                 </div>
@@ -333,4 +366,4 @@ export default function Home() {
       `}</style>
     </>
   );
-          }
+             }
