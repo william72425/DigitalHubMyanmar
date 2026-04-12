@@ -9,6 +9,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [draggedItem, setDraggedItem] = useState(null);
   
   const [formData, setFormData] = useState({
     name: '', category: '', market_price: '', hubby_price: '', logo_file: null
@@ -17,23 +18,8 @@ export default function Admin() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchData();
-      setupStorage();
     }
   }, [isAuthenticated]);
-
-  const setupStorage = async () => {
-    try {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      if (!buckets?.find(b => b.name === 'logos')) {
-        await supabase.storage.createBucket('logos', { 
-          public: true,
-          fileSizeLimit: 5242880 // 5MB
-        });
-      }
-    } catch (error) {
-      console.error('Storage setup error:', error);
-    }
-  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -63,19 +49,17 @@ export default function Admin() {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `logos/${fileName}`;
+      const filePath = fileName;
       
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('logos')
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: true
         });
       
       if (uploadError) throw uploadError;
       
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('logos')
         .getPublicUrl(filePath);
@@ -128,7 +112,6 @@ export default function Admin() {
       setFormData({ name: '', category: categories[0]?.name || '', market_price: '', hubby_price: '', logo_file: null });
       fetchData();
       
-      // Reset file input
       document.getElementById('logoInput').value = '';
       
     } catch (error) {
@@ -160,32 +143,78 @@ export default function Admin() {
     }
   };
 
-  const reorderServices = async (newOrder) => {
+  // Drag & Drop Sort Functions
+  const handleDragStart = (e, index) => {
+    setDraggedItem(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '';
+    setDraggedItem(null);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedItem === null) return;
+    
+    if (draggedItem !== index) {
+      const newServices = [...services];
+      const draggedService = newServices[draggedItem];
+      newServices.splice(draggedItem, 1);
+      newServices.splice(index, 0, draggedService);
+      
+      newServices.forEach((service, idx) => {
+        service.sort_order = idx;
+      });
+      
+      setServices(newServices);
+      setDraggedItem(index);
+    }
+  };
+
+  const saveOrder = async () => {
     setLoading(true);
-    for (let i = 0; i < newOrder.length; i++) {
+    for (let i = 0; i < services.length; i++) {
       await supabase
         .from('services')
         .update({ sort_order: i })
-        .eq('id', newOrder[i].id);
+        .eq('id', services[i].id);
     }
-    setServices(newOrder);
-    setMessage('✅ Order saved!');
+    setMessage('✅ Order saved to database!');
     setTimeout(() => setMessage(''), 2000);
     setLoading(false);
   };
 
-  const moveUp = (index) => {
-    if (index === 0) return;
-    const newServices = [...services];
-    [newServices[index - 1], newServices[index]] = [newServices[index], newServices[index - 1]];
-    reorderServices(newServices);
-  };
-
-  const moveDown = (index) => {
-    if (index === services.length - 1) return;
-    const newServices = [...services];
-    [newServices[index + 1], newServices[index]] = [newServices[index], newServices[index + 1]];
-    reorderServices(newServices);
+  const handleLogoUpload = async (serviceId, file) => {
+    if (!file) return;
+    
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${serviceId}_${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(fileName);
+      
+      await updateService(serviceId, { logo_url: publicUrl });
+      setMessage('✅ Logo updated!');
+      
+    } catch (error) {
+      setMessage('❌ Logo upload failed: ' + error.message);
+    }
+    setUploading(false);
   };
 
   const addCategory = async () => {
@@ -207,37 +236,6 @@ export default function Admin() {
       setMessage('✅ Category added!');
       fetchData();
     }
-  };
-
-  const handleLogoUpload = async (serviceId, file) => {
-    if (!file) return;
-    
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${serviceId}_${Date.now()}.${fileExt}`;
-      const filePath = `logos/${fileName}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('logos')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-      
-      if (uploadError) throw uploadError;
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('logos')
-        .getPublicUrl(filePath);
-      
-      await updateService(serviceId, { logo_url: publicUrl });
-      setMessage('✅ Logo updated!');
-      
-    } catch (error) {
-      setMessage('❌ Logo upload failed: ' + error.message);
-    }
-    setUploading(false);
   };
 
   const handleLogin = (e) => {
@@ -280,7 +278,7 @@ export default function Admin() {
         <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">🛸 Admin Dashboard</h1>
-            <p className="text-gray-400 text-sm">Manage Services | Upload Logos | Drag to Reorder</p>
+            <p className="text-gray-400 text-sm">Drag & Drop to Reorder | Upload Logos | Adjust Logo Size</p>
           </div>
           <div className="flex gap-3">
             <button onClick={() => window.open('/', '_blank')} className="bg-blue-600/30 text-blue-400 px-4 py-2 rounded-lg text-sm">
@@ -288,6 +286,9 @@ export default function Admin() {
             </button>
             <button onClick={fetchData} className="bg-green-600/30 text-green-400 px-4 py-2 rounded-lg text-sm">
               Refresh
+            </button>
+            <button onClick={saveOrder} disabled={loading} className="bg-yellow-600/30 text-yellow-400 px-4 py-2 rounded-lg text-sm">
+              {loading ? 'Saving...' : '💾 Save Order'}
             </button>
           </div>
         </div>
@@ -368,102 +369,126 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Service List with Simple Sort Buttons */}
+        {/* Service List with Drag & Drop and Logo Size Adjust */}
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6">
           <h2 className="text-xl font-bold text-white mb-4">
             📦 All Services ({services.length})
-            <span className="text-xs text-gray-400 ml-2">(Click ↑↓ to reorder)</span>
+            <span className="text-xs text-gray-400 ml-2">(Drag the ⠿ icon to reorder)</span>
           </h2>
           
           <div className="space-y-3">
-            {services.map((service, index) => (
-              <div key={service.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
-                <div className="flex flex-wrap gap-3 items-start">
-                  {/* Sort Buttons */}
-                  <div className="flex flex-col gap-1 bg-white/10 rounded-lg p-1">
-                    <button 
-                      onClick={() => moveUp(index)} 
-                      disabled={index === 0}
-                      className="text-gray-400 hover:text-green-400 disabled:opacity-30 disabled:cursor-not-allowed text-sm px-2"
-                    >
-                      ↑
-                    </button>
-                    <button 
-                      onClick={() => moveDown(index)} 
-                      disabled={index === services.length - 1}
-                      className="text-gray-400 hover:text-green-400 disabled:opacity-30 disabled:cursor-not-allowed text-sm px-2"
-                    >
-                      ↓
-                    </button>
-                  </div>
-                  
-                  {/* Logo Preview */}
-                  <div className="w-14 h-14 rounded-full bg-white/10 overflow-hidden flex-shrink-0 border-2 border-white/20">
-                    {service.logo_url ? (
-                      <img src={service.logo_url} className="w-full h-full object-cover" alt={service.name} />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl">
-                        {service.name.charAt(0)}
+            {services.map((service, index) => {
+              const [logoSize, setLogoSize] = useState(service.logo_size || 48);
+              
+              return (
+                <div
+                  key={service.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  className="p-4 bg-white/5 rounded-xl border border-white/10 cursor-move transition-all hover:bg-white/10"
+                  style={{ cursor: 'grab' }}
+                >
+                  <div className="flex flex-wrap gap-3 items-start">
+                    {/* Drag Handle */}
+                    <div className="text-gray-500 text-2xl cursor-grab active:cursor-grabbing" style={{ cursor: 'grab' }}>
+                      ⠿
+                    </div>
+                    
+                    {/* Logo Preview with Size Control */}
+                    <div className="flex-shrink-0">
+                      <div 
+                        className="rounded-full bg-white/10 overflow-hidden border-2 border-white/20 transition-all"
+                        style={{ 
+                          width: `${logoSize}px`, 
+                          height: `${logoSize}px`,
+                        }}
+                      >
+                        {service.logo_url ? (
+                          <img src={service.logo_url} className="w-full h-full object-cover" alt={service.name} />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl">
+                            {service.name.charAt(0)}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  
-                  {/* Editable Fields */}
-                  <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-4 gap-2">
-                    <input
-                      value={service.name}
-                      onChange={(e) => updateService(service.id, { name: e.target.value })}
-                      className="bg-white/10 text-white p-2 rounded border border-white/20"
-                    />
-                    <select
-                      value={service.category}
-                      onChange={(e) => updateService(service.id, { category: e.target.value })}
-                      className="bg-white/10 text-white p-2 rounded border border-white/20"
+                      {/* Size Slider */}
+                      <div className="mt-1 text-center">
+                        <input
+                          type="range"
+                          min="32"
+                          max="80"
+                          value={logoSize}
+                          onChange={(e) => {
+                            const newSize = parseInt(e.target.value);
+                            setLogoSize(newSize);
+                            updateService(service.id, { logo_size: newSize });
+                          }}
+                          className="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                          style={{ accentColor: '#FF6B35' }}
+                        />
+                        <p className="text-[10px] text-gray-500">{logoSize}px</p>
+                      </div>
+                    </div>
+                    
+                    {/* Editable Fields */}
+                    <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-4 gap-2">
+                      <input
+                        value={service.name}
+                        onChange={(e) => updateService(service.id, { name: e.target.value })}
+                        className="bg-white/10 text-white p-2 rounded border border-white/20"
+                      />
+                      <select
+                        value={service.category}
+                        onChange={(e) => updateService(service.id, { category: e.target.value })}
+                        className="bg-white/10 text-white p-2 rounded border border-white/20"
+                      >
+                        {categories.map(cat => (
+                          <option key={cat.name} value={cat.name}>{cat.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        value={service.market_price}
+                        onChange={(e) => updateService(service.id, { market_price: parseInt(e.target.value) })}
+                        className="bg-white/10 text-white p-2 rounded border border-white/20"
+                      />
+                      <input
+                        type="number"
+                        value={service.hubby_price}
+                        onChange={(e) => updateService(service.id, { hubby_price: parseInt(e.target.value) })}
+                        className="bg-white/10 text-[#FF6B35] p-2 rounded border border-white/20 font-semibold"
+                      />
+                    </div>
+                    
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => deleteService(service.id)}
+                      className="bg-red-600/30 text-red-400 px-3 py-2 rounded-lg text-sm hover:bg-red-600/50"
                     >
-                      {categories.map(cat => (
-                        <option key={cat.name} value={cat.name}>{cat.name}</option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      value={service.market_price}
-                      onChange={(e) => updateService(service.id, { market_price: parseInt(e.target.value) })}
-                      className="bg-white/10 text-white p-2 rounded border border-white/20"
-                    />
-                    <input
-                      type="number"
-                      value={service.hubby_price}
-                      onChange={(e) => updateService(service.id, { hubby_price: parseInt(e.target.value) })}
-                      className="bg-white/10 text-[#FF6B35] p-2 rounded border border-white/20 font-semibold"
-                    />
+                      Delete
+                    </button>
                   </div>
                   
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => deleteService(service.id)}
-                    className="bg-red-600/30 text-red-400 px-3 py-2 rounded-lg text-sm hover:bg-red-600/50"
-                  >
-                    Delete
-                  </button>
+                  {/* Logo Upload for existing service */}
+                  <div className="mt-3 ml-8">
+                    <label className="text-xs text-gray-400 block mb-1">Change Logo:</label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      onChange={async (e) => {
+                        if (e.target.files[0]) {
+                          await handleLogoUpload(service.id, e.target.files[0]);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="text-xs text-gray-400 bg-white/5 p-1 rounded"
+                    />
+                  </div>
                 </div>
-                
-                {/* Logo Upload for existing service */}
-                <div className="mt-3 ml-16">
-                  <label className="text-xs text-gray-400 block mb-1">Change Logo:</label>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/webp"
-                    onChange={async (e) => {
-                      if (e.target.files[0]) {
-                        await handleLogoUpload(service.id, e.target.files[0]);
-                        e.target.value = '';
-                      }
-                    }}
-                    className="text-xs text-gray-400 bg-white/5 p-1 rounded"
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           
           {services.length === 0 && (
@@ -473,4 +498,4 @@ export default function Admin() {
       </div>
     </div>
   );
-      }
+  }
