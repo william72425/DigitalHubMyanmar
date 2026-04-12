@@ -81,15 +81,17 @@ export default function Home() {
           isDarkMode ? 'bg-[#00D4FF]/10' : 'bg-cyan-200/50'
         }`}></div>
 
-        {/* Theme Toggle Button */}
-        <button
-          onClick={toggleTheme}
-          className={`fixed top-4 right-4 z-50 p-3 rounded-full backdrop-blur-md transition-all shadow-lg ${
-            isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200/80 hover:bg-gray-300/80'
-          }`}
-        >
-          {isDarkMode ? '☀️' : '🌙'}
-        </button>
+        {/* Theme Toggle Button - FIXED and FROZEN */}
+        <div className="fixed top-4 right-4 z-50">
+          <button
+            onClick={toggleTheme}
+            className={`p-3 rounded-full backdrop-blur-md transition-all shadow-lg ${
+              isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200/80 hover:bg-gray-300/80'
+            }`}
+          >
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
 
         <div className="container mx-auto px-4 py-4 max-w-7xl relative z-10">
           
@@ -331,4 +333,4 @@ export default function Home() {
       `}</style>
     </>
   );
-    }
+          }
