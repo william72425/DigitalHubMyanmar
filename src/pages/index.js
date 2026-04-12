@@ -64,6 +64,7 @@ export default function Home() {
       <Head>
         <title>Digital Hub Myanmar - Hubby Store</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes" />
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       </Head>
 
       <div className={`min-h-screen transition-all duration-300 relative overflow-x-hidden ${
@@ -97,7 +98,7 @@ export default function Home() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="relative text-center py-4 md:py-6 mb-2"
+            className="relative text-center py-6 md:py-8 mb-2"
           >
             {/* Left Side - Hubby Character */}
             <div className="hidden lg:block absolute left-0 bottom-0">
@@ -134,20 +135,52 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Title */}
+            {/* Title - 2 LINES with Professional Style */}
             <div className="inline-block relative px-4">
-              <h1 className={`text-3xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent px-2 py-1`}>
-                Digital Hub Myanmar
-              </h1>
+              <div className="text-center">
+                {/* Line 1 - Digital Hub */}
+                <h1 className={`text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-2 ${
+                  isDarkMode 
+                    ? 'text-white drop-shadow-lg' 
+                    : 'text-gray-800'
+                }`}
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  textShadow: isDarkMode ? '0 2px 10px rgba(0,0,0,0.3)' : 'none'
+                }}>
+                  <span className="bg-gradient-to-r from-[#FF6B35] via-[#FF8C42] to-[#FFB347] bg-clip-text text-transparent">
+                    Digital
+                  </span>
+                  <span className={`mx-2 ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Hub</span>
+                </h1>
+                
+                {/* Line 2 - Myanmar */}
+                <h2 className={`text-3xl md:text-5xl lg:text-6xl font-bold tracking-wide ${
+                  isDarkMode ? 'text-white/90' : 'text-gray-700'
+                }`}
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  letterSpacing: '2px'
+                }}>
+                  <span className="bg-gradient-to-r from-[#00D4FF] via-[#00B8FF] to-[#0099CC] bg-clip-text text-transparent">
+                    Myanmar
+                  </span>
+                </h2>
+                
+                {/* Decorative line under title */}
+                <div className="flex justify-center mt-4">
+                  <div className="w-20 h-0.5 bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] rounded-full"></div>
+                </div>
+              </div>
             </div>
             
-            <p className={`mt-2 text-xs md:text-sm max-w-xl mx-auto ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <p className={`mt-4 text-sm md:text-base max-w-xl mx-auto ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
               🎁 <span className="text-[#FF6B35] font-semibold">Hubby Store</span> မှ ကြိုဆိုပါတယ်! 
               Special Discounts ရယူလိုက်ပါ!
             </p>
           </motion.div>
 
-          {/* Hubby's Special Banner - RESTORED */}
+          {/* Hubby's Special Banner */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -203,7 +236,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Service Grid - BIGGER CARDS */}
+          {/* Service Grid */}
           {filteredServices.length > 0 ? (
             <AnimatePresence mode="wait">
               <motion.div
