@@ -98,8 +98,8 @@ export default function Home() {
                 className="grid grid-cols-2 gap-3 md:gap-4"
               >
                 {filteredServices.map((service, idx) => {
-                  // Get logo size from database, default to 70 (bigger)
-                  const logoSize = service.logo_size || 70;
+                  // Get logo size from database, default to 80
+                  const logoSize = service.logo_size || 80;
                   // Calculate discount if not present
                   const discount = service.discount || Math.round((1 - service.hubby_price / service.market_price) * 100);
                   
@@ -110,32 +110,31 @@ export default function Home() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.03 }}
                       whileHover={{ y: -3 }}
-                      className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl p-3 md:p-4 relative"
+                      className="bg-white/5 backdrop-blur-md rounded-xl md:rounded-2xl p-3 md:p-4 relative"
                     >
                       {/* Discount Badge */}
                       <div className="absolute -top-2 -right-2 bg-gradient-to-r from-[#FF6B35] to-red-500 text-white text-[10px] md:text-xs font-bold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full z-10">
                         {discount}% OFF
                       </div>
                       
-                      {/* Logo - SQUARE Frame with background for transparency support */}
+                      {/* Logo - NO BORDER, transparent background, original shape */}
                       <div className="flex flex-col items-center mb-3 md:mb-4">
                         <div 
-                          className="rounded-xl bg-[#0f1425] border-2 border-white/20 shadow-lg flex items-center justify-center overflow-hidden"
+                          className="flex items-center justify-center overflow-hidden"
                           style={{ 
                             width: logoSize + 'px', 
-                            height: logoSize + 'px',
-                            boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                            height: logoSize + 'px'
                           }}
                         >
                           {service.logo_url ? (
                             <img 
                               src={service.logo_url} 
-                              className="w-full h-full object-contain p-1" 
+                              className="w-full h-full object-contain" 
                               alt={service.name}
                               style={{ backgroundColor: 'transparent' }}
                             />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl">
+                            <div className="w-full h-full bg-gradient-to-br from-[#FF6B35] to-[#00D4FF] rounded-xl flex items-center justify-center text-white font-bold text-2xl">
                               {service.name.charAt(0)}
                             </div>
                           )}
@@ -181,4 +180,4 @@ export default function Home() {
       `}</style>
     </>
   );
-}
+      }
