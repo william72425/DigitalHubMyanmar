@@ -175,7 +175,7 @@ export default function Admin() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (password === 'Hubby2026@') {
+    if (password === 'hubby2024') {
       setIsAuthenticated(true);
     } else {
       alert('Wrong password!');
@@ -320,7 +320,7 @@ export default function Admin() {
                   {/* Logo Preview */}
                   <div className="w-12 h-12 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
                     {service.logo_url ? (
-                      <img src={service.logo_url} className="w-full h-full object-cover" />
+                      <img src={service.logo_url} className="w-full h-full object-cover" alt={service.name} />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold">
                         {service.name.charAt(0)}
@@ -395,154 +395,4 @@ export default function Admin() {
       </div>
     </div>
   );
-        }          />
-            <div>
-              <input
-                type="file"
-                accept="image/png,image/jpeg"
-                onChange={(e) => setFormData({...formData, logo_file: e.target.files[0]})}
-                className="p-2 rounded-lg bg-white/10 text-white border border-white/20 w-full text-sm"
-              />
-            </div>
-            <button type="submit" disabled={uploading} className="bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-lg font-semibold col-span-full md:col-span-1">
-              {uploading ? 'Uploading...' : '+ Add Service'}
-            </button>
-          </form>
-        </div>
-
-        {/* Category Management */}
-        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">📂 Categories</h2>
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              placeholder="New category name"
-              className="p-2 rounded-lg bg-white/10 text-white border border-white/20 flex-1"
-            />
-            <button onClick={addCategory} className="bg-purple-600/30 text-purple-400 px-4 py-2 rounded-lg">
-              + Add
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {categories.map(cat => (
-              <div key={cat.name} className="flex items-center gap-2 bg-white/10 rounded-full px-3 py-1">
-                <span className="text-gray-300 text-sm">{cat.name}</span>
-                {cat.name !== 'Others' && (
-                  <button onClick={() => deleteCategory(cat.name)} className="text-red-400 text-xs">×</button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Service List - Sortable */}
-        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6">
-          <h2 className="text-xl font-bold text-white mb-4">
-            📦 All Services ({services.length}) 
-            <span className="text-xs text-gray-400 ml-2">(Drag to reorder)</span>
-          </h2>
-          
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="services">
-              {(provided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
-                  {services.map((service, index) => (
-                    <Draggable key={service.id} draggableId={service.id.toString()} index={index}>
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className="p-4 bg-white/5 rounded-xl border border-white/10"
-                        >
-                          <div className="flex flex-wrap gap-3 items-start">
-                            <div {...provided.dragHandleProps} className="cursor-move text-gray-500 text-2xl mt-1">
-                              ⋮⋮
-                            </div>
-                            
-                            {/* Logo Preview */}
-                            <div className="w-12 h-12 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
-                              {service.logo_url ? (
-                                <img src={service.logo_url} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold">
-                                  {service.name.charAt(0)}
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Editable Fields */}
-                            <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-4 gap-2">
-                              <input
-                                value={service.name}
-                                onChange={(e) => updateService(service.id, { name: e.target.value })}
-                                className="bg-white/10 text-white p-2 rounded border border-white/20"
-                              />
-                              <select
-                                value={service.category}
-                                onChange={(e) => updateService(service.id, { category: e.target.value })}
-                                className="bg-white/10 text-white p-2 rounded border border-white/20"
-                              >
-                                {categories.map(cat => (
-                                  <option key={cat.name} value={cat.name}>{cat.name}</option>
-                                ))}
-                              </select>
-                              <input
-                                type="number"
-                                value={service.market_price}
-                                onChange={(e) => updateService(service.id, { market_price: parseInt(e.target.value) })}
-                                className="bg-white/10 text-white p-2 rounded border border-white/20"
-                              />
-                              <input
-                                type="number"
-                                value={service.hubby_price}
-                                onChange={(e) => updateService(service.id, { hubby_price: parseInt(e.target.value) })}
-                                className="bg-white/10 text-[#FF6B35] p-2 rounded border border-white/20 font-semibold"
-                              />
-                            </div>
-                            
-                            {/* Delete Button */}
-                            <button
-                              onClick={() => deleteService(service.id)}
-                              className="bg-red-600/30 text-red-400 px-3 py-2 rounded-lg text-sm hover:bg-red-600/50"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                          
-                          {/* Logo Upload for existing service */}
-                          <div className="mt-2 ml-8">
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg"
-                              onChange={async (e) => {
-                                if (e.target.files[0]) {
-                                  setUploading(true);
-                                  const url = await uploadLogo(e.target.files[0]);
-                                  await updateService(service.id, { logo_url: url });
-                                  setUploading(false);
-                                }
-                              }}
-                              className="text-xs text-gray-400"
-                            />
-                            <span className="text-xs text-gray-500 ml-2">Upload new logo</span>
-                          </div>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-          
-          {services.length === 0 && (
-            <div className="text-center py-8 text-gray-500">No services yet. Add your first service above!</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-        }
+                }
