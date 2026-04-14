@@ -1,45 +1,26 @@
-import fs from 'fs';
-import path from 'path';
-
-const featuresPath = path.join(process.cwd(), 'src', 'data', 'features.json');
-
 export default async function handler(req, res) {
-  // Allow CORS for testing
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
-  
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
+
+  const token = process.env.GITHUB_TOKEN;
+  const repo = 'william72425/DigitalHubMyanmar';
+  const filePath = 'src/data/features.json';
   
   try {
-    const { features, notes } = req.body;
+    const response = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+      headers: { Authorization: `token ${token}` }
+    });
     
-    // Validate data
-    if (!features && !notes) {
-      return res.status(400).json({ success: false, error: 'No data provided' });
+    if (response.ok) {
+      const data = await response.json();
+      const content = Buffer.from(data.content, 'base64').toString('utf8');
+      res.status(200).json(JSON.parse(content));
+    } else {
+      // File doesn't exist, return empty
+      res.status(200).json({ features: [], notes: [] });
     }
-    
-    // Ensure directory exists
-    const dir = path.dirname(featuresPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    
-    // Write to file
-    const dataToSave = JSON.stringify({ features: features || [], notes: notes || [] }, null, 2);
-    fs.writeFileSync(featuresPath, dataToSave, 'utf8');
-    
-    console.log('Features saved successfully to:', featuresPath);
-    
-    res.status(200).json({ success: true, message: 'Features saved successfully' });
   } catch (error) {
-    console.error('Save features error:', error);
-    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+    res.status(200).json({ features: [], notes: [] });
   }
 }
