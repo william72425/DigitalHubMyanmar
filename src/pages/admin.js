@@ -8,7 +8,6 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [draggedItem, setDraggedItem] = useState(null);
-  const [discountType, setDiscountType] = useState({}); // 'percent' or 'amount'
 
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_auth');
@@ -46,12 +45,6 @@ export default function Admin() {
     const res = await fetch('/api/admin/products');
     const data = await res.json();
     setProducts(data);
-    // Initialize discount type tracking
-    const types = {};
-    data.forEach(p => {
-      types[p.id] = p.discount_amount ? 'amount' : 'percent';
-    });
-    setDiscountType(types);
   };
 
   const saveToGitHub = async (updatedProducts) => {
@@ -67,14 +60,13 @@ export default function Admin() {
     const data = await res.json();
     
     if (data.success) {
-      showMessage('✅ သိမ်းဆည်းပြီးပါပြီ! Website ကို ခဏအကြာတွင် ပြန်လည်စစ်ဆေးပါ။', 'success');
+      showMessage('✅ သိမ်းဆည်းပြီးပါပြီ!', 'success');
     } else {
       showMessage(`❌ သိမ်းဆည်းမရပါ: ${data.error || 'Unknown error'}`, 'error');
     }
     setLoading(false);
   };
 
-  // Drag & Drop
   const handleDragStart = (e, index) => {
     setDraggedItem(index);
     e.dataTransfer.effectAllowed = 'move';
@@ -103,22 +95,37 @@ export default function Admin() {
     setProducts(updated);
   };
 
-  const updateDiscount = (id, type, value) => {
-    const numValue = parseFloat(value) || 0;
+  // Simple discount update
+  const updateDiscountPercent = (id, value) => {
+    const numValue = value === '' ? null : parseFloat(value);
     const product = products.find(p => p.id === id);
+    const hubbyPrice = product?.hubby_price || 0;
     
-    if (type === 'percent') {
-      const discountAmount = (product.hubby_price * numValue) / 100;
-      const finalPrice = product.hubby_price - discountAmount;
+    if (numValue === null || isNaN(numValue)) {
+      updateField(id, 'discount_percent', null);
+      updateField(id, 'special_price', null);
+    } else {
+      const discountAmount = (hubbyPrice * numValue) / 100;
+      const finalPrice = hubbyPrice - discountAmount;
       updateField(id, 'discount_percent', numValue);
       updateField(id, 'discount_amount', null);
-      updateField(id, 'special_price', finalPrice > 0 ? finalPrice : 0);
+      updateField(id, 'special_price', finalPrice > 0 ? Math.round(finalPrice) : 0);
+    }
+  };
+
+  const updateDiscountAmount = (id, value) => {
+    const numValue = value === '' ? null : parseFloat(value);
+    const product = products.find(p => p.id === id);
+    const hubbyPrice = product?.hubby_price || 0;
+    
+    if (numValue === null || isNaN(numValue)) {
+      updateField(id, 'discount_amount', null);
+      updateField(id, 'special_price', null);
     } else {
       updateField(id, 'discount_amount', numValue);
       updateField(id, 'discount_percent', null);
-      updateField(id, 'special_price', product.hubby_price - numValue > 0 ? product.hubby_price - numValue : 0);
+      updateField(id, 'special_price', hubbyPrice - numValue > 0 ? hubbyPrice - numValue : 0);
     }
-    setDiscountType(prev => ({ ...prev, [id]: type }));
   };
 
   const addProduct = () => {
@@ -148,6 +155,10 @@ export default function Admin() {
   };
 
   const handleSaveAll = () => {
+    if (products.length === 0) {
+      showMessage('❌ သိမ်းဆည်းရန် Product မရှိပါ', 'error');
+      return;
+    }
     saveToGitHub(products);
   };
 
@@ -173,8 +184,8 @@ export default function Admin() {
     <>
       <Head><title>Admin Panel | Product Manager</title></Head>
       <div className="min-h-screen bg-gradient-to-br from-[#020617] to-[#0a0f2a] p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
+        <div className="max-w-full mx-auto overflow-x-auto">
+          <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
             <h1 className="text-2xl font-bold text-white">🛸 Admin Panel (Drag ⠿ to Sort)</h1>
             <div className="flex gap-3">
               <button onClick={addProduct} className="bg-green-600 text-white px-4 py-2 rounded-lg">+ Add Product</button>
@@ -190,45 +201,108 @@ export default function Admin() {
             </div>
           )}
           
-          <div className="space-y-3">
+          {/* Column Headers */}
+          <div className="grid grid-cols-12 gap-2 mb-2 px-4 text-xs text-gray-400 font-semibold min-w-[950px]">
+            <div className="col-span-1">Sort</div>
+            <div className="col-span-2">Name</div>
+            <div className="col-span-2">Category</div>
+            <div className="col-span-1">Duration</div>
+            <div className="col-span-2">Market Price</div>
+            <div className="col-span-2">Hubby Price</div>
+            <div className="col-span-1">% OFF</div>
+            <div className="col-span-1">Actions</div>
+          </div>
+          
+          <div className="space-y-3 min-w-[950px]">
             {products.map((product, index) => (
-              <div key={product.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragOver={(e) => handleDragOver(e, index)} onDragEnd={handleDragEnd} className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 cursor-move">
-                <div className="flex flex-wrap gap-3 items-center">
-                  <div className="text-gray-400 text-2xl cursor-grab">⠿</div>
+              <div
+                key={product.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 cursor-move"
+              >
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-1 text-gray-400 text-2xl cursor-grab text-center">⠿</div>
                   
-                  <input value={product.name} onChange={(e) => updateField(product.id, 'name', e.target.value)} className="bg-white/10 text-white p-2 rounded w-36" placeholder="Name" />
+                  <input 
+                    value={product.name} 
+                    onChange={(e) => updateField(product.id, 'name', e.target.value)} 
+                    className="col-span-2 bg-white/10 text-white p-2 rounded text-sm" 
+                    placeholder="Name" 
+                  />
                   
-                  <select value={product.category} onChange={(e) => updateField(product.id, 'category', e.target.value)} className="bg-white/10 text-white p-2 rounded">
-                    <option>Video Editing</option><option>Photo Editing</option><option>AI Tools</option><option>AI Chatbots</option><option>VPNs</option><option>Others</option>
+                  <select 
+                    value={product.category} 
+                    onChange={(e) => updateField(product.id, 'category', e.target.value)} 
+                    className="col-span-2 bg-white/10 text-white p-2 rounded text-sm"
+                  >
+                    <option>Video Editing</option>
+                    <option>Photo Editing</option>
+                    <option>AI Tools</option>
+                    <option>AI Chatbots</option>
+                    <option>VPNs</option>
+                    <option>Others</option>
                   </select>
                   
-                  <select value={product.duration} onChange={(e) => updateField(product.id, 'duration', e.target.value)} className="bg-white/10 text-white p-2 rounded">
-                    <option>7 days</option><option>1 month</option><option>3 months</option><option>6 months</option><option>1 year</option>
+                  <select 
+                    value={product.duration} 
+                    onChange={(e) => updateField(product.id, 'duration', e.target.value)} 
+                    className="col-span-1 bg-white/10 text-white p-2 rounded text-sm"
+                  >
+                    <option>7 days</option>
+                    <option>1 month</option>
+                    <option>3 months</option>
+                    <option>6 months</option>
+                    <option>1 year</option>
                   </select>
                   
-                  <input type="number" value={product.market_price || 0} onChange={(e) => updateField(product.id, 'market_price', parseInt(e.target.value) || 0)} className="bg-white/10 text-white p-2 rounded w-28" placeholder="Market Price" />
+                  <input 
+                    type="number" 
+                    value={product.market_price || 0} 
+                    onChange={(e) => updateField(product.id, 'market_price', parseInt(e.target.value) || 0)} 
+                    className="col-span-2 bg-white/10 text-white p-2 rounded text-sm" 
+                    placeholder="Market Price" 
+                  />
                   
-                  <input type="number" value={product.hubby_price || 0} onChange={(e) => updateField(product.id, 'hubby_price', parseInt(e.target.value) || 0)} className="bg-white/10 text-white p-2 rounded w-28" placeholder="Hubby Price" />
+                  <input 
+                    type="number" 
+                    value={product.hubby_price || 0} 
+                    onChange={(e) => updateField(product.id, 'hubby_price', parseInt(e.target.value) || 0)} 
+                    className="col-span-2 bg-white/10 text-white p-2 rounded text-sm" 
+                    placeholder="Hubby Price" 
+                  />
                   
-                  <div className="flex gap-1 items-center">
-                    <select value={discountType[product.id] || 'percent'} onChange={(e) => setDiscountType(prev => ({ ...prev, [product.id]: e.target.value }))} className="bg-white/10 text-white p-2 rounded text-sm w-20">
-                      <option value="percent">%</option>
-                      <option value="amount">Amount</option>
-                    </select>
-                    <input type="number" value={discountType[product.id] === 'percent' ? (product.discount_percent || 0) : (product.discount_amount || 0)} onChange={(e) => updateDiscount(product.id, discountType[product.id], e.target.value)} className="bg-white/10 text-white p-2 rounded w-24" placeholder="Discount" />
-                  </div>
+                  {/* Discount % Only - Simple */}
+                  <input 
+                    type="number" 
+                    value={product.discount_percent || ''} 
+                    onChange={(e) => updateDiscountPercent(product.id, e.target.value)} 
+                    className="col-span-1 bg-white/10 text-white p-2 rounded text-sm" 
+                    placeholder="%" 
+                  />
                   
-                  <button onClick={() => deleteProduct(product.id)} className="bg-red-600/50 text-white px-3 py-2 rounded-lg">Delete</button>
+                  <button 
+                    onClick={() => deleteProduct(product.id)} 
+                    className="col-span-1 bg-red-600/50 text-white px-2 py-2 rounded-lg text-sm"
+                  >
+                    Delete
+                  </button>
                 </div>
+                
+                {/* Special Sale Info */}
                 {product.special_price > 0 && (
-                  <div className="mt-2 text-xs text-green-400 ml-8">💰 Special Sale Price: {product.special_price.toLocaleString()} MMK (after discount)</div>
+                  <div className="mt-2 text-xs text-green-400 ml-12">
+                    ✨ Special Sale: {product.special_price.toLocaleString()} MMK (was {product.hubby_price?.toLocaleString()} MMK)
+                  </div>
                 )}
               </div>
             ))}
           </div>
           
           <div className="mt-6 p-3 bg-blue-500/20 text-blue-400 rounded text-sm text-center">
-            💡 Drag the ⠿ icon to reorder. Click "Save All Changes" to update the live website.
+            💡 Drag ⠿ to reorder. Enter discount % to show special sale price.
           </div>
         </div>
       </div>
