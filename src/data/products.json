@@ -2,8 +2,25 @@
   {
     "id": 1,
     "name": "ChatGPT Plus",
+    "category": "AI Tools",
+    "market_price": 240000,
     "hubby_price": 129900,
+    "discount": 46,
     "logo_url": "/logos/chatgpt.png",
-    "sort_order": 0
+    "duration": "1 month",
+    "sort_order": 0,
+    "features": ["GPT-4 အကန့်အသတ်မဲ့", "Web browsing", "Plugin access"]
+  },
+  {
+    "id": 2,
+    "name": "Adobe Premiere Pro",
+    "category": "Video Editing",
+    "market_price": 150000,
+    "hubby_price": 89900,
+    "discount": 40,
+    "logo_url": "/logos/premiere.png",
+    "duration": "1 month",
+    "sort_order": 1,
+    "features": ["Professional video editing", "After Effects integration", "Cloud sync"]
   }
 ]
