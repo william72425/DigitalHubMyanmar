@@ -19,13 +19,19 @@ export default async function handler(req, res) {
     }
 
     const file = files.logo;
-    const fileName = `${Date.now()}-${file.name}`;
-    const filePath = path.join(process.cwd(), 'public', 'logos', fileName);
+    const productId = fields.productId || Date.now();
+    const ext = path.extname(file.name);
+    const fileName = `${productId}-${Date.now()}${ext}`;
+    const publicDir = path.join(process.cwd(), 'public', 'logos');
     
-    // Move file to public/logos
+    // Ensure directory exists
+    if (!fs.existsSync(publicDir)) {
+      fs.mkdirSync(publicDir, { recursive: true });
+    }
+    
+    const filePath = path.join(publicDir, fileName);
     fs.renameSync(file.filepath, filePath);
     
-    // Return the public URL
     const logoUrl = `/logos/${fileName}`;
     res.status(200).json({ logoUrl });
   });
