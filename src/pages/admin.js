@@ -75,9 +75,10 @@ export default function Admin() {
   };
 
   const saveFeaturesToGitHub = async (updatedFeatures, updatedNotes) => {
-    setLoading(true);
-    setMessage('⏳ Saving features...');
-    
+  setLoading(true);
+  setMessage('⏳ Saving features...');
+  
+  try {
     const res = await fetch('/api/admin/save-features', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,10 +91,16 @@ export default function Admin() {
       setMessage('✅ Features saved!');
       setTimeout(() => setMessage(''), 2000);
     } else {
-      setMessage('❌ Save failed');
+      console.error('Save error:', data);
+      setMessage(`❌ Save failed: ${data.error || 'Unknown error'}`);
+      setTimeout(() => setMessage(''), 4000);
     }
-    setLoading(false);
-  };
+  } catch (error) {
+    console.error('Network error:', error);
+    setMessage('❌ Network error - check console');
+  }
+  setLoading(false);
+};
 
   const uploadLogoToGitHub = async (file, productId) => {
     setUploading(true);
