@@ -36,13 +36,6 @@ export default function Home() {
     ? services
     : services.filter(s => s.category === activeCategory);
 
-  const getDisplayPrice = (service) => {
-    if (service.special_price && service.special_price > 0) {
-      return { price: service.special_price, isSpecial: true };
-    }
-    return { price: service.hubby_price, isSpecial: false };
-  };
-
   return (
     <>
       <Head>
@@ -57,7 +50,6 @@ export default function Home() {
           : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'
       }`}>
         
-        {/* Background Decoration */}
         <div className={`absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl ${
           isDarkMode ? 'bg-[#FF6B35]/10' : 'bg-blue-200/50'
         }`}></div>
@@ -65,7 +57,6 @@ export default function Home() {
           isDarkMode ? 'bg-[#00D4FF]/10' : 'bg-cyan-200/50'
         }`}></div>
 
-        {/* Theme Toggle */}
         <div className="fixed top-4 right-4 z-50">
           <button onClick={toggleTheme} className={`p-3 rounded-full backdrop-blur-md shadow-lg ${
             isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200/80 hover:bg-gray-300/80'
@@ -74,9 +65,8 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="container mx-auto px-4 py-4 max-w-4xl relative z-10">
+        <div className="container mx-auto px-4 py-4 max-w-7xl relative z-10">
           
-          {/* Hero */}
           <div className="text-center py-6 md:py-8">
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent">
               Digital Hub Myanmar
@@ -86,7 +76,6 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Category Tabs */}
           <div className="flex gap-2 overflow-x-auto pb-4 mb-6 justify-center flex-wrap">
             {categories.map((cat) => (
               <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition-all ${
@@ -99,78 +88,55 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Product Grid - Mobile: 1 column, Desktop: 2 columns */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredServices.map((service) => {
-              const displayPrice = getDisplayPrice(service);
-              const isSpecial = displayPrice.isSpecial;
+              const logoSize = service.logo_size || 70;
+              const finalPrice = service.special_price || service.hubby_price;
               const hasDiscount = service.discount_percent && service.discount_percent > 0;
               
               return (
                 <Link href={`/products/${service.id}`} key={service.id}>
-                  <div className={`
-                    backdrop-blur-md rounded-2xl p-5 relative border-2 transition-all duration-300 cursor-pointer
-                    ${isDarkMode ? 'bg-white/5' : 'bg-white/60 shadow-sm'}
-                    ${isSpecial 
-                      ? 'border-green-500 shadow-lg shadow-green-500/30 animate-pulse-slow' 
-                      : isDarkMode ? 'border-white/10 hover:border-[#FF6B35]/50' : 'border-gray-200 hover:border-[#FF6B35]/50'
-                    }
-                  `}>
-                    {/* Discount Badge */}
+                  <div className={`backdrop-blur-md rounded-xl p-4 relative border transition-all duration-300 hover:scale-105 cursor-pointer ${
+                    isDarkMode ? 'bg-white/5 border-white/10 hover:border-[#FF6B35]/50' : 'bg-white/60 border-gray-200 hover:border-[#FF6B35]/50 shadow-sm'
+                  }`}>
                     {hasDiscount && (
                       <div className="absolute -top-2 -right-2 bg-gradient-to-r from-[#FF6B35] to-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
-                        🔥 {service.discount_percent}% လျှော့
-                      </div>
-                    )}
-                    
-                    {/* Special Badge with Glow */}
-                    {isSpecial && (
-                      <div className="absolute -top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 animate-pulse">
-                        ✨ အထူးဈေး
+                        🔥 {service.discount_percent}% OFF
                       </div>
                     )}
                     
                     <div className="flex items-center gap-4">
-                      {/* Logo */}
+                      {/* Logo with dynamic size */}
                       {service.logo_url ? (
-                        <img src={service.logo_url} className="w-20 h-20 rounded-xl object-cover" alt={service.name} />
+                        <img 
+                          src={service.logo_url} 
+                          className="rounded-lg object-contain"
+                          style={{ width: logoSize + 'px', height: logoSize + 'px' }}
+                          alt={service.name}
+                        />
                       ) : (
-                        <div className="w-20 h-20 rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-2xl">
+                        <div 
+                          className="rounded-lg bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl"
+                          style={{ width: logoSize + 'px', height: logoSize + 'px' }}
+                        >
                           {service.name?.charAt(0) || '?'}
                         </div>
                       )}
                       
-                      {/* Info */}
                       <div className="flex-1">
-                        <h3 className={`font-bold text-lg md:text-xl ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                        <h3 className={`font-semibold text-sm md:text-base ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                           {service.name}
                         </h3>
-                        <p className="text-xs text-gray-400 mt-1">📅 {service.duration}</p>
-                        
-                        {/* Prices */}
-                        <div className="mt-2 space-y-0.5">
+                        <p className="text-xs text-gray-400">📅 {service.duration}</p>
+                        <div className="mt-1">
                           {service.market_price > 0 && (
-                            <div className="text-[11px] text-gray-500">
-                              <span className="text-gray-400">ဈေးကွက်ဈေး:</span>{' '}
-                              <span className="line-through">{service.market_price.toLocaleString()} MMK</span>
+                            <div className="text-[10px] text-gray-400 line-through">
+                              {service.market_price.toLocaleString()} MMK
                             </div>
                           )}
-                          
-                          {isSpecial ? (
-                            <>
-                              <div className="text-[11px] text-gray-500">
-                                <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
-                                <span className="line-through">{service.hubby_price?.toLocaleString()} MMK</span>
-                              </div>
-                              <div className="text-green-500 font-bold text-lg md:text-xl animate-pulse">
-                                <span className="text-green-400 text-sm">အထူးဈေး:</span> {displayPrice.price.toLocaleString()} MMK
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-[#FF6B35] font-bold text-lg md:text-xl">
-                              {displayPrice.price.toLocaleString()} MMK
-                            </div>
-                          )}
+                          <div className="text-[#FF6B35] font-bold text-sm">
+                            {finalPrice.toLocaleString()} MMK
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -181,22 +147,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes pulse-slow {
-          0%, 100% {
-            box-shadow: 0 0 5px rgba(34, 197, 94, 0.3), 0 0 10px rgba(34, 197, 94, 0.2);
-            border-color: rgba(34, 197, 94, 0.7);
-          }
-          50% {
-            box-shadow: 0 0 20px rgba(34, 197, 94, 0.6), 0 0 30px rgba(34, 197, 94, 0.3);
-            border-color: rgba(34, 197, 94, 1);
-          }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 1.5s ease-in-out infinite;
-        }
-      `}</style>
     </>
   );
-}
+      }
