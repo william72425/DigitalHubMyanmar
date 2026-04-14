@@ -37,6 +37,16 @@ export default function Home() {
     ? services
     : services.filter(s => s.category === activeCategory);
 
+  // Helper to get display price
+  const getDisplayPrice = (service) => {
+    // If special_price exists and > 0, use it
+    if (service.special_price && service.special_price > 0) {
+      return { price: service.special_price, isSpecial: true };
+    }
+    // Otherwise use hubby_price
+    return { price: service.hubby_price, isSpecial: false };
+  };
+
   return (
     <>
       <Head>
@@ -91,7 +101,7 @@ export default function Home() {
 
           <div className="grid grid-cols-2 gap-4 md:gap-5">
             {filteredServices.map((service) => {
-              const finalPrice = service.special_price || service.hubby_price;
+              const displayPrice = getDisplayPrice(service);
               const hasDiscount = service.discount_percent && service.discount_percent > 0;
               
               return (
@@ -105,9 +115,15 @@ export default function Home() {
                       </div>
                     )}
                     
+                    {displayPrice.isSpecial && (
+                      <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full z-10">
+                        ✨ Special
+                      </div>
+                    )}
+                    
                     <div className="flex flex-col items-center">
                       <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl">
-                        {service.name.charAt(0)}
+                        {service.name?.charAt(0) || '?'}
                       </div>
                       <h3 className={`font-semibold text-sm md:text-base mt-2 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                         {service.name}
@@ -116,17 +132,26 @@ export default function Home() {
                     </div>
                     
                     <div className="text-center mt-2 pt-2 border-t border-white/10">
+                      {/* Market Price (line through) */}
                       {service.market_price > 0 && (
                         <div className="text-xs text-gray-400 line-through">
                           {service.market_price.toLocaleString()} MMK
                         </div>
                       )}
-                      <div className="text-[#FF6B35] font-bold text-base">
-                        {finalPrice.toLocaleString()} MMK
-                      </div>
-                      {hasDiscount && (
-                        <div className="text-xs text-green-500">
-                          Save {service.discount_percent}%
+                      
+                      {/* Display Price */}
+                      {displayPrice.isSpecial ? (
+                        <>
+                          <div className="text-xs text-gray-400 line-through">
+                            {service.hubby_price?.toLocaleString()} MMK
+                          </div>
+                          <div className="text-green-500 font-bold text-base">
+                            {displayPrice.price.toLocaleString()} MMK
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-[#FF6B35] font-bold text-base">
+                          {displayPrice.price.toLocaleString()} MMK
                         </div>
                       )}
                     </div>
