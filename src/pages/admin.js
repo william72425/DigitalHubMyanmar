@@ -8,6 +8,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [draggedItem, setDraggedItem] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_auth');
@@ -44,13 +45,43 @@ export default function Admin() {
     setLoading(false);
   };
 
-  // Simple working update
+  // Upload logo to GitHub (public/logos folder)
+  const uploadLogoToGitHub = async (file, productId) => {
+    setUploading(true);
+    setMessage('📤 Uploading logo...');
+    
+    const formData = new FormData();
+    formData.append('logo', file);
+    formData.append('productId', productId);
+    
+    const res = await fetch('/api/admin/upload-logo', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await res.json();
+    
+    if (res.ok && data.logoUrl) {
+      // Update product with logo URL
+      const newProducts = products.map(p => 
+        p.id === productId ? { ...p, logo_url: data.logoUrl } : p
+      );
+      setProducts(newProducts);
+      setMessage('✅ Logo uploaded!');
+      return data.logoUrl;
+    } else {
+      setMessage('❌ Upload failed: ' + (data.error || 'Unknown error'));
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const updateProduct = (id, field, value) => {
     const newProducts = products.map(p => {
       if (p.id === id) {
         const updated = { ...p, [field]: value };
         
-        // Auto calculate special price when discount changes
         if (field === 'discount_percent') {
           const percent = parseFloat(value);
           if (!isNaN(percent) && percent > 0 && updated.hubby_price) {
@@ -60,7 +91,6 @@ export default function Admin() {
           }
         }
         
-        // Auto calculate special price when hubby_price changes
         if (field === 'hubby_price') {
           const percent = parseFloat(updated.discount_percent);
           if (!isNaN(percent) && percent > 0 && value) {
@@ -86,6 +116,8 @@ export default function Admin() {
       hubby_price: 0,
       discount_percent: null,
       special_price: null,
+      logo_url: null,
+      logo_size: 70,
       duration: '1 month',
       sort_order: products.length
     };
@@ -171,109 +203,174 @@ export default function Admin() {
       <div className="min-h-screen bg-gradient-to-br from-[#020617] to-[#0a0f2a] p-4">
         <div className="max-w-full mx-auto">
           <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-            <h1 className="text-2xl font-bold text-white">Admin Panel (Drag ⠿ to Sort)</h1>
+            <h1 className="text-2xl font-bold text-white">🛸 Admin Panel (Drag ⠿ to Sort)</h1>
             <div className="flex gap-3">
               <button onClick={addProduct} className="bg-green-600 text-white px-4 py-2 rounded-lg">+ Add Product</button>
-              <button onClick={handleSaveAll} disabled={loading} className="bg-[#FF6B35] text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50">
-                {loading ? 'Saving...' : 'Save All Changes'}
+              <button onClick={handleSaveAll} disabled={loading || uploading} className="bg-[#FF6B35] text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50">
+                {loading ? 'Saving...' : uploading ? 'Uploading...' : '💾 Save All Changes'}
               </button>
             </div>
           </div>
           
           {message && (
-            <div className={`mb-4 p-3 rounded-lg text-center ${message.includes('✅') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+            <div className={`mb-4 p-3 rounded-lg text-center ${message.includes('✅') ? 'bg-green-500/20 text-green-400' : message.includes('📤') ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/20 text-red-400'}`}>
               {message}
             </div>
           )}
           
-          <div className="space-y-3">
-            {products.map((product, index) => (
-              <div
-                key={product.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 cursor-move"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-8 gap-2 items-center">
-                  <div className="text-gray-400 text-2xl cursor-grab text-center">⠿</div>
-                  
-                  <input 
-                    type="text"
-                    value={product.name || ''} 
-                    onChange={(e) => updateProduct(product.id, 'name', e.target.value)} 
-                    className="bg-white/10 text-white p-2 rounded text-sm" 
-                    placeholder="Name" 
-                  />
-                  
-                  <select 
-                    value={product.category || 'Others'} 
-                    onChange={(e) => updateProduct(product.id, 'category', e.target.value)} 
-                    className="bg-white/10 text-white p-2 rounded text-sm"
-                  >
-                    <option>Video Editing</option>
-                    <option>Photo Editing</option>
-                    <option>AI Tools</option>
-                    <option>AI Chatbots</option>
-                    <option>VPNs</option>
-                    <option>Others</option>
-                  </select>
-                  
-                  <select 
-                    value={product.duration || '1 month'} 
-                    onChange={(e) => updateProduct(product.id, 'duration', e.target.value)} 
-                    className="bg-white/10 text-white p-2 rounded text-sm"
-                  >
-                    <option>7 days</option>
-                    <option>1 month</option>
-                    <option>3 months</option>
-                    <option>1 year</option>
-                  </select>
-                  
-                  <input 
-                    type="number"
-                    value={product.market_price || 0} 
-                    onChange={(e) => updateProduct(product.id, 'market_price', parseInt(e.target.value) || 0)} 
-                    className="bg-white/10 text-white p-2 rounded text-sm" 
-                    placeholder="Market Price" 
-                  />
-                  
-                  <input 
-                    type="number"
-                    value={product.hubby_price || 0} 
-                    onChange={(e) => updateProduct(product.id, 'hubby_price', parseInt(e.target.value) || 0)} 
-                    className="bg-white/10 text-white p-2 rounded text-sm" 
-                    placeholder="Hubby Price" 
-                  />
-                  
-                  <input 
-                    type="number"
-                    value={product.discount_percent || ''} 
-                    onChange={(e) => updateProduct(product.id, 'discount_percent', e.target.value)} 
-                    className="bg-white/10 text-white p-2 rounded text-sm" 
-                    placeholder="Discount %" 
-                  />
-                  
-                  <button onClick={() => deleteProduct(product.id)} className="bg-red-600/50 text-white px-3 py-2 rounded-lg text-sm">
-                    Delete
-                  </button>
-                </div>
-                
-                {product.special_price > 0 && (
-                  <div className="mt-2 text-xs text-green-400 ml-8">
-                    ✨ Special Price: {product.special_price.toLocaleString()} MMK
+          <div className="space-y-4">
+            {products.map((product, index) => {
+              const logoSize = product.logo_size || 70;
+              
+              return (
+                <div
+                  key={product.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 cursor-move"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+                    {/* Drag Handle */}
+                    <div className="text-gray-400 text-2xl cursor-grab text-center">⠿</div>
+                    
+                    {/* Logo Preview + Upload + Size */}
+                    <div className="flex flex-col items-center gap-2">
+                      {product.logo_url ? (
+                        <img 
+                          src={product.logo_url} 
+                          className="rounded-lg object-contain bg-white/5 border border-white/20"
+                          style={{ width: logoSize + 'px', height: logoSize + 'px' }}
+                          alt={product.name}
+                        />
+                      ) : (
+                        <div 
+                          className="rounded-lg bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl"
+                          style={{ width: logoSize + 'px', height: logoSize + 'px' }}
+                        >
+                          {product.name?.charAt(0) || '?'}
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="text-[10px] text-gray-400 w-20"
+                        onChange={async (e) => {
+                          if (e.target.files[0]) {
+                            const url = await uploadLogoToGitHub(e.target.files[0], product.id);
+                            if (url) {
+                              const newProducts = products.map(p =>
+                                p.id === product.id ? { ...p, logo_url: url } : p
+                              );
+                              setProducts(newProducts);
+                            }
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                      {/* Logo Size Slider */}
+                      <div className="flex flex-col items-center mt-1">
+                        <input
+                          type="range"
+                          min="40"
+                          max="120"
+                          value={logoSize}
+                          onChange={(e) => {
+                            const newSize = parseInt(e.target.value);
+                            const newProducts = products.map(p =>
+                              p.id === product.id ? { ...p, logo_size: newSize } : p
+                            );
+                            setProducts(newProducts);
+                          }}
+                          className="w-16 h-1 bg-white/20 rounded-full cursor-pointer"
+                          style={{ accentColor: '#FF6B35' }}
+                        />
+                        <span className="text-[9px] text-gray-500">{logoSize}px</span>
+                      </div>
+                    </div>
+                    
+                    {/* Product Fields */}
+                    <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-7 gap-2">
+                      <input 
+                        type="text"
+                        value={product.name || ''} 
+                        onChange={(e) => updateProduct(product.id, 'name', e.target.value)} 
+                        className="bg-white/10 text-white p-2 rounded text-sm col-span-2" 
+                        placeholder="Name" 
+                      />
+                      
+                      <select 
+                        value={product.category || 'Others'} 
+                        onChange={(e) => updateProduct(product.id, 'category', e.target.value)} 
+                        className="bg-white/10 text-white p-2 rounded text-sm"
+                      >
+                        <option>Video Editing</option>
+                        <option>Photo Editing</option>
+                        <option>AI Tools</option>
+                        <option>AI Chatbots</option>
+                        <option>VPNs</option>
+                        <option>Others</option>
+                      </select>
+                      
+                      <select 
+                        value={product.duration || '1 month'} 
+                        onChange={(e) => updateProduct(product.id, 'duration', e.target.value)} 
+                        className="bg-white/10 text-white p-2 rounded text-sm"
+                      >
+                        <option>7 days</option>
+                        <option>1 month</option>
+                        <option>3 months</option>
+                        <option>1 year</option>
+                      </select>
+                      
+                      <input 
+                        type="number"
+                        value={product.market_price || 0} 
+                        onChange={(e) => updateProduct(product.id, 'market_price', parseInt(e.target.value) || 0)} 
+                        className="bg-white/10 text-white p-2 rounded text-sm" 
+                        placeholder="Market Price" 
+                      />
+                      
+                      <input 
+                        type="number"
+                        value={product.hubby_price || 0} 
+                        onChange={(e) => updateProduct(product.id, 'hubby_price', parseInt(e.target.value) || 0)} 
+                        className="bg-white/10 text-white p-2 rounded text-sm" 
+                        placeholder="Hubby Price" 
+                      />
+                      
+                      <input 
+                        type="number"
+                        value={product.discount_percent || ''} 
+                        onChange={(e) => updateProduct(product.id, 'discount_percent', e.target.value)} 
+                        className="bg-white/10 text-white p-2 rounded text-sm" 
+                        placeholder="%" 
+                      />
+                    </div>
+                    
+                    {/* Delete Button */}
+                    <button onClick={() => deleteProduct(product.id)} className="bg-red-600/50 text-white px-3 py-2 rounded-lg text-sm">
+                      Delete
+                    </button>
                   </div>
-                )}
-              </div>
-            ))}
+                  
+                  {/* Special Price Info */}
+                  {product.special_price > 0 && (
+                    <div className="mt-2 text-xs text-green-400 ml-8">
+                      ✨ Special Price: {product.special_price.toLocaleString()} MMK
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           
           <div className="mt-6 p-3 bg-blue-500/20 text-blue-400 rounded text-sm text-center">
-            Drag ⠿ to reorder. Enter discount % → special price auto calculates.
+            💡 Drag ⠿ to reorder | Enter discount % → special price auto calculates | Logo size slider included
           </div>
         </div>
       </div>
     </>
   );
-}
+    }
