@@ -46,11 +46,7 @@ export default function Admin() {
     const res = await fetch('/api/admin/features');
     const data = await res.json();
     setFeatures(data.features || []);
-    setNotes(data.notes || []);
-    if (data.notes && data.notes.length > 0) {
-      setNoteTitle(data.notes[0]?.title || '');
-      setNoteContent(data.notes[0]?.content || '');
-    }
+    setNotes(data.product_notes || []);
   };
 
   const saveToGitHub = async (updatedProducts) => {
@@ -75,30 +71,29 @@ export default function Admin() {
   };
 
   const saveFeaturesToGitHub = async (updatedFeatures, updatedNotes) => {
-  setLoading(true);
-  setMessage('⏳ Saving features...');
-  
-  try {
-    const res = await fetch('/api/admin/save-features', {
-      method: 'POST',  // ← ဒါ POST ဖြစ်ရမယ်
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ features: updatedFeatures, notes: updatedNotes })
-    });
+    setLoading(true);
+    setMessage('⏳ Saving features...');
     
-    const data = await res.json();
-    
-    if (data.success) {
-      setMessage('✅ Features saved!');
-      setTimeout(() => setMessage(''), 2000);
-    } else {
-      setMessage(`❌ Save failed: ${data.error || 'Unknown error'}`);
-      setTimeout(() => setMessage(''), 4000);
+    try {
+      const res = await fetch('/api/admin/save-features', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ features: updatedFeatures, product_notes: updatedNotes })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setMessage('✅ Features saved!');
+        setTimeout(() => setMessage(''), 2000);
+      } else {
+        setMessage(`❌ Save failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      setMessage('❌ Network error');
     }
-  } catch (error) {
-    setMessage('❌ Network error');
-  }
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
   const uploadLogoToGitHub = async (file, productId) => {
     setUploading(true);
@@ -237,13 +232,55 @@ export default function Admin() {
     }
   };
 
-  // Note Functions
+  // Note Functions - Product Specific
+  const openNoteModal = () => {
+    if (!selectedProductId) {
+      setMessage('❌ Please select a product first');
+      return;
+    }
+    const existingNote = notes.find(n => n.product_id === selectedProductId);
+    if (existingNote) {
+      setNoteTitle(existingNote.title || '');
+      setNoteContent(existingNote.content || '');
+    } else {
+      setNoteTitle('');
+      setNoteContent('');
+    }
+    setShowNoteModal(true);
+  };
+
   const saveNote = () => {
-    const updatedNotes = [{ id: 1, title: noteTitle, content: noteContent }];
+    if (!selectedProductId) {
+      setMessage('❌ Please select a product first');
+      return;
+    }
+    
+    let updatedNotes;
+    if (noteContent.trim() === '') {
+      // Remove note if content is empty
+      updatedNotes = notes.filter(n => n.product_id !== selectedProductId);
+    } else {
+      // Add or update note for this product
+      const existingIndex = notes.findIndex(n => n.product_id === selectedProductId);
+      const newNote = {
+        id: existingIndex >= 0 ? notes[existingIndex].id : Date.now(),
+        product_id: selectedProductId,
+        title: noteTitle || '📌 မှတ်ချက်',
+        content: noteContent
+      };
+      
+      if (existingIndex >= 0) {
+        updatedNotes = [...notes];
+        updatedNotes[existingIndex] = newNote;
+      } else {
+        updatedNotes = [...notes, newNote];
+      }
+    }
+    
     setNotes(updatedNotes);
     saveFeaturesToGitHub(features, updatedNotes);
     setShowNoteModal(false);
-    setMessage('✅ Note saved!');
+    setMessage(noteContent.trim() === '' ? '✅ Note removed!' : '✅ Note saved for this product!');
     setTimeout(() => setMessage(''), 2000);
   };
 
@@ -314,6 +351,7 @@ export default function Admin() {
   }
 
   const productFeatures = features.filter(f => f.product_id === selectedProductId);
+  const currentNote = notes.find(n => n.product_id === selectedProductId);
 
   return (
     <>
@@ -410,7 +448,7 @@ export default function Admin() {
             </div>
           </div>
 
-          {/* Features Management Section */}
+          {/* Features & Notes Management Section */}
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-6">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
               <h2 className="text-xl font-bold text-white">✨ Features & Notes Management</h2>
@@ -426,7 +464,9 @@ export default function Admin() {
                   ))}
                 </select>
                 <button onClick={addFeature} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Feature</button>
-                <button onClick={() => setShowNoteModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">✏️ Edit Note</button>
+                <button onClick={openNoteModal} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+                  {currentNote ? '✏️ Edit Note' : '📝 Add Note'}
+                </button>
               </div>
             </div>
 
@@ -440,7 +480,7 @@ export default function Admin() {
                         <th className="text-left py-2 px-2 text-gray-400 text-sm">Free</th>
                         <th className="text-left py-2 px-2 text-gray-400 text-sm">Premium/Pro</th>
                         <th className="text-center py-2 px-2 text-gray-400 text-sm">Actions</th>
-                      </tr>
+                      </table>
                     </thead>
                     <tbody>
                       {productFeatures.map((feature) => (
@@ -458,6 +498,14 @@ export default function Admin() {
                   </table>
                 ) : (
                   <p className="text-gray-400 text-center py-4">No features for this product. Click "+ Add Feature"</p>
+                )}
+                
+                {/* Show current note for selected product */}
+                {currentNote && (
+                  <div className="mt-4 p-3 bg-yellow-500/10 rounded-lg">
+                    <p className="text-yellow-500 text-sm font-semibold">📌 Current Note:</p>
+                    <p className="text-gray-300 text-sm mt-1">{currentNote.content}</p>
+                  </div>
                 )}
               </div>
             )}
@@ -487,18 +535,21 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Note Modal */}
+      {/* Note Modal - Product Specific */}
       {showNoteModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#0a0f2a] rounded-2xl p-6 w-full max-w-md border border-white/20">
-            <h3 className="text-xl font-bold text-white mb-4">📌 Edit Note Box</h3>
+            <h3 className="text-xl font-bold text-white mb-4">{currentNote ? '✏️ Edit Note' : '📝 Add Note'} for {products.find(p => p.id === selectedProductId)?.name}</h3>
             <div className="space-y-4">
               <input type="text" placeholder="Note Title" value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20" />
-              <textarea placeholder="Note Content" value={noteContent} onChange={(e) => setNoteContent(e.target.value)} rows="4" className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20" />
+              <textarea placeholder="Note Content (leave empty to remove note)" value={noteContent} onChange={(e) => setNoteContent(e.target.value)} rows="4" className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20" />
               <div className="flex gap-3">
                 <button onClick={saveNote} className="flex-1 bg-green-600 text-white p-2 rounded-lg">Save Note</button>
                 <button onClick={() => setShowNoteModal(false)} className="flex-1 bg-gray-600 text-white p-2 rounded-lg">Cancel</button>
               </div>
+              {noteContent.trim() === '' && (
+                <p className="text-red-400 text-xs text-center">⚠️ Empty content will remove the note from this product</p>
+              )}
             </div>
           </div>
         </div>
