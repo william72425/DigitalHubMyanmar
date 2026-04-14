@@ -48,8 +48,8 @@
       "After Effects integration",
       "Cloud sync"
     ],
-    "special_price": 10500,
-    "discount_percent": "30",
+    "special_price": null,
+    "discount_percent": "",
     "logo_size": 45
   }
 ]
