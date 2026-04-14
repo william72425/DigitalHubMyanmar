@@ -1,5 +1,19 @@
 [
   {
+    "id": 1776151147608,
+    "name": "Canva",
+    "category": "Photo Editing",
+    "market_price": 10000,
+    "hubby_price": 8000,
+    "discount": 25,
+    "logo_url": "",
+    "duration": "1 month",
+    "features": [],
+    "sort_order": 0,
+    "discount_percent": "25",
+    "special_price": 6000
+  },
+  {
     "id": 1,
     "name": "ChatGPT Plus",
     "category": "AI Tools",
@@ -8,7 +22,7 @@
     "discount": 46,
     "logo_url": "/logos/chatgpt.png",
     "duration": "1 month",
-    "sort_order": 0,
+    "sort_order": 1,
     "features": [
       "GPT-4 အကန့်အသတ်မဲ့",
       "Web browsing",
@@ -26,25 +40,11 @@
     "discount": 40,
     "logo_url": "/logos/premiere.png",
     "duration": "1 month",
-    "sort_order": 1,
+    "sort_order": 2,
     "features": [
       "Professional video editing",
       "After Effects integration",
       "Cloud sync"
     ]
-  },
-  {
-    "id": 1776151147608,
-    "name": "Canva",
-    "category": "Photo Editing",
-    "market_price": 10000,
-    "hubby_price": 8000,
-    "discount": 25,
-    "logo_url": "",
-    "duration": "1 month",
-    "features": [],
-    "sort_order": 2,
-    "discount_percent": "25",
-    "special_price": 6000
   }
 ]
