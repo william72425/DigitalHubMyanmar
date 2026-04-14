@@ -20,14 +20,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get the file from the request
     const { logo, productId } = req.body;
     const base64Data = logo.split(',')[1];
     const ext = logo.split(';')[0].split('/')[1];
     const fileName = `${productId}-${Date.now()}.${ext}`;
     const filePath = `public/logos/${fileName}`;
     
-    // Get current file SHA (if exists)
     let sha = null;
     const getFileRes = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
       headers: { Authorization: `token ${token}` }
@@ -37,7 +35,6 @@ export default async function handler(req, res) {
       sha = fileData.sha;
     }
     
-    // Upload to GitHub
     const uploadRes = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
       method: 'PUT',
       headers: {
