@@ -1,26 +1,203 @@
-{
-  "features": [
-    {
-      "id": 1,
-      "product_id": 1,
-      "free": "Basic GPT-3.5 access",
-      "pro": "GPT-4 unlimited access",
-      "sort_order": 0
-    },
-    {
-      "id": 2,
-      "product_id": 1,
-      "free": "Standard response speed",
-      "pro": "Priority fast response",
-      "sort_order": 1
-    },
-    {
-      "id": 3,
-      "product_id": 1,
-      "free": "No web browsing",
-      "pro": "Web browsing included",
-      "sort_order": 2
+import { useRouter } from 'next/router';
+import { useState, useEffect } from 'react';
+import Head from 'next/head';
+import productsData from '@/data/products.json';
+import featuresData from '@/data/features.json';
+
+export default function ProductDetail() {
+  const router = useRouter();
+  const { id } = router.query;
+  const [product, setProduct] = useState(null);
+  const [features, setFeatures] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showContactOptions, setShowContactOptions] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      const productId = parseInt(id);
+      const found = productsData.find(p => p.id === productId);
+      setProduct(found);
+      
+      // Filter features for this product
+      const productFeatures = featuresData.features.filter(f => f.product_id === productId);
+      setFeatures(productFeatures);
+      setLoading(false);
     }
-  ],
-  "notes": []
+  }, [id]);
+
+  const getDisplayPrice = () => {
+    if (product?.special_price && product.special_price > 0) {
+      return { price: product.special_price, isSpecial: true };
+    }
+    return { price: product?.hubby_price, isSpecial: false };
+  };
+
+  const calculateSavings = () => {
+    if (!product) return 0;
+    const displayPrice = getDisplayPrice();
+    const marketPrice = product.market_price || 0;
+    return marketPrice - displayPrice.price;
+  };
+
+  const handleBuyClick = () => {
+    setShowContactOptions(true);
+  };
+
+  const sendToContact = (platform, contactId) => {
+    const displayPrice = getDisplayPrice();
+    const message = `ဟုတ်ကဲ့ပါ။ ${product.name} (${product.duration}) ကို ${displayPrice.price.toLocaleString()} MMK ဖြင့် ဝယ်ယူလိုပါသည်။`;
+    let url = '';
+    
+    if (platform === 'telegram') {
+      url = `https://t.me/${contactId}?text=${encodeURIComponent(message)}`;
+    } else if (platform === 'messenger') {
+      url = `https://m.me/${contactId}?ref=${encodeURIComponent(message)}`;
+    } else if (platform === 'viber') {
+      url = `viber://contact?number=${contactId}`;
+    }
+    
+    window.open(url, '_blank');
+  };
+
+  if (loading || !product) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  const displayPrice = getDisplayPrice();
+  const savings = calculateSavings();
+  const logoSize = product.logo_size || 70;
+
+  return (
+    <>
+      <Head>
+        <title>{product.name} | Digital Hub Myanmar</title>
+      </Head>
+
+      <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617] text-white">
+        <div className="container mx-auto px-4 py-6 max-w-4xl">
+          
+          {/* Back Button */}
+          <button onClick={() => router.back()} className="text-gray-400 hover:text-[#FF6B35] mb-6 flex items-center gap-2">
+            ← နောက်သို့
+          </button>
+
+          {/* Product Header */}
+          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
+            <div className="flex items-center gap-5">
+              {/* Logo */}
+              {product.logo_url ? (
+                <img src={product.logo_url} className="rounded-xl object-contain" style={{ width: logoSize + 'px', height: logoSize + 'px' }} alt={product.name} />
+              ) : (
+                <div className="rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-2xl" style={{ width: logoSize + 'px', height: logoSize + 'px' }}>
+                  {product.name?.charAt(0) || '?'}
+                </div>
+              )}
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold">{product.name}</h1>
+                <p className="text-gray-400 text-sm">📅 {product.duration}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Price Section */}
+          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
+            <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
+            <div className="space-y-3">
+              {product.market_price > 0 && (
+                <div className="flex justify-between items-center pb-2 border-b border-white/10">
+                  <span className="text-gray-300">ဈေးကွက် ပျမ်းမျှဈေး</span>
+                  <span className="line-through text-gray-400">{product.market_price.toLocaleString()} MMK</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pb-2 border-b border-white/10">
+                <span className="text-gray-300">Hubby Store ဈေး</span>
+                <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
+              </div>
+              {displayPrice.isSpecial && (
+                <div className="flex justify-between items-center pb-2 border-b border-green-500/30">
+                  <span className="text-green-400 font-semibold">✨ အထူးလျှော့ဈေး</span>
+                  <span className="text-green-400 font-bold text-xl">{displayPrice.price.toLocaleString()} MMK</span>
+                </div>
+              )}
+              {savings > 0 && (
+                <div className="mt-3 p-3 bg-green-500/20 rounded-lg text-center">
+                  <p className="text-green-400 text-sm">
+                    🎉 ဈေးကွက်ထဲဝယ်ရတဲ့ ပျမ်းမျှဈေးထက် <span className="font-bold text-lg">{savings.toLocaleString()} MMK</span> ချွေတာနိုင်ပါမည်！
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Features Comparison Table */}
+          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
+            <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
+            {features.length > 0 ? (
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-white/20">
+                    <th className="text-left py-3 px-2 text-gray-400 font-medium">အင်္ဂါရပ်များ</th>
+                    <th className="text-center py-3 px-2 text-gray-400 font-medium w-1/3">✨ အခမဲ့အသုံးပြုသူ</th>
+                    <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 rounded-t-lg font-bold text-[#FF6B35] w-1/3">💎 Premium သုံးစွဲသူ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {features.map((feature, idx) => (
+                    <tr key={feature.id} className={`border-b border-white/10 ${idx % 2 === 0 ? 'bg-white/5' : ''}`}>
+                      <td className="py-3 px-2 text-sm">{idx + 1}. {feature.feature_name || 'အင်္ဂါရပ်'}</td>
+                      <td className="text-center py-3 px-2">
+                        {feature.free ? (
+                          <span className="text-green-400">✓ {feature.free}</span>
+                        ) : (
+                          <span className="text-gray-500">—</span>
+                        )}
+                      </td>
+                      <td className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/10 to-[#00D4FF]/10">
+                        <span className="text-[#FF6B35] font-semibold">✓ {feature.pro || feature.free || 'အပြည့်အစုံ'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-gray-400 text-center py-4">အင်္ဂါရပ်များ မရှိသေးပါ။</p>
+            )}
+          </div>
+
+          {/* Note Box - Auto hide if empty */}
+          {featuresData.notes && featuresData.notes.length > 0 && (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
+              <h3 className="text-yellow-500 font-bold mb-2">📌 {featuresData.notes[0]?.title || 'မှတ်ချက်'}</h3>
+              <p className="text-gray-300 text-sm">{featuresData.notes[0]?.content}</p>
+            </div>
+          )}
+
+          {/* Buy Button */}
+          {!showContactOptions ? (
+            <button onClick={handleBuyClick} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition">
+              🛒 အခုပဲ {displayPrice.price.toLocaleString()} MMK ဖြင့် ဝယ်ယူမည်
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <button onClick={() => sendToContact('telegram', 'william815')} className="bg-[#26A5E4] text-white p-3 rounded-xl font-semibold hover:opacity-90">📱 Telegram</button>
+                <button onClick={() => sendToContact('messenger', 'william72425')} className="bg-[#0084FF] text-white p-3 rounded-xl font-semibold hover:opacity-90">💬 Messenger</button>
+                <button onClick={() => sendToContact('viber', '09798268154')} className="bg-[#7360F2] text-white p-3 rounded-xl font-semibold hover:opacity-90">📞 Viber</button>
+              </div>
+              <button onClick={() => setShowContactOptions(false)} className="w-full text-gray-400 text-sm py-2">◀ နောက်သို့</button>
+            </div>
+          )}
+
+          {/* Footer Note */}
+          <div className="mt-6 p-3 bg-blue-500/10 rounded-lg text-center">
+            <p className="text-gray-400 text-xs">💡 Note: နောက်ပိုင်းမှာ အခု web page ထဲကနေ တိုက်ရိုက်ဝယ်နိုင်အောင် ကြိုးစားသွားပါဦးမည်။</p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
