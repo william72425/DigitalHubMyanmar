@@ -4,12 +4,26 @@ import path from 'path';
 const featuresPath = path.join(process.cwd(), 'src', 'data', 'features.json');
 
 export default async function handler(req, res) {
+  // Allow CORS for testing
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   if (req.method !== 'POST') {
-    return res.status(405).end();
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
   
   try {
     const { features, notes } = req.body;
+    
+    // Validate data
+    if (!features && !notes) {
+      return res.status(400).json({ success: false, error: 'No data provided' });
+    }
     
     // Ensure directory exists
     const dir = path.dirname(featuresPath);
@@ -17,10 +31,15 @@ export default async function handler(req, res) {
       fs.mkdirSync(dir, { recursive: true });
     }
     
-    fs.writeFileSync(featuresPath, JSON.stringify({ features, notes }, null, 2));
-    res.status(200).json({ success: true });
+    // Write to file
+    const dataToSave = JSON.stringify({ features: features || [], notes: notes || [] }, null, 2);
+    fs.writeFileSync(featuresPath, dataToSave, 'utf8');
+    
+    console.log('Features saved successfully to:', featuresPath);
+    
+    res.status(200).json({ success: true, message: 'Features saved successfully' });
   } catch (error) {
     console.error('Save features error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
   }
 }
