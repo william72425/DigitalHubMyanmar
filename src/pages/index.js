@@ -1,328 +1,139 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import productsData from '@/data/products.json';
+import Link from 'next/link';
 
-export default function Admin() {
-  const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ text: '', type: '' });
-  const [draggedItem, setDraggedItem] = useState(null);
+export default function Home() {
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [services, setServices] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
-    const auth = sessionStorage.getItem('admin_auth');
-    if (auth === 'true') {
-      setIsAuthenticated(true);
-      fetchProducts();
+    const sorted = [...productsData].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    setServices(sorted);
+    const uniqueCategories = ['All', ...new Set(sorted.map(p => p.category))];
+    setCategories(uniqueCategories);
+  }, []);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      setIsDarkMode(false);
+    } else if (savedTheme === 'dark') {
+      setIsDarkMode(true);
     }
   }, []);
 
-  const showMessage = (text, type = 'success') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+  const toggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    const res = await fetch('/api/admin/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
-    });
-    const data = await res.json();
-    if (data.success) {
-      sessionStorage.setItem('admin_auth', 'true');
-      setIsAuthenticated(true);
-      fetchProducts();
-    } else {
-      showMessage('❌ စကားဝှက် မှားနေပါသည်', 'error');
-    }
-    setLoading(false);
-  };
-
-  const fetchProducts = async () => {
-    const res = await fetch('/api/admin/products');
-    const data = await res.json();
-    setProducts(data);
-  };
-
-  const saveToGitHub = async (updatedProducts) => {
-    setLoading(true);
-    showMessage('⏳ သိမ်းဆည်းနေသည်...', 'info');
-    
-    const res = await fetch('/api/admin/save-products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ products: updatedProducts })
-    });
-    
-    const data = await res.json();
-    
-    if (data.success) {
-      showMessage('✅ သိမ်းဆည်းပြီးပါပြီ!', 'success');
-    } else {
-      showMessage(`❌ သိမ်းဆည်းမရပါ: ${data.error || 'Unknown error'}`, 'error');
-    }
-    setLoading(false);
-  };
-
-  const handleDragStart = (e, index) => {
-    setDraggedItem(index);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e, index) => {
-    e.preventDefault();
-    if (draggedItem === null) return;
-    if (draggedItem !== index) {
-      const newProducts = [...products];
-      const draggedProduct = newProducts[draggedItem];
-      newProducts.splice(draggedItem, 1);
-      newProducts.splice(index, 0, draggedProduct);
-      newProducts.forEach((p, i) => p.sort_order = i);
-      setProducts(newProducts);
-      setDraggedItem(index);
-    }
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-  };
-
-  const updateField = (id, field, value) => {
-    const updated = products.map(p => p.id === id ? { ...p, [field]: value } : p);
-    setProducts(updated);
-  };
-
-  // Discount update function - FIXED
-  const updateDiscountValue = (id, value) => {
-    const numValue = value === '' ? null : parseFloat(value);
-    const product = products.find(p => p.id === id);
-    const discountType = product.discount_type || 'percent';
-    const hubbyPrice = product.hubby_price || 0;
-    
-    if (numValue === null || isNaN(numValue)) {
-      updateField(id, 'discount_percent', null);
-      updateField(id, 'discount_amount', null);
-      updateField(id, 'special_price', null);
-      return;
-    }
-    
-    if (discountType === 'percent') {
-      const discountAmount = (hubbyPrice * numValue) / 100;
-      const finalPrice = hubbyPrice - discountAmount;
-      updateField(id, 'discount_percent', numValue);
-      updateField(id, 'discount_amount', null);
-      updateField(id, 'special_price', finalPrice > 0 ? Math.round(finalPrice) : 0);
-    } else {
-      updateField(id, 'discount_amount', numValue);
-      updateField(id, 'discount_percent', null);
-      updateField(id, 'special_price', hubbyPrice - numValue > 0 ? hubbyPrice - numValue : 0);
-    }
-  };
-
-  const updateDiscountType = (id, type) => {
-    updateField(id, 'discount_type', type);
-    // Clear discount values when switching type
-    updateField(id, 'discount_percent', null);
-    updateField(id, 'discount_amount', null);
-    updateField(id, 'special_price', null);
-  };
-
-  const addProduct = () => {
-    const newProduct = {
-      id: Date.now(),
-      name: 'New Product',
-      category: 'Others',
-      market_price: 0,
-      hubby_price: 0,
-      discount_type: 'percent',
-      discount_percent: null,
-      discount_amount: null,
-      special_price: null,
-      logo_url: '',
-      duration: '1 month',
-      sort_order: products.length,
-      features: []
-    };
-    setProducts([...products, newProduct]);
-  };
-
-  const deleteProduct = async (id) => {
-    if (confirm('ဖျက်မှာ သေချာလား?')) {
-      const updated = products.filter(p => p.id !== id);
-      updated.forEach((p, i) => p.sort_order = i);
-      setProducts(updated);
-    }
-  };
-
-  const handleSaveAll = () => {
-    if (products.length === 0) {
-      showMessage('❌ သိမ်းဆည်းရန် Product မရှိပါ', 'error');
-      return;
-    }
-    saveToGitHub(products);
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <>
-        <Head><title>Admin Login</title></Head>
-        <div className="min-h-screen bg-gradient-to-br from-[#020617] to-[#0a0f2a] flex items-center justify-center p-4">
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 w-full max-w-md border border-white/20">
-            <h1 className="text-2xl font-bold text-white text-center mb-6">Admin Login</h1>
-            {message.text && <div className={`mb-4 p-2 text-center rounded ${message.type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>{message.text}</div>}
-            <form onSubmit={handleLogin}>
-              <input type="password" placeholder="စကားဝှက် ထည့်ပါ" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 mb-4" autoFocus />
-              <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-lg font-semibold">{loading ? 'စစ်ဆေးနေသည်...' : 'ဝင်ရောက်မည်'}</button>
-            </form>
-          </div>
-        </div>
-      </>
-    );
-  }
+  const filteredServices = activeCategory === 'All'
+    ? services
+    : services.filter(s => s.category === activeCategory);
 
   return (
     <>
-      <Head><title>Admin Panel | Product Manager</title></Head>
-      <div className="min-h-screen bg-gradient-to-br from-[#020617] to-[#0a0f2a] p-4">
-        <div className="max-w-full mx-auto overflow-x-auto">
-          <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-            <h1 className="text-2xl font-bold text-white">🛸 Admin Panel (Drag ⠿ to Sort)</h1>
-            <div className="flex gap-3">
-              <button onClick={addProduct} className="bg-green-600 text-white px-4 py-2 rounded-lg">+ Add Product</button>
-              <button onClick={handleSaveAll} disabled={loading} className="bg-[#FF6B35] text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50">
-                {loading ? 'Saving...' : '💾 Save All Changes'}
+      <Head>
+        <title>Digital Hub Myanmar - Hubby Store</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+      </Head>
+
+      <div className={`min-h-screen transition-all duration-300 relative overflow-x-hidden ${
+        isDarkMode 
+          ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' 
+          : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'
+      }`}>
+        
+        <div className={`absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl ${
+          isDarkMode ? 'bg-[#FF6B35]/10' : 'bg-blue-200/50'
+        }`}></div>
+        <div className={`absolute bottom-20 right-10 w-80 h-80 rounded-full blur-3xl ${
+          isDarkMode ? 'bg-[#00D4FF]/10' : 'bg-cyan-200/50'
+        }`}></div>
+
+        <div className="fixed top-4 right-4 z-50">
+          <button onClick={toggleTheme} className={`p-3 rounded-full backdrop-blur-md shadow-lg ${
+            isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200/80 hover:bg-gray-300/80'
+          }`}>
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
+
+        <div className="container mx-auto px-4 py-4 max-w-7xl relative z-10">
+          
+          <div className="text-center py-6 md:py-8">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent">
+              Digital Hub Myanmar
+            </h1>
+            <p className={`mt-2 text-sm md:text-base ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              🎁 Hubby Store မှ ကြိုဆိုပါတယ်! Special Discounts ရယူလိုက်ပါ!
+            </p>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-4 mb-6 justify-center flex-wrap">
+            {categories.map((cat) => (
+              <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition-all ${
+                activeCategory === cat
+                  ? 'bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white shadow-lg'
+                  : isDarkMode ? 'bg-white/10 text-gray-400 hover:bg-white/20' : 'bg-gray-200/80 text-gray-600 hover:bg-gray-300/80'
+              }`}>
+                {cat === 'All' ? '📦 All' : cat}
               </button>
-            </div>
-          </div>
-          
-          {message.text && (
-            <div className={`mb-4 p-3 rounded-lg text-center ${message.type === 'error' ? 'bg-red-500/20 text-red-400' : message.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
-              {message.text}
-            </div>
-          )}
-          
-          {/* Column Headers */}
-          <div className="grid grid-cols-12 gap-2 mb-2 px-4 text-xs text-gray-400 font-semibold min-w-[900px]">
-            <div className="col-span-1">Sort</div>
-            <div className="col-span-2">Name</div>
-            <div className="col-span-2">Category</div>
-            <div className="col-span-1">Duration</div>
-            <div className="col-span-2">Market Price</div>
-            <div className="col-span-2">Hubby Price</div>
-            <div className="col-span-1">Discount</div>
-            <div className="col-span-1">Actions</div>
-          </div>
-          
-          <div className="space-y-3 min-w-[900px]">
-            {products.map((product, index) => (
-              <div
-                key={product.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 cursor-move"
-              >
-                <div className="grid grid-cols-12 gap-2 items-center">
-                  {/* Drag Handle */}
-                  <div className="col-span-1 text-gray-400 text-2xl cursor-grab text-center">⠿</div>
-                  
-                  {/* Name */}
-                  <input 
-                    value={product.name} 
-                    onChange={(e) => updateField(product.id, 'name', e.target.value)} 
-                    className="col-span-2 bg-white/10 text-white p-2 rounded text-sm" 
-                    placeholder="Name" 
-                  />
-                  
-                  {/* Category */}
-                  <select 
-                    value={product.category} 
-                    onChange={(e) => updateField(product.id, 'category', e.target.value)} 
-                    className="col-span-2 bg-white/10 text-white p-2 rounded text-sm"
-                  >
-                    <option>Video Editing</option>
-                    <option>Photo Editing</option>
-                    <option>AI Tools</option>
-                    <option>AI Chatbots</option>
-                    <option>VPNs</option>
-                    <option>Others</option>
-                  </select>
-                  
-                  {/* Duration */}
-                  <select 
-                    value={product.duration} 
-                    onChange={(e) => updateField(product.id, 'duration', e.target.value)} 
-                    className="col-span-1 bg-white/10 text-white p-2 rounded text-sm"
-                  >
-                    <option>7 days</option>
-                    <option>1 month</option>
-                    <option>3 months</option>
-                    <option>6 months</option>
-                    <option>1 year</option>
-                  </select>
-                  
-                  {/* Market Price */}
-                  <input 
-                    type="number" 
-                    value={product.market_price || 0} 
-                    onChange={(e) => updateField(product.id, 'market_price', parseInt(e.target.value) || 0)} 
-                    className="col-span-2 bg-white/10 text-white p-2 rounded text-sm" 
-                    placeholder="Market Price" 
-                  />
-                  
-                  {/* Hubby Price */}
-                  <input 
-                    type="number" 
-                    value={product.hubby_price || 0} 
-                    onChange={(e) => updateField(product.id, 'hubby_price', parseInt(e.target.value) || 0)} 
-                    className="col-span-2 bg-white/10 text-white p-2 rounded text-sm" 
-                    placeholder="Hubby Price" 
-                  />
-                  
-                  {/* Discount - Type + Value */}
-                  <div className="col-span-1 flex gap-1 items-center">
-                    <select 
-                      value={product.discount_type || 'percent'} 
-                      onChange={(e) => updateDiscountType(product.id, e.target.value)} 
-                      className="bg-white/10 text-white p-2 rounded text-sm w-16"
-                    >
-                      <option value="percent">%</option>
-                      <option value="amount">MMK</option>
-                    </select>
-                    <input 
-                      type="number" 
-                      value={(product.discount_type === 'percent' ? product.discount_percent : product.discount_amount) || ''} 
-                      onChange={(e) => updateDiscountValue(product.id, e.target.value)} 
-                      className="bg-white/10 text-white p-2 rounded text-sm w-20" 
-                      placeholder="0" 
-                    />
-                  </div>
-                  
-                  {/* Delete Button */}
-                  <button 
-                    onClick={() => deleteProduct(product.id)} 
-                    className="col-span-1 bg-red-600/50 text-white px-2 py-2 rounded-lg text-sm"
-                  >
-                    Delete
-                  </button>
-                </div>
-                
-                {/* Special Sale Info */}
-                {product.special_price > 0 && (
-                  <div className="mt-2 text-xs text-green-400 ml-12">
-                    💰 Special Sale Price: {product.special_price.toLocaleString()} MMK
-                  </div>
-                )}
-              </div>
             ))}
           </div>
-          
-          <div className="mt-6 p-3 bg-blue-500/20 text-blue-400 rounded text-sm text-center">
-            💡 Drag the ⠿ icon to reorder. Click "Save All Changes" to update the live website.
+
+          <div className="grid grid-cols-2 gap-4 md:gap-5">
+            {filteredServices.map((service) => {
+              const finalPrice = service.special_price || service.hubby_price;
+              const hasDiscount = service.discount_percent && service.discount_percent > 0;
+              
+              return (
+                <Link href={`/products/${service.id}`} key={service.id}>
+                  <div className={`backdrop-blur-md rounded-xl p-4 relative border transition-all duration-300 hover:scale-105 cursor-pointer ${
+                    isDarkMode ? 'bg-white/5 border-white/10 hover:border-[#FF6B35]/50' : 'bg-white/60 border-gray-200 hover:border-[#FF6B35]/50 shadow-sm'
+                  }`}>
+                    {hasDiscount && (
+                      <div className="absolute -top-2 -right-2 bg-gradient-to-r from-[#FF6B35] to-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
+                        🔥 {service.discount_percent}% OFF
+                      </div>
+                    )}
+                    
+                    <div className="flex flex-col items-center">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl">
+                        {service.name.charAt(0)}
+                      </div>
+                      <h3 className={`font-semibold text-sm md:text-base mt-2 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                        {service.name}
+                      </h3>
+                      <p className="text-xs text-gray-400 text-center">{service.duration}</p>
+                    </div>
+                    
+                    <div className="text-center mt-2 pt-2 border-t border-white/10">
+                      {service.market_price > 0 && (
+                        <div className="text-xs text-gray-400 line-through">
+                          {service.market_price.toLocaleString()} MMK
+                        </div>
+                      )}
+                      <div className="text-[#FF6B35] font-bold text-base">
+                        {finalPrice.toLocaleString()} MMK
+                      </div>
+                      {hasDiscount && (
+                        <div className="text-xs text-green-500">
+                          Save {service.discount_percent}%
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>
