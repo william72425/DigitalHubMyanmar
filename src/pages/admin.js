@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
@@ -45,36 +46,40 @@ export default function Admin() {
     setLoading(false);
   };
 
-  // Upload logo to GitHub (public/logos folder)
+  // Logo Upload to GitHub (No package needed)
   const uploadLogoToGitHub = async (file, productId) => {
     setUploading(true);
     setMessage('📤 Uploading logo...');
     
-    const formData = new FormData();
-    formData.append('logo', file);
-    formData.append('productId', productId);
-    
-    const res = await fetch('/api/admin/upload-logo', {
-      method: 'POST',
-      body: formData
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result;
+        
+        const res = await fetch('/api/admin/upload-logo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ logo: base64, productId })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok && data.logoUrl) {
+          setMessage('✅ Logo uploaded!');
+          resolve(data.logoUrl);
+        } else {
+          setMessage('❌ Upload failed');
+          reject(data.error);
+        }
+        setUploading(false);
+      };
+      reader.onerror = () => {
+        setMessage('❌ File read error');
+        setUploading(false);
+        reject();
+      };
+      reader.readAsDataURL(file);
     });
-    
-    const data = await res.json();
-    
-    if (res.ok && data.logoUrl) {
-      // Update product with logo URL
-      const newProducts = products.map(p => 
-        p.id === productId ? { ...p, logo_url: data.logoUrl } : p
-      );
-      setProducts(newProducts);
-      setMessage('✅ Logo uploaded!');
-      return data.logoUrl;
-    } else {
-      setMessage('❌ Upload failed: ' + (data.error || 'Unknown error'));
-      return null;
-    } finally {
-      setUploading(false);
-    }
   };
 
   const updateProduct = (id, field, value) => {
@@ -231,16 +236,16 @@ export default function Admin() {
                   onDragEnd={handleDragEnd}
                   className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 cursor-move"
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+                  <div className="flex flex-wrap gap-3 items-start">
                     {/* Drag Handle */}
-                    <div className="text-gray-400 text-2xl cursor-grab text-center">⠿</div>
+                    <div className="text-gray-400 text-2xl cursor-grab">⠿</div>
                     
-                    {/* Logo Preview + Upload + Size */}
-                    <div className="flex flex-col items-center gap-2">
+                    {/* Logo + Upload + Size */}
+                    <div className="flex flex-col items-center gap-1">
                       {product.logo_url ? (
                         <img 
                           src={product.logo_url} 
-                          className="rounded-lg object-contain bg-white/5 border border-white/20"
+                          className="rounded-lg object-contain bg-white/5"
                           style={{ width: logoSize + 'px', height: logoSize + 'px' }}
                           alt={product.name}
                         />
@@ -269,8 +274,8 @@ export default function Admin() {
                           }
                         }}
                       />
-                      {/* Logo Size Slider */}
-                      <div className="flex flex-col items-center mt-1">
+                      {/* Size Slider */}
+                      <div className="flex flex-col items-center">
                         <input
                           type="range"
                           min="40"
@@ -291,7 +296,7 @@ export default function Admin() {
                     </div>
                     
                     {/* Product Fields */}
-                    <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-7 gap-2">
+                    <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-2">
                       <input 
                         type="text"
                         value={product.name || ''} 
@@ -329,7 +334,7 @@ export default function Admin() {
                         value={product.market_price || 0} 
                         onChange={(e) => updateProduct(product.id, 'market_price', parseInt(e.target.value) || 0)} 
                         className="bg-white/10 text-white p-2 rounded text-sm" 
-                        placeholder="Market Price" 
+                        placeholder="Market" 
                       />
                       
                       <input 
@@ -337,7 +342,7 @@ export default function Admin() {
                         value={product.hubby_price || 0} 
                         onChange={(e) => updateProduct(product.id, 'hubby_price', parseInt(e.target.value) || 0)} 
                         className="bg-white/10 text-white p-2 rounded text-sm" 
-                        placeholder="Hubby Price" 
+                        placeholder="Hubby" 
                       />
                       
                       <input 
@@ -349,16 +354,14 @@ export default function Admin() {
                       />
                     </div>
                     
-                    {/* Delete Button */}
                     <button onClick={() => deleteProduct(product.id)} className="bg-red-600/50 text-white px-3 py-2 rounded-lg text-sm">
                       Delete
                     </button>
                   </div>
                   
-                  {/* Special Price Info */}
                   {product.special_price > 0 && (
                     <div className="mt-2 text-xs text-green-400 ml-8">
-                      ✨ Special Price: {product.special_price.toLocaleString()} MMK
+                      ✨ Special: {product.special_price.toLocaleString()} MMK
                     </div>
                   )}
                 </div>
@@ -367,10 +370,10 @@ export default function Admin() {
           </div>
           
           <div className="mt-6 p-3 bg-blue-500/20 text-blue-400 rounded text-sm text-center">
-            💡 Drag ⠿ to reorder | Enter discount % → special price auto calculates | Logo size slider included
+            💡 Drag ⠿ to reorder | Discount % → auto special price | Logo size slider
           </div>
         </div>
       </div>
     </>
   );
-    }
+                           }
