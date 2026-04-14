@@ -30,5 +30,17 @@
       "After Effects integration",
       "Cloud sync"
     ]
+  },
+  {
+    "id": 1776151147608,
+    "name": "New Product",
+    "category": "Others",
+    "market_price": 0,
+    "hubby_price": 0,
+    "discount": null,
+    "logo_url": "",
+    "duration": "1 month",
+    "features": [],
+    "sort_order": 2
   }
 ]
