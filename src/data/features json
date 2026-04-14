@@ -3,24 +3,41 @@
     {
       "id": 1,
       "product_id": 1,
-      "free": "Basic GPT-3.5 access",
-      "pro": "GPT-4 unlimited access",
+      "feature_name": "AI Model Access",
+      "free": "GPT-3.5 only",
+      "pro": "GPT-4 + Claude + Gemini",
       "sort_order": 0
     },
     {
       "id": 2,
       "product_id": 1,
-      "free": "Standard response speed",
+      "feature_name": "Response Speed",
+      "free": "Standard speed",
       "pro": "Priority fast response",
       "sort_order": 1
     },
     {
       "id": 3,
       "product_id": 1,
-      "free": "No web browsing",
-      "pro": "Web browsing included",
+      "feature_name": "Web Browsing",
+      "free": "Not available",
+      "pro": "Full web browsing",
       "sort_order": 2
+    },
+    {
+      "id": 4,
+      "product_id": 1,
+      "feature_name": "File Upload",
+      "free": "Limited (1 file)",
+      "pro": "Unlimited files",
+      "sort_order": 3
     }
   ],
-  "notes": []
+  "notes": [
+    {
+      "id": 1,
+      "title": "📌 မှတ်ချက်",
+      "content": "Premium plan ကို ဝယ်ယူပြီးပါက အများဆုံး2နာရီအတွင်း အကောင့်အချက်အလက်များ ပို့ဆောင်ပေးပါမည်။"
+    }
+  ]
 }
