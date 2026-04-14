@@ -20,7 +20,7 @@
     "market_price": 240000,
     "hubby_price": 120000,
     "discount": 46,
-    "logo_url": "/logos/chatgpt.png",
+    "logo_url": "/logos/1-1776166000844.png",
     "duration": "1 month",
     "sort_order": 1,
     "features": [
@@ -35,16 +35,18 @@
     "id": 2,
     "name": "Adobe Premiere Pro",
     "category": "Video Editing",
-    "market_price": 15000,
-    "hubby_price": 89900,
+    "market_price": 18000,
+    "hubby_price": 15000,
     "discount": 40,
-    "logo_url": "/logos/premiere.png",
+    "logo_url": "/logos/2-1776166007324.png",
     "duration": "1 month",
     "sort_order": 2,
     "features": [
       "Professional video editing",
       "After Effects integration",
       "Cloud sync"
-    ]
+    ],
+    "special_price": 10500,
+    "discount_percent": "30"
   }
 ]
