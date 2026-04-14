@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import Head from 'next/head';
 
 export default function Admin() {
@@ -9,9 +8,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [draggedItem, setDraggedItem] = useState(null);
-  const router = useRouter();
 
-  // Check if already authenticated (sessionStorage)
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_auth');
     if (auth === 'true') {
@@ -23,16 +20,12 @@ export default function Admin() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Verify password with server-side API (secure)
     const res = await fetch('/api/admin/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password })
     });
-    
     const data = await res.json();
-    
     if (data.success) {
       sessionStorage.setItem('admin_auth', 'true');
       setIsAuthenticated(true);
@@ -56,7 +49,6 @@ export default function Admin() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ products: updatedProducts })
     });
-    
     if (res.ok) {
       setMessage('✅ သိမ်းဆည်းပြီးပါပြီ');
       setTimeout(() => setMessage(''), 2000);
@@ -66,7 +58,7 @@ export default function Admin() {
     setLoading(false);
   };
 
-  // Drag & Drop Handlers
+  // Drag & Drop
   const handleDragStart = (e, index) => {
     setDraggedItem(index);
     e.dataTransfer.effectAllowed = 'move';
@@ -106,7 +98,7 @@ export default function Admin() {
       category: 'Others',
       market_price: 0,
       hubby_price: 0,
-      discount: 0,
+      discount: null,
       logo_url: '',
       duration: '1 month',
       features: [],
@@ -157,9 +149,9 @@ export default function Admin() {
     <>
       <Head><title>Admin Panel | Product Manager</title></Head>
       <div className="min-h-screen bg-gradient-to-br from-[#020617] to-[#0a0f2a] p-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-white">🛸 Admin Panel (Drag & Drop to Sort)</h1>
+            <h1 className="text-2xl font-bold text-white">🛸 Admin Panel (Drag ⠿ to Sort)</h1>
             <button onClick={addProduct} className="bg-green-600 text-white px-4 py-2 rounded-lg">+ Add Product</button>
           </div>
           
@@ -177,7 +169,7 @@ export default function Admin() {
                 onDragEnd={handleDragEnd}
                 className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 cursor-move"
               >
-                <div className="flex flex-wrap gap-3 items-start">
+                <div className="flex flex-wrap gap-3 items-center">
                   <div className="text-gray-400 text-2xl cursor-grab">⠿</div>
                   
                   <input
@@ -187,19 +179,53 @@ export default function Admin() {
                     placeholder="Name"
                   />
                   
+                  <select
+                    value={product.category}
+                    onChange={(e) => updateField(product.id, 'category', e.target.value)}
+                    className="bg-white/10 text-white p-2 rounded"
+                  >
+                    <option>Video Editing</option>
+                    <option>Photo Editing</option>
+                    <option>AI Tools</option>
+                    <option>AI Chatbots</option>
+                    <option>VPNs</option>
+                    <option>Others</option>
+                  </select>
+                  
                   <input
-                    value={product.hubby_price}
-                    onChange={(e) => updateField(product.id, 'hubby_price', parseInt(e.target.value))}
+                    type="number"
+                    value={product.market_price || 0}
+                    onChange={(e) => updateField(product.id, 'market_price', parseInt(e.target.value) || 0)}
                     className="bg-white/10 text-white p-2 rounded w-28"
-                    placeholder="Price"
+                    placeholder="Market Price"
                   />
                   
                   <input
-                    value={product.logo_url}
-                    onChange={(e) => updateField(product.id, 'logo_url', e.target.value)}
-                    className="bg-white/10 text-white p-2 rounded w-32"
-                    placeholder="Logo URL"
+                    type="number"
+                    value={product.hubby_price || 0}
+                    onChange={(e) => updateField(product.id, 'hubby_price', parseInt(e.target.value) || 0)}
+                    className="bg-white/10 text-white p-2 rounded w-28"
+                    placeholder="Hubby Price"
                   />
+                  
+                  <input
+                    type="number"
+                    value={product.discount || ''}
+                    onChange={(e) => updateField(product.id, 'discount', e.target.value ? parseInt(e.target.value) : null)}
+                    className="bg-white/10 text-white p-2 rounded w-20"
+                    placeholder="Discount %"
+                  />
+                  
+                  <select
+                    value={product.duration || '1 month'}
+                    onChange={(e) => updateField(product.id, 'duration', e.target.value)}
+                    className="bg-white/10 text-white p-2 rounded"
+                  >
+                    <option>7 days</option>
+                    <option>1 month</option>
+                    <option>3 months</option>
+                    <option>1 year</option>
+                  </select>
                   
                   <button onClick={() => deleteProduct(product.id)} className="bg-red-600/50 text-white px-3 py-2 rounded-lg">
                     Delete
