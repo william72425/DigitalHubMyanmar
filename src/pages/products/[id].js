@@ -174,7 +174,7 @@ export default function ProductDetail() {
           )}
 
           <div className="mt-6 p-3 bg-blue-500/10 rounded-lg text-center">
-            <p className="text-gray-400 text-xs">💡 Note: နောက်ပိုင်းမှာ အခု web page ထဲကနေ တိုက်ရိုက်ဝယ်နိုင်အောင် ကြိုးစားသွားပါဦးမည်။</p>
+            <p className="text-gray-400 text-xs">💡 နောက်ပိုင်းမှာ အခု web page ထဲကနေ တိုက်ရိုက်ဝယ်နိုင်အောင် ကြိုးစားသွားပါဦးမည်။</p>
           </div>
         </div>
       </div>
