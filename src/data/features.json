@@ -1,4 +1,21 @@
 {
-  "features": [],
+  "features": [
+    {
+      "id": 1776184132368,
+      "product_id": 1776151147608,
+      "feature_name": "usages",
+      "free": "limited",
+      "pro": "full access ",
+      "sort_order": 0
+    },
+    {
+      "id": 1776184342440,
+      "product_id": 1,
+      "feature_name": "fsf",
+      "free": "gsgf",
+      "pro": "sgsgr",
+      "sort_order": 0
+    }
+  ],
   "notes": []
 }
