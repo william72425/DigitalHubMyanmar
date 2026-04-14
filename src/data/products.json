@@ -51,5 +51,18 @@
     "special_price": 10500,
     "discount_percent": "30",
     "logo_size": 45
+  },
+  {
+    "id": 1776169696049,
+    "name": "လပြည့် ခွေးချီးစား",
+    "category": "Others",
+    "market_price": 50000,
+    "hubby_price": 40000,
+    "discount_percent": "10",
+    "special_price": 36000,
+    "logo_url": null,
+    "logo_size": 70,
+    "duration": "7 days",
+    "sort_order": 3
   }
 ]
