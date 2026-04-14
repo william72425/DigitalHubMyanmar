@@ -19,12 +19,17 @@ export default function ProductDetail() {
       const found = productsData.find(p => p.id === productId);
       setProduct(found);
       
+      // DEBUG: Log what's in features.json
+      console.log('🔍 featuresData:', featuresData);
+      console.log('🔍 product_notes:', featuresData.product_notes);
+      
       // Features
       const productFeatures = featuresData.features?.filter(f => f.product_id === productId) || [];
       setFeatures(productFeatures);
       
       // Note - from product_notes array
       const note = featuresData.product_notes?.find(n => n.product_id === productId);
+      console.log('🔍 Found note for product', productId, ':', note);
       setProductNote(note || null);
       
       setLoading(false);
@@ -139,11 +144,15 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* NOTE BOX - FIXED */}
-          {productNote && productNote.content && productNote.content.trim() !== '' && (
+          {/* NOTE BOX - FIXED with debug */}
+          {productNote && productNote.content && productNote.content.trim() !== '' ? (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
               <h3 className="text-yellow-500 font-bold mb-2">{productNote.title || '📌 မှတ်ချက်'}</h3>
               <p className="text-gray-300 text-sm whitespace-pre-wrap">{productNote.content}</p>
+            </div>
+          ) : (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 mb-6">
+              <p className="text-red-400 text-sm">⚠️ DEBUG: No note found for this product. productNote: {JSON.stringify(productNote)}</p>
             </div>
           )}
 
