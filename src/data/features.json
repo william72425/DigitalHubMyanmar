@@ -1,10 +1,4 @@
 {
   "features": [],
-  "notes": [
-    {
-      "id": 1,
-      "title": "Note",
-      "content": "do not change account info"
-    }
-  ]
+  "product_notes": []
 }
