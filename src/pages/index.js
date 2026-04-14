@@ -8,7 +8,6 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [draggedItem, setDraggedItem] = useState(null);
-  const [discountType, setDiscountType] = useState({});
 
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_auth');
@@ -46,11 +45,6 @@ export default function Admin() {
     const res = await fetch('/api/admin/products');
     const data = await res.json();
     setProducts(data);
-    const types = {};
-    data.forEach(p => {
-      types[p.id] = p.discount_amount ? 'amount' : 'percent';
-    });
-    setDiscountType(types);
   };
 
   const saveToGitHub = async (updatedProducts) => {
@@ -66,7 +60,7 @@ export default function Admin() {
     const data = await res.json();
     
     if (data.success) {
-      showMessage('✅ သိမ်းဆည်းပြီးပါပြီ! Website ကို ခဏအကြာတွင် ပြန်လည်စစ်ဆေးပါ။', 'success');
+      showMessage('✅ သိမ်းဆည်းပြီးပါပြီ!', 'success');
     } else {
       showMessage(`❌ သိမ်းဆည်းမရပါ: ${data.error || 'Unknown error'}`, 'error');
     }
@@ -101,19 +95,21 @@ export default function Admin() {
     setProducts(updated);
   };
 
-  const updateDiscount = (id, type, value) => {
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) {
+  // Discount update function - FIXED
+  const updateDiscountValue = (id, value) => {
+    const numValue = value === '' ? null : parseFloat(value);
+    const product = products.find(p => p.id === id);
+    const discountType = product.discount_type || 'percent';
+    const hubbyPrice = product.hubby_price || 0;
+    
+    if (numValue === null || isNaN(numValue)) {
       updateField(id, 'discount_percent', null);
       updateField(id, 'discount_amount', null);
       updateField(id, 'special_price', null);
       return;
     }
     
-    const product = products.find(p => p.id === id);
-    const hubbyPrice = product.hubby_price || 0;
-    
-    if (type === 'percent') {
+    if (discountType === 'percent') {
       const discountAmount = (hubbyPrice * numValue) / 100;
       const finalPrice = hubbyPrice - discountAmount;
       updateField(id, 'discount_percent', numValue);
@@ -126,6 +122,14 @@ export default function Admin() {
     }
   };
 
+  const updateDiscountType = (id, type) => {
+    updateField(id, 'discount_type', type);
+    // Clear discount values when switching type
+    updateField(id, 'discount_percent', null);
+    updateField(id, 'discount_amount', null);
+    updateField(id, 'special_price', null);
+  };
+
   const addProduct = () => {
     const newProduct = {
       id: Date.now(),
@@ -133,6 +137,7 @@ export default function Admin() {
       category: 'Others',
       market_price: 0,
       hubby_price: 0,
+      discount_type: 'percent',
       discount_percent: null,
       discount_amount: null,
       special_price: null,
@@ -142,7 +147,6 @@ export default function Admin() {
       features: []
     };
     setProducts([...products, newProduct]);
-    setDiscountType(prev => ({ ...prev, [newProduct.id]: 'percent' }));
   };
 
   const deleteProduct = async (id) => {
@@ -183,8 +187,8 @@ export default function Admin() {
     <>
       <Head><title>Admin Panel | Product Manager</title></Head>
       <div className="min-h-screen bg-gradient-to-br from-[#020617] to-[#0a0f2a] p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
+        <div className="max-w-full mx-auto overflow-x-auto">
+          <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
             <h1 className="text-2xl font-bold text-white">🛸 Admin Panel (Drag ⠿ to Sort)</h1>
             <div className="flex gap-3">
               <button onClick={addProduct} className="bg-green-600 text-white px-4 py-2 rounded-lg">+ Add Product</button>
@@ -201,7 +205,7 @@ export default function Admin() {
           )}
           
           {/* Column Headers */}
-          <div className="grid grid-cols-12 gap-2 mb-2 px-4 text-xs text-gray-400 font-semibold">
+          <div className="grid grid-cols-12 gap-2 mb-2 px-4 text-xs text-gray-400 font-semibold min-w-[900px]">
             <div className="col-span-1">Sort</div>
             <div className="col-span-2">Name</div>
             <div className="col-span-2">Category</div>
@@ -212,7 +216,7 @@ export default function Admin() {
             <div className="col-span-1">Actions</div>
           </div>
           
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-[900px]">
             {products.map((product, index) => (
               <div
                 key={product.id}
@@ -282,8 +286,8 @@ export default function Admin() {
                   {/* Discount - Type + Value */}
                   <div className="col-span-1 flex gap-1 items-center">
                     <select 
-                      value={discountType[product.id] || 'percent'} 
-                      onChange={(e) => setDiscountType(prev => ({ ...prev, [product.id]: e.target.value }))} 
+                      value={product.discount_type || 'percent'} 
+                      onChange={(e) => updateDiscountType(product.id, e.target.value)} 
                       className="bg-white/10 text-white p-2 rounded text-sm w-16"
                     >
                       <option value="percent">%</option>
@@ -291,8 +295,8 @@ export default function Admin() {
                     </select>
                     <input 
                       type="number" 
-                      value={discountType[product.id] === 'percent' ? (product.discount_percent || '') : (product.discount_amount || '')} 
-                      onChange={(e) => updateDiscount(product.id, discountType[product.id], e.target.value)} 
+                      value={(product.discount_type === 'percent' ? product.discount_percent : product.discount_amount) || ''} 
+                      onChange={(e) => updateDiscountValue(product.id, e.target.value)} 
                       className="bg-white/10 text-white p-2 rounded text-sm w-20" 
                       placeholder="0" 
                     />
