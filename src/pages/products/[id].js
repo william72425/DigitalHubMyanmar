@@ -18,12 +18,8 @@ export default function ProductDetail() {
       const productId = parseInt(id);
       const found = productsData.find(p => p.id === productId);
       setProduct(found);
-      
-      // Get features for this product
       const productFeatures = featuresData.features?.filter(f => f.product_id === productId) || [];
       setFeatures(productFeatures);
-      
-      // Get notes
       setNotes(featuresData.notes || []);
       setLoading(false);
     }
@@ -43,23 +39,15 @@ export default function ProductDetail() {
     return marketPrice - displayPrice.price;
   };
 
-  const handleBuyClick = () => {
-    setShowContactOptions(true);
-  };
+  const handleBuyClick = () => setShowContactOptions(true);
 
   const sendToContact = (platform, contactId) => {
     const displayPrice = getDisplayPrice();
     const message = `ဟုတ်ကဲ့ပါ။ ${product.name} (${product.duration}) ကို ${displayPrice.price.toLocaleString()} MMK ဖြင့် ဝယ်ယူလိုပါသည်။`;
     let url = '';
-    
-    if (platform === 'telegram') {
-      url = `https://t.me/${contactId}?text=${encodeURIComponent(message)}`;
-    } else if (platform === 'messenger') {
-      url = `https://m.me/${contactId}`;
-    } else if (platform === 'viber') {
-      url = `viber://chat?number=${contactId}`;
-    }
-    
+    if (platform === 'telegram') url = `https://t.me/${contactId}?text=${encodeURIComponent(message)}`;
+    else if (platform === 'messenger') url = `https://m.me/${contactId}`;
+    else if (platform === 'viber') url = `viber://chat?number=${contactId}`;
     if (url) window.open(url, '_blank');
   };
 
@@ -77,32 +65,19 @@ export default function ProductDetail() {
 
   return (
     <>
-      <Head>
-        <title>{product.name} | Digital Hub Myanmar</title>
-      </Head>
-
+      <Head><title>{product.name} | Digital Hub Myanmar</title></Head>
       <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617] text-white">
         <div className="container mx-auto px-4 py-6 max-w-4xl">
           
-          <button onClick={() => router.back()} className="text-gray-400 hover:text-[#FF6B35] mb-6 flex items-center gap-2">
-            ← နောက်သို့
-          </button>
+          <button onClick={() => router.back()} className="text-gray-400 hover:text-[#FF6B35] mb-6">← နောက်သို့</button>
 
-          {/* Product Header */}
+          {/* Header */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <div className="flex items-center gap-5">
               {product.logo_url ? (
-                <img 
-                  src={product.logo_url} 
-                  className="rounded-xl object-contain" 
-                  style={{ width: logoSize + 'px', height: logoSize + 'px' }} 
-                  alt={product.name}
-                />
+                <img src={product.logo_url} className="rounded-xl object-contain" style={{ width: logoSize + 'px', height: logoSize + 'px' }} alt={product.name} />
               ) : (
-                <div 
-                  className="rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-2xl"
-                  style={{ width: logoSize + 'px', height: logoSize + 'px' }}
-                >
+                <div className="rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-2xl" style={{ width: logoSize + 'px', height: logoSize + 'px' }}>
                   {product.name?.charAt(0) || '?'}
                 </div>
               )}
@@ -135,50 +110,42 @@ export default function ProductDetail() {
               )}
               {savings > 0 && (
                 <div className="mt-3 p-3 bg-green-500/20 rounded-lg text-center">
-                  <p className="text-green-400 text-sm">
-                    🎉 ဈေးကွက်ထဲဝယ်ရတဲ့ ပျမ်းမျှဈေးထက် <span className="font-bold text-lg">{savings.toLocaleString()} ကျပ်</span> ချွေတာနိုင်ပါမည်！
-                  </p>
+                  <p className="text-green-400 text-sm">🎉 ဈေးကွက်ထဲဝယ်ရတဲ့ ပျမ်းမျှဈေးထက် <span className="font-bold text-lg">{savings.toLocaleString()} MMK</span> ချွေတာနိုင်ပါမည်！</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Features Comparison Table */}
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
-            <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
-            {features.length > 0 ? (
+          {/* Features Table */}
+          {features.length > 0 && (
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
+              <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b border-white/20">
-                    <th className="text-left py-3 px-2 text-gray-400 font-medium">Features</th>
-                    <th className="text-center py-3 px-2 text-gray-400 font-medium w-1/3">✨ အခမဲ့အသုံးပြုသူ</th>
-                    <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 rounded-t-lg font-bold text-[#FF6B35] w-1/3">💎 Premium သုံးစွဲသူ</th>
+                    <th className="text-left py-3 px-2 text-gray-400">အင်္ဂါရပ်များ</th>
+                    <th className="text-center py-3 px-2 text-gray-400 w-1/3">✨ အခမဲ့</th>
+                    <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 text-[#FF6B35] font-bold w-1/3">💎 Premium</th>
                   </tr>
                 </thead>
                 <tbody>
                   {features.map((feature, idx) => (
                     <tr key={feature.id} className={`border-b border-white/10 ${idx % 2 === 0 ? 'bg-white/5' : ''}`}>
-                      <td className="py-3 px-2 text-sm font-medium">{feature.feature_name || `အင်္ဂါရပ် ${idx + 1}`}</td>
+                      <td className="py-3 px-2 text-sm">{feature.feature_name || `အင်္ဂါရပ် ${idx + 1}`}</td>
                       <td className="text-center py-3 px-2">
-                        {feature.free ? (
-                          <span className="text-green-400">✓ {feature.free}</span>
-                        ) : (
-                          <span className="text-gray-500">—</span>
-                        )}
+                        {feature.free ? <span className="text-green-400">✓ {feature.free}</span> : <span className="text-gray-500">—</span>}
                       </td>
                       <td className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/10 to-[#00D4FF]/10">
                         <span className="text-[#FF6B35] font-semibold">✓ {feature.pro || feature.free || 'အပြည့်အစုံ'}</span>
                       </td>
-                    </table>
+                    </tr>
                   ))}
                 </tbody>
               </table>
-            ) : (
-              <p className="text-gray-400 text-center py-4">Featuresများ မရှိသေးပါ။ Admin မှ ထည့်သွင်းပေးပါ။</p>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Note Box - Auto hide if empty */}
+          {/* Note Box */}
           {notes.length > 0 && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
               {notes.map((note, idx) => (
@@ -192,44 +159,20 @@ export default function ProductDetail() {
 
           {/* Buy Button */}
           {!showContactOptions ? (
-            <button 
-              onClick={handleBuyClick} 
-              className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition cursor-pointer"
-            >
+            <button onClick={handleBuyClick} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 cursor-pointer">
               🛒 အခုပဲ {displayPrice.price.toLocaleString()} MMK ဖြင့် ဝယ်ယူမည်
             </button>
           ) : (
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
-                <button 
-                  onClick={() => sendToContact('telegram', 'william815')} 
-                  className="bg-[#26A5E4] text-white p-3 rounded-xl font-semibold hover:opacity-90 cursor-pointer"
-                >
-                  📱 Telegram
-                </button>
-                <button 
-                  onClick={() => sendToContact('messenger', 'william72425')} 
-                  className="bg-[#0084FF] text-white p-3 rounded-xl font-semibold hover:opacity-90 cursor-pointer"
-                >
-                  💬 Messenger
-                </button>
-                <button 
-                  onClick={() => sendToContact('viber', '09798268154')} 
-                  className="bg-[#7360F2] text-white p-3 rounded-xl font-semibold hover:opacity-90 cursor-pointer"
-                >
-                  📞 Viber
-                </button>
+                <button onClick={() => sendToContact('telegram', 'william815')} className="bg-[#26A5E4] text-white p-3 rounded-xl font-semibold hover:opacity-90">📱 Telegram</button>
+                <button onClick={() => sendToContact('messenger', 'william72425')} className="bg-[#0084FF] text-white p-3 rounded-xl font-semibold hover:opacity-90">💬 Messenger</button>
+                <button onClick={() => sendToContact('viber', '09798268154')} className="bg-[#7360F2] text-white p-3 rounded-xl font-semibold hover:opacity-90">📞 Viber</button>
               </div>
-              <button 
-                onClick={() => setShowContactOptions(false)} 
-                className="w-full text-gray-400 text-sm py-2 hover:text-white"
-              >
-                ◀  Main page
-              </button>
+              <button onClick={() => setShowContactOptions(false)} className="w-full text-gray-400 text-sm py-2 hover:text-white">◀ နောက်သို့</button>
             </div>
           )}
 
-          {/* Footer Note */}
           <div className="mt-6 p-3 bg-blue-500/10 rounded-lg text-center">
             <p className="text-gray-400 text-xs">💡 Note: နောက်ပိုင်းမှာ အခု web page ထဲကနေ တိုက်ရိုက်ဝယ်နိုင်အောင် ကြိုးစားသွားပါဦးမည်။</p>
           </div>
@@ -237,4 +180,4 @@ export default function ProductDetail() {
       </div>
     </>
   );
-    }
+}
