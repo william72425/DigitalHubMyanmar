@@ -118,7 +118,7 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Features Section - Only show if features exist */}
+          {/* Features Section */}
           {features.length > 0 && (
             <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
               <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
@@ -147,11 +147,11 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Note Box - Only show if note exists */}
-          {notes.length > 0 && notes[0]?.content && (
+          {/* NOTE BOX - FIXED */}
+          {notes.length > 0 && notes[0]?.content && notes[0].content.trim() !== '' && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
               <h3 className="text-yellow-500 font-bold mb-2">{notes[0]?.title || '📌 မှတ်ချက်'}</h3>
-              <p className="text-gray-300 text-sm">{notes[0]?.content}</p>
+              <p className="text-gray-300 text-sm whitespace-pre-wrap">{notes[0]?.content}</p>
             </div>
           )}
 
