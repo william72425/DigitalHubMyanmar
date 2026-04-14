@@ -4,7 +4,7 @@
     "name": "ChatGPT Plus",
     "category": "AI Tools",
     "market_price": 240000,
-    "hubby_price": 129900,
+    "hubby_price": 120000,
     "discount": 46,
     "logo_url": "/logos/chatgpt.png",
     "duration": "1 month",
@@ -14,7 +14,8 @@
       "Web browsing",
       "Plugin access"
     ],
-    "special_price": 123405
+    "special_price": 90000,
+    "discount_percent": "25"
   },
   {
     "id": 2,
@@ -42,6 +43,8 @@
     "logo_url": "",
     "duration": "1 month",
     "features": [],
-    "sort_order": 2
+    "sort_order": 2,
+    "discount_percent": "25",
+    "special_price": 6000
   }
 ]
