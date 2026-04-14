@@ -10,7 +10,6 @@ export default function Admin() {
   const [draggedItem, setDraggedItem] = useState(null);
   const [uploading, setUploading] = useState(false);
   
-  // Features & Notes State
   const [features, setFeatures] = useState([]);
   const [notes, setNotes] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(null);
@@ -185,7 +184,6 @@ export default function Admin() {
     }
   };
 
-  // Feature Functions
   const addFeature = () => {
     if (!selectedProductId) {
       setMessage('❌ Please select a product first');
@@ -232,7 +230,6 @@ export default function Admin() {
     }
   };
 
-  // Note Functions - Product Specific
   const openNoteModal = () => {
     if (!selectedProductId) {
       setMessage('❌ Please select a product first');
@@ -257,10 +254,8 @@ export default function Admin() {
     
     let updatedNotes;
     if (noteContent.trim() === '') {
-      // Remove note if content is empty
       updatedNotes = notes.filter(n => n.product_id !== selectedProductId);
     } else {
-      // Add or update note for this product
       const existingIndex = notes.findIndex(n => n.product_id === selectedProductId);
       const newNote = {
         id: existingIndex >= 0 ? notes[existingIndex].id : Date.now(),
@@ -358,7 +353,6 @@ export default function Admin() {
       <Head><title>Admin Panel</title></Head>
       <div className="min-h-screen bg-gradient-to-br from-[#020617] to-[#0a0f2a] p-4">
         <div className="max-w-full mx-auto">
-          {/* Header */}
           <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
             <h1 className="text-2xl font-bold text-white">🛸 Admin Panel</h1>
             <div className="flex gap-3">
@@ -394,7 +388,6 @@ export default function Admin() {
                     <div className="flex flex-wrap gap-3 items-start">
                       <div className="text-gray-400 text-2xl cursor-grab">⠿</div>
                       
-                      {/* Logo */}
                       <div className="flex flex-col items-center gap-1">
                         {product.logo_url ? (
                           <img src={product.logo_url} className="rounded-lg object-contain bg-white/5" style={{ width: logoSize + 'px', height: logoSize + 'px' }} alt={product.name} />
@@ -423,7 +416,6 @@ export default function Admin() {
                         </div>
                       </div>
                       
-                      {/* Product Fields */}
                       <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-2">
                         <input type="text" value={product.name || ''} onChange={(e) => updateProduct(product.id, 'name', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm col-span-2" placeholder="Name" />
                         <select value={product.category || 'Others'} onChange={(e) => updateProduct(product.id, 'category', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm">
@@ -448,7 +440,7 @@ export default function Admin() {
             </div>
           </div>
 
-          {/* Features & Notes Management Section */}
+          {/* Features & Notes Management */}
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-6">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
               <h2 className="text-xl font-bold text-white">✨ Features & Notes Management</h2>
@@ -480,7 +472,7 @@ export default function Admin() {
                         <th className="text-left py-2 px-2 text-gray-400 text-sm">Free</th>
                         <th className="text-left py-2 px-2 text-gray-400 text-sm">Premium/Pro</th>
                         <th className="text-center py-2 px-2 text-gray-400 text-sm">Actions</th>
-                      </table>
+                      </tr>
                     </thead>
                     <tbody>
                       {productFeatures.map((feature) => (
@@ -500,7 +492,6 @@ export default function Admin() {
                   <p className="text-gray-400 text-center py-4">No features for this product. Click "+ Add Feature"</p>
                 )}
                 
-                {/* Show current note for selected product */}
                 {currentNote && (
                   <div className="mt-4 p-3 bg-yellow-500/10 rounded-lg">
                     <p className="text-yellow-500 text-sm font-semibold">📌 Current Note:</p>
@@ -524,8 +515,8 @@ export default function Admin() {
             <h3 className="text-xl font-bold text-white mb-4">{currentFeature.id ? 'Edit Feature' : 'Add Feature'}</h3>
             <div className="space-y-4">
               <input type="text" placeholder="Feature Name" value={currentFeature.feature_name} onChange={(e) => setCurrentFeature({...currentFeature, feature_name: e.target.value})} className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20" />
-              <input type="text" placeholder="Free Plan (e.g., Basic access)" value={currentFeature.free || ''} onChange={(e) => setCurrentFeature({...currentFeature, free: e.target.value})} className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20" />
-              <input type="text" placeholder="Premium Plan (e.g., Full access)" value={currentFeature.pro || ''} onChange={(e) => setCurrentFeature({...currentFeature, pro: e.target.value})} className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20" />
+              <input type="text" placeholder="Free Plan" value={currentFeature.free || ''} onChange={(e) => setCurrentFeature({...currentFeature, free: e.target.value})} className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20" />
+              <input type="text" placeholder="Premium Plan" value={currentFeature.pro || ''} onChange={(e) => setCurrentFeature({...currentFeature, pro: e.target.value})} className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20" />
               <div className="flex gap-3">
                 <button onClick={saveFeature} className="flex-1 bg-green-600 text-white p-2 rounded-lg">Save</button>
                 <button onClick={() => setShowFeatureModal(false)} className="flex-1 bg-gray-600 text-white p-2 rounded-lg">Cancel</button>
@@ -535,7 +526,7 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Note Modal - Product Specific */}
+      {/* Note Modal */}
       {showNoteModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#0a0f2a] rounded-2xl p-6 w-full max-w-md border border-white/20">
@@ -548,7 +539,7 @@ export default function Admin() {
                 <button onClick={() => setShowNoteModal(false)} className="flex-1 bg-gray-600 text-white p-2 rounded-lg">Cancel</button>
               </div>
               {noteContent.trim() === '' && (
-                <p className="text-red-400 text-xs text-center">⚠️ Empty content will remove the note from this product</p>
+                <p className="text-red-400 text-xs text-center">⚠️ Empty content will remove the note</p>
               )}
             </div>
           </div>
