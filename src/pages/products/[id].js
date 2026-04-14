@@ -9,7 +9,7 @@ export default function ProductDetail() {
   const { id } = router.query;
   const [product, setProduct] = useState(null);
   const [features, setFeatures] = useState([]);
-  const [notes, setNotes] = useState([]);
+  const [note, setNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showContactOptions, setShowContactOptions] = useState(false);
 
@@ -19,10 +19,14 @@ export default function ProductDetail() {
       const found = productsData.find(p => p.id === productId);
       setProduct(found);
       
-      // Load features from JSON
+      // Load features for this product
       const productFeatures = featuresData.features?.filter(f => f.product_id === productId) || [];
       setFeatures(productFeatures);
-      setNotes(featuresData.notes || []);
+      
+      // Load note for this specific product (not global)
+      const productNote = featuresData.product_notes?.find(n => n.product_id === productId) || null;
+      setNote(productNote);
+      
       setLoading(false);
     }
   }, [id]);
@@ -118,7 +122,7 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Features Section */}
+          {/* Features Section - Only show if features exist */}
           {features.length > 0 && (
             <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
               <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
@@ -147,11 +151,11 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* NOTE BOX - FIXED */}
-          {notes.length > 0 && notes[0]?.content && notes[0].content.trim() !== '' && (
+          {/* NOTE BOX - Product specific, only shows if note exists for this product */}
+          {note && note.content && note.content.trim() !== '' && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
-              <h3 className="text-yellow-500 font-bold mb-2">{notes[0]?.title || '📌 မှတ်ချက်'}</h3>
-              <p className="text-gray-300 text-sm whitespace-pre-wrap">{notes[0]?.content}</p>
+              <h3 className="text-yellow-500 font-bold mb-2">{note.title || '📌 မှတ်ချက်'}</h3>
+              <p className="text-gray-300 text-sm whitespace-pre-wrap">{note.content}</p>
             </div>
           )}
 
