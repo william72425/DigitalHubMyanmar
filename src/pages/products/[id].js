@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import productsData from '@/data/products.json';
 
-// Temporary features data (since features.json doesn't exist)
+// Temporary features data
 const fallbackFeatures = [
   { id: 1, feature_name: "AI Model Access", free: "Basic only", pro: "GPT-4 + Claude" },
   { id: 2, feature_name: "Response Speed", free: "Standard", pro: "Priority fast" },
@@ -116,7 +116,7 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Features Section - FIXED */}
+          {/* Features Section */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
             <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
             <table className="w-full border-collapse">
@@ -125,7 +125,7 @@ export default function ProductDetail() {
                   <th className="text-left py-3 px-2 text-gray-400">အင်္ဂါရပ်များ</th>
                   <th className="text-center py-3 px-2 text-gray-400 w-1/3">✨ အခမဲ့</th>
                   <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 text-[#FF6B35] font-bold w-1/3">💎 Premium</th>
-                </table>
+                </tr>
               </thead>
               <tbody>
                 {fallbackFeatures.map((feature, idx) => (
