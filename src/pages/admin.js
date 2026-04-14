@@ -80,7 +80,7 @@ export default function Admin() {
   
   try {
     const res = await fetch('/api/admin/save-features', {
-      method: 'POST',
+      method: 'POST',  // ← ဒါ POST ဖြစ်ရမယ်
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ features: updatedFeatures, notes: updatedNotes })
     });
@@ -91,13 +91,11 @@ export default function Admin() {
       setMessage('✅ Features saved!');
       setTimeout(() => setMessage(''), 2000);
     } else {
-      console.error('Save error:', data);
       setMessage(`❌ Save failed: ${data.error || 'Unknown error'}`);
       setTimeout(() => setMessage(''), 4000);
     }
   } catch (error) {
-    console.error('Network error:', error);
-    setMessage('❌ Network error - check console');
+    setMessage('❌ Network error');
   }
   setLoading(false);
 };
