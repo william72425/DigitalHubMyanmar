@@ -94,7 +94,7 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Product Grid - Mobile 1 column, Desktop 2/3 columns */}
+          {/* Product Grid - All boxes same height */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredServices.map((service) => {
               const displayPrice = getDisplayPrice(service);
@@ -105,7 +105,7 @@ export default function Home() {
               return (
                 <Link href={`/products/${service.id}`} key={service.id}>
                   <div className={`
-                    backdrop-blur-md rounded-2xl p-4 relative border-2 transition-all duration-300 cursor-pointer
+                    backdrop-blur-md rounded-2xl p-4 relative border-2 transition-all duration-300 cursor-pointer h-full
                     ${isDarkMode ? 'bg-white/5' : 'bg-white/60 shadow-sm'}
                     ${isSpecial 
                       ? 'border-green-500 shadow-lg shadow-green-500/30 animate-pulse-slow' 
@@ -119,16 +119,16 @@ export default function Home() {
                       </div>
                     )}
                     
-                    {/* Special Badge - FIXED */}
+                    {/* Special Badge */}
                     {isSpecial && (
                       <div className="absolute -top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 animate-pulse">
                         ✨ အထူးဈေး
                       </div>
                     )}
                     
-                    {/* Logo Left + Info Right - FIXED LAYOUT */}
+                    {/* Logo Left + Info Right - Fixed heights */}
                     <div className="flex items-start gap-4">
-                      {/* Logo - Left side, fixed size box */}
+                      {/* Logo */}
                       <div className="flex-shrink-0">
                         {service.logo_url ? (
                           <img 
@@ -147,7 +147,7 @@ export default function Home() {
                         )}
                       </div>
                       
-                      {/* Info - Right side, takes remaining space */}
+                      {/* Info - Fixed structure for equal height */}
                       <div className="flex-1 min-w-0">
                         <h3 className={`font-bold text-base md:text-lg truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                           {service.name}
@@ -155,6 +155,7 @@ export default function Home() {
                         <p className="text-xs text-gray-400 mt-0.5">📅 {service.duration}</p>
                         
                         <div className="mt-2 space-y-0.5">
+                          {/* Market Price */}
                           {service.market_price > 0 && (
                             <div className="text-[10px] md:text-xs text-gray-500">
                               <span className="text-gray-400">ဈေးကွက်ဈေး:</span>{' '}
@@ -162,19 +163,22 @@ export default function Home() {
                             </div>
                           )}
                           
+                          {/* Hubby Price (if special, show line-through) */}
                           {isSpecial ? (
-                            <>
-                              <div className="text-[10px] md:text-xs text-gray-500">
-                                <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
-                                <span className="line-through">{service.hubby_price?.toLocaleString()} MMK</span>
-                              </div>
-                              <div className="text-green-500 font-bold text-base md:text-lg">
-                                {displayPrice.price.toLocaleString()} MMK
-                              </div>
-                            </>
+                            <div className="text-[10px] md:text-xs text-gray-500">
+                              <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
+                              <span className="line-through">{service.hubby_price?.toLocaleString()} MMK</span>
+                            </div>
                           ) : (
-                            <div className="text-[#FF6B35] font-bold text-base md:text-lg">
+                            <div className="text-[#FF6B35] font-bold text-sm md:text-base">
                               {displayPrice.price.toLocaleString()} MMK
+                            </div>
+                          )}
+                          
+                          {/* Special Price with Label */}
+                          {isSpecial && (
+                            <div className="text-green-500 font-bold text-sm md:text-base">
+                              <span className="text-green-600">အထူးလျှော့ဈေး:</span> {displayPrice.price.toLocaleString()} MMK
                             </div>
                           )}
                         </div>
@@ -205,4 +209,4 @@ export default function Home() {
       `}</style>
     </>
   );
-            }
+      }
