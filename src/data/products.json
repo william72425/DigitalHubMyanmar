@@ -9,18 +9,26 @@
     "logo_url": "/logos/chatgpt.png",
     "duration": "1 month",
     "sort_order": 0,
-    "features": ["GPT-4 အကန့်အသတ်မဲ့", "Web browsing", "Plugin access"]
+    "features": [
+      "GPT-4 အကန့်အသတ်မဲ့",
+      "Web browsing",
+      "Plugin access"
+    ]
   },
   {
     "id": 2,
     "name": "Adobe Premiere Pro",
     "category": "Video Editing",
-    "market_price": 150000,
+    "market_price": 15000,
     "hubby_price": 89900,
     "discount": 40,
     "logo_url": "/logos/premiere.png",
     "duration": "1 month",
     "sort_order": 1,
-    "features": ["Professional video editing", "After Effects integration", "Cloud sync"]
+    "features": [
+      "Professional video editing",
+      "After Effects integration",
+      "Cloud sync"
+    ]
   }
 ]
