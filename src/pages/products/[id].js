@@ -2,25 +2,18 @@ import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import productsData from '@/data/products.json';
-import featuresData from '@/data/features.json';
 
 export default function ProductDetail() {
   const router = useRouter();
   const { id } = router.query;
   const [product, setProduct] = useState(null);
-  const [features, setFeatures] = useState([]);
-  const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showContactOptions, setShowContactOptions] = useState(false);
 
   useEffect(() => {
     if (id) {
-      const productId = parseInt(id);
-      const found = productsData.find(p => p.id === productId);
+      const found = productsData.find(p => p.id === parseInt(id));
       setProduct(found);
-      const productFeatures = featuresData.features?.filter(f => f.product_id === productId) || [];
-      setFeatures(productFeatures);
-      setNotes(featuresData.notes || []);
       setLoading(false);
     }
   }, [id]);
@@ -69,97 +62,63 @@ export default function ProductDetail() {
       <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617] text-white">
         <div className="container mx-auto px-4 py-6 max-w-4xl">
           
-          <button onClick={() => router.back()} className="text-gray-400 hover:text-[#FF6B35] mb-6">← နောက်သို့</button>
+          <button onClick={() => router.back()} className="text-gray-400 hover:text-[#FF6B35] mb-6 flex items-center gap-2">
+            ← နောက်သို့
+          </button>
 
-          {/* Header */}
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
-            <div className="flex items-center gap-5">
-              {product.logo_url ? (
-                <img src={product.logo_url} className="rounded-xl object-contain" style={{ width: logoSize + 'px', height: logoSize + 'px' }} alt={product.name} />
-              ) : (
-                <div className="rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-2xl" style={{ width: logoSize + 'px', height: logoSize + 'px' }}>
-                  {product.name?.charAt(0) || '?'}
-                </div>
-              )}
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold">{product.name}</h1>
-                <p className="text-gray-400 text-sm">📅 {product.duration}</p>
+          {/* Product Header - No border */}
+          <div className="flex items-center gap-5 mb-6">
+            {product.logo_url ? (
+              <img src={product.logo_url} className="rounded-xl object-contain" style={{ width: logoSize + 'px', height: logoSize + 'px' }} alt={product.name} />
+            ) : (
+              <div className="rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-2xl" style={{ width: logoSize + 'px', height: logoSize + 'px' }}>
+                {product.name?.charAt(0) || '?'}
               </div>
+            )}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">{product.name}</h1>
+              <p className="text-gray-400 text-sm">📅 {product.duration}</p>
             </div>
           </div>
 
-          {/* Price Section */}
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
-            <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
-            <div className="space-y-3">
-              {product.market_price > 0 && (
-                <div className="flex justify-between items-center pb-2 border-b border-white/10">
-                  <span className="text-gray-300">ဈေးကွက် ပျမ်းမျှဈေး</span>
-                  <span className="line-through text-gray-400">{product.market_price.toLocaleString()} MMK</span>
-                </div>
-              )}
-              <div className="flex justify-between items-center pb-2 border-b border-white/10">
-                <span className="text-gray-300">Hubby Store ဈေး</span>
-                <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
+          {/* Price Section - No border, just text */}
+          <div className="mb-6 space-y-2">
+            <h2 className="text-xl font-bold mb-3">💰 ဈေးနှုန်းအသေးစိတ်</h2>
+            
+            {product.market_price > 0 && (
+              <div className="flex justify-between items-center py-2 border-b border-white/10">
+                <span className="text-gray-300">ဈေးကွက် ပျမ်းမျှဈေး</span>
+                <span className="line-through text-gray-400">{product.market_price.toLocaleString()} MMK</span>
               </div>
-              {displayPrice.isSpecial && (
-                <div className="flex justify-between items-center pb-2 border-b border-green-500/30">
-                  <span className="text-green-400 font-semibold">✨ အထူးလျှော့ဈေး</span>
-                  <span className="text-green-400 font-bold text-xl">{displayPrice.price.toLocaleString()} MMK</span>
-                </div>
-              )}
-              {savings > 0 && (
-                <div className="mt-3 p-3 bg-green-500/20 rounded-lg text-center">
-                  <p className="text-green-400 text-sm">🎉 ဈေးကွက်ထဲဝယ်ရတဲ့ ပျမ်းမျှဈေးထက် <span className="font-bold text-lg">{savings.toLocaleString()} MMK</span> ချွေတာနိုင်ပါမည်！</p>
-                </div>
-              )}
+            )}
+            
+            <div className="flex justify-between items-center py-2 border-b border-white/10">
+              <span className="text-gray-300">Hubby Store ဈေး</span>
+              <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
             </div>
+            
+            {displayPrice.isSpecial && (
+              <div className="flex justify-between items-center py-2 border-b border-green-500/30">
+                <span className="text-green-400 font-semibold">✨ အထူးလျှော့ဈေး</span>
+                <span className="text-green-400 font-bold text-xl">{displayPrice.price.toLocaleString()} MMK</span>
+              </div>
+            )}
+            
+            {savings > 0 && (
+              <div className="mt-2 text-right">
+                <p className="text-green-400 text-xs">
+                  🎉 ဈေးကွက်ထဲဝယ်ရတဲ့ ပျမ်းမျှဈေးထက် {savings.toLocaleString()} MMK ချွေတာနိုင်ပါမည်！
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Features Table */}
-          {features.length > 0 && (
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
-              <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-white/20">
-                    <th className="text-left py-3 px-2 text-gray-400">အင်္ဂါရပ်များ</th>
-                    <th className="text-center py-3 px-2 text-gray-400 w-1/3">✨ အခမဲ့</th>
-                    <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 text-[#FF6B35] font-bold w-1/3">💎 Premium</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {features.map((feature, idx) => (
-                    <tr key={feature.id} className={`border-b border-white/10 ${idx % 2 === 0 ? 'bg-white/5' : ''}`}>
-                      <td className="py-3 px-2 text-sm">{feature.feature_name || `အင်္ဂါရပ် ${idx + 1}`}</td>
-                      <td className="text-center py-3 px-2">
-                        {feature.free ? <span className="text-green-400">✓ {feature.free}</span> : <span className="text-gray-500">—</span>}
-                      </td>
-                      <td className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/10 to-[#00D4FF]/10">
-                        <span className="text-[#FF6B35] font-semibold">✓ {feature.pro || feature.free || 'အပြည့်အစုံ'}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Note Box */}
-          {notes.length > 0 && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
-              {notes.map((note, idx) => (
-                <div key={idx}>
-                  <h3 className="text-yellow-500 font-bold mb-2">{note.title || '📌 မှတ်ချက်'}</h3>
-                  <p className="text-gray-300 text-sm">{note.content}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Buy Button */}
+          {/* Buy Button - Only this has border/frame */}
           {!showContactOptions ? (
-            <button onClick={handleBuyClick} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 cursor-pointer">
+            <button 
+              onClick={handleBuyClick} 
+              className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition cursor-pointer shadow-lg"
+            >
               🛒 အခုပဲ {displayPrice.price.toLocaleString()} MMK ဖြင့် ဝယ်ယူမည်
             </button>
           ) : (
@@ -174,7 +133,7 @@ export default function ProductDetail() {
           )}
 
           <div className="mt-6 p-3 bg-blue-500/10 rounded-lg text-center">
-            <p className="text-gray-400 text-xs">💡 နောက်ပိုင်းမှာ အခု web page ထဲကနေ တိုက်ရိုက်ဝယ်နိုင်အောင် ကြိုးစားသွားပါဦးမည်။</p>
+            <p className="text-gray-400 text-xs">💡 Note: နောက်ပိုင်းမှာ အခု web page ထဲကနေ တိုက်ရိုက်ဝယ်နိုင်အောင် ကြိုးစားသွားပါဦးမည်။</p>
           </div>
         </div>
       </div>
