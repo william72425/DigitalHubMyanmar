@@ -37,13 +37,10 @@ export default function Home() {
     ? services
     : services.filter(s => s.category === activeCategory);
 
-  // Helper to get display price
   const getDisplayPrice = (service) => {
-    // If special_price exists and > 0, use it
     if (service.special_price && service.special_price > 0) {
       return { price: service.special_price, isSpecial: true };
     }
-    // Otherwise use hubby_price
     return { price: service.hubby_price, isSpecial: false };
   };
 
@@ -83,7 +80,7 @@ export default function Home() {
               Digital Hub Myanmar
             </h1>
             <p className={`mt-2 text-sm md:text-base ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              🎁 Hubby Store မှ ကြိုဆိုပါတယ်! Special Discounts ရယူလိုက်ပါ!
+              🎁 Hubby Store မှ ကြိုဆိုပါတယ်! အထူးလျှော့စျေးများ ရယူလိုက်ပါ!
             </p>
           </div>
 
@@ -94,7 +91,7 @@ export default function Home() {
                   ? 'bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white shadow-lg'
                   : isDarkMode ? 'bg-white/10 text-gray-400 hover:bg-white/20' : 'bg-gray-200/80 text-gray-600 hover:bg-gray-300/80'
               }`}>
-                {cat === 'All' ? '📦 All' : cat}
+                {cat === 'All' ? '📦 အားလုံး' : cat}
               </button>
             ))}
           </div>
@@ -111,47 +108,53 @@ export default function Home() {
                   }`}>
                     {hasDiscount && (
                       <div className="absolute -top-2 -right-2 bg-gradient-to-r from-[#FF6B35] to-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
-                        🔥 {service.discount_percent}% OFF
+                        🔥 {service.discount_percent}% လျှော့
                       </div>
                     )}
                     
                     {displayPrice.isSpecial && (
-                      <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full z-10">
-                        ✨ Special
+                      <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
+                        ✨ အထူးဈေး
                       </div>
                     )}
                     
                     <div className="flex flex-col items-center">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl">
-                        {service.name?.charAt(0) || '?'}
-                      </div>
+                      {service.logo_url ? (
+                        <img src={service.logo_url} className="w-16 h-16 rounded-full object-cover" alt={service.name} />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-xl">
+                          {service.name?.charAt(0) || '?'}
+                        </div>
+                      )}
                       <h3 className={`font-semibold text-sm md:text-base mt-2 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                         {service.name}
                       </h3>
-                      <p className="text-xs text-gray-400 text-center">{service.duration}</p>
+                      <p className="text-xs text-gray-400 text-center">📅 {service.duration}</p>
                     </div>
                     
-                    <div className="text-center mt-2 pt-2 border-t border-white/10">
-                      {/* Market Price (line through) */}
+                    <div className="text-center mt-2 pt-2 border-t border-white/10 space-y-0.5">
+                      {/* Market Price */}
                       {service.market_price > 0 && (
-                        <div className="text-xs text-gray-400 line-through">
-                          {service.market_price.toLocaleString()} MMK
+                        <div className="text-[10px] md:text-xs text-gray-500">
+                          <span className="text-gray-400">ဈေးကွက်ဈေး:</span>{' '}
+                          <span className="line-through">{service.market_price.toLocaleString()} MMK</span>
                         </div>
                       )}
                       
-                      {/* Display Price */}
+                      {/* Display Price with Label */}
                       {displayPrice.isSpecial ? (
                         <>
-                          <div className="text-xs text-gray-400 line-through">
-                            {service.hubby_price?.toLocaleString()} MMK
+                          <div className="text-[10px] md:text-xs text-gray-500">
+                            <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
+                            <span className="line-through">{service.hubby_price?.toLocaleString()} MMK</span>
                           </div>
-                          <div className="text-green-500 font-bold text-base">
-                            {displayPrice.price.toLocaleString()} MMK
+                          <div className="text-green-500 font-bold text-sm md:text-base">
+                            <span className="text-green-400">အထူးဈေး:</span> {displayPrice.price.toLocaleString()} MMK
                           </div>
                         </>
                       ) : (
-                        <div className="text-[#FF6B35] font-bold text-base">
-                          {displayPrice.price.toLocaleString()} MMK
+                        <div className="text-[#FF6B35] font-bold text-sm md:text-base">
+                          <span className="text-[#FF6B35]">ဟပ်စတိုးဈေး:</span> {displayPrice.price.toLocaleString()} MMK
                         </div>
                       )}
                     </div>
