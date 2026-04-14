@@ -2,25 +2,27 @@ import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import productsData from '@/data/products.json';
-
-// Temporary features data
-const fallbackFeatures = [
-  { id: 1, feature_name: "AI Model Access", free: "Basic only", pro: "GPT-4 + Claude" },
-  { id: 2, feature_name: "Response Speed", free: "Standard", pro: "Priority fast" },
-  { id: 3, feature_name: "Web Browsing", free: "Not available", pro: "Full browsing" },
-];
+import featuresData from '@/data/features.json';
 
 export default function ProductDetail() {
   const router = useRouter();
   const { id } = router.query;
   const [product, setProduct] = useState(null);
+  const [features, setFeatures] = useState([]);
+  const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showContactOptions, setShowContactOptions] = useState(false);
 
   useEffect(() => {
     if (id) {
-      const found = productsData.find(p => p.id === parseInt(id));
+      const productId = parseInt(id);
+      const found = productsData.find(p => p.id === productId);
       setProduct(found);
+      
+      // Load features from JSON
+      const productFeatures = featuresData.features?.filter(f => f.product_id === productId) || [];
+      setFeatures(productFeatures);
+      setNotes(featuresData.notes || []);
       setLoading(false);
     }
   }, [id]);
@@ -116,32 +118,42 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Features Section */}
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
-            <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-white/20">
-                  <th className="text-left py-3 px-2 text-gray-400">အင်္ဂါရပ်များ</th>
-                  <th className="text-center py-3 px-2 text-gray-400 w-1/3">✨ အခမဲ့</th>
-                  <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 text-[#FF6B35] font-bold w-1/3">💎 Premium</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fallbackFeatures.map((feature, idx) => (
-                  <tr key={feature.id} className={`border-b border-white/10 ${idx % 2 === 0 ? 'bg-white/5' : ''}`}>
-                    <td className="py-3 px-2 text-sm">{feature.feature_name}</td>
-                    <td className="text-center py-3 px-2">
-                      {feature.free ? <span className="text-green-400">✓ {feature.free}</span> : <span className="text-gray-500">—</span>}
-                    </td>
-                    <td className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/10 to-[#00D4FF]/10">
-                      <span className="text-[#FF6B35] font-semibold">✓ {feature.pro}</span>
-                    </td>
+          {/* Features Section - Only show if features exist */}
+          {features.length > 0 && (
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
+              <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-white/20">
+                    <th className="text-left py-3 px-2 text-gray-400">အင်္ဂါရပ်များ</th>
+                    <th className="text-center py-3 px-2 text-gray-400 w-1/3">✨ အခမဲ့</th>
+                    <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 text-[#FF6B35] font-bold w-1/3">💎 Premium</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {features.map((feature, idx) => (
+                    <tr key={feature.id} className={`border-b border-white/10 ${idx % 2 === 0 ? 'bg-white/5' : ''}`}>
+                      <td className="py-3 px-2 text-sm">{feature.feature_name}</td>
+                      <td className="text-center py-3 px-2">
+                        {feature.free ? <span className="text-green-400">✓ {feature.free}</span> : <span className="text-gray-500">—</span>}
+                      </td>
+                      <td className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/10 to-[#00D4FF]/10">
+                        <span className="text-[#FF6B35] font-semibold">✓ {feature.pro || feature.free || 'အပြည့်အစုံ'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Note Box - Only show if note exists */}
+          {notes.length > 0 && notes[0]?.content && (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
+              <h3 className="text-yellow-500 font-bold mb-2">{notes[0]?.title || '📌 မှတ်ချက်'}</h3>
+              <p className="text-gray-300 text-sm">{notes[0]?.content}</p>
+            </div>
+          )}
 
           {/* Buy Button */}
           {!showContactOptions ? (
