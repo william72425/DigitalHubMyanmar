@@ -36,32 +36,45 @@ export default function Admin() {
     const data = await res.json();
     
     if (data.success) {
-      setMessage('✅ Saved! Website will update soon.');
+      setMessage('✅ Saved!');
       setTimeout(() => setMessage(''), 3000);
     } else {
-      setMessage('❌ Save failed: ' + (data.error || 'Unknown error'));
+      setMessage('❌ Save failed');
     }
     setLoading(false);
   };
 
-  const updateField = (id, field, value) => {
-    const updated = products.map(p => p.id === id ? { ...p, [field]: value } : p);
-    setProducts(updated);
-  };
-
-  const updateDiscount = (id, percentValue) => {
-    const product = products.find(p => p.id === id);
-    const percent = parseFloat(percentValue);
-    
-    if (isNaN(percent) || percent <= 0) {
-      updateField(id, 'discount_percent', null);
-      updateField(id, 'special_price', null);
-    } else {
-      const hubbyPrice = product.hubby_price || 0;
-      const specialPrice = hubbyPrice - (hubbyPrice * percent / 100);
-      updateField(id, 'discount_percent', percent);
-      updateField(id, 'special_price', Math.round(specialPrice));
-    }
+  // Simple working update
+  const updateProduct = (id, field, value) => {
+    const newProducts = products.map(p => {
+      if (p.id === id) {
+        const updated = { ...p, [field]: value };
+        
+        // Auto calculate special price when discount changes
+        if (field === 'discount_percent') {
+          const percent = parseFloat(value);
+          if (!isNaN(percent) && percent > 0 && updated.hubby_price) {
+            updated.special_price = Math.round(updated.hubby_price - (updated.hubby_price * percent / 100));
+          } else {
+            updated.special_price = null;
+          }
+        }
+        
+        // Auto calculate special price when hubby_price changes
+        if (field === 'hubby_price') {
+          const percent = parseFloat(updated.discount_percent);
+          if (!isNaN(percent) && percent > 0 && value) {
+            updated.special_price = Math.round(value - (value * percent / 100));
+          } else {
+            updated.special_price = null;
+          }
+        }
+        
+        return updated;
+      }
+      return p;
+    });
+    setProducts(newProducts);
   };
 
   const addProduct = () => {
@@ -80,10 +93,10 @@ export default function Admin() {
   };
 
   const deleteProduct = (id) => {
-    if (confirm('Delete this product?')) {
-      const updated = products.filter(p => p.id !== id);
-      updated.forEach((p, i) => p.sort_order = i);
-      setProducts(updated);
+    if (confirm('Delete?')) {
+      const newProducts = products.filter(p => p.id !== id);
+      newProducts.forEach((p, i) => p.sort_order = i);
+      setProducts(newProducts);
     }
   };
 
@@ -110,10 +123,6 @@ export default function Admin() {
   };
 
   const handleSaveAll = () => {
-    if (products.length === 0) {
-      setMessage('❌ No products to save');
-      return;
-    }
     saveToGitHub(products);
   };
 
@@ -172,7 +181,7 @@ export default function Admin() {
           </div>
           
           {message && (
-            <div className={`mb-4 p-3 rounded-lg text-center ${message.includes('✅') ? 'bg-green-500/20 text-green-400' : message.includes('❌') ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
+            <div className={`mb-4 p-3 rounded-lg text-center ${message.includes('✅') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
               {message}
             </div>
           )}
@@ -190,28 +199,70 @@ export default function Admin() {
                 <div className="grid grid-cols-1 md:grid-cols-8 gap-2 items-center">
                   <div className="text-gray-400 text-2xl cursor-grab text-center">⠿</div>
                   
-                  <input value={product.name} onChange={(e) => updateField(product.id, 'name', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm" placeholder="Name" />
+                  <input 
+                    type="text"
+                    value={product.name || ''} 
+                    onChange={(e) => updateProduct(product.id, 'name', e.target.value)} 
+                    className="bg-white/10 text-white p-2 rounded text-sm" 
+                    placeholder="Name" 
+                  />
                   
-                  <select value={product.category} onChange={(e) => updateField(product.id, 'category', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm">
-                    <option>Video Editing</option><option>Photo Editing</option><option>AI Tools</option><option>AI Chatbots</option><option>VPNs</option><option>Others</option>
+                  <select 
+                    value={product.category || 'Others'} 
+                    onChange={(e) => updateProduct(product.id, 'category', e.target.value)} 
+                    className="bg-white/10 text-white p-2 rounded text-sm"
+                  >
+                    <option>Video Editing</option>
+                    <option>Photo Editing</option>
+                    <option>AI Tools</option>
+                    <option>AI Chatbots</option>
+                    <option>VPNs</option>
+                    <option>Others</option>
                   </select>
                   
-                  <select value={product.duration} onChange={(e) => updateField(product.id, 'duration', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm">
-                    <option>7 days</option><option>1 month</option><option>3 months</option><option>1 year</option>
+                  <select 
+                    value={product.duration || '1 month'} 
+                    onChange={(e) => updateProduct(product.id, 'duration', e.target.value)} 
+                    className="bg-white/10 text-white p-2 rounded text-sm"
+                  >
+                    <option>7 days</option>
+                    <option>1 month</option>
+                    <option>3 months</option>
+                    <option>1 year</option>
                   </select>
                   
-                  <input type="number" value={product.market_price || 0} onChange={(e) => updateField(product.id, 'market_price', parseInt(e.target.value) || 0)} className="bg-white/10 text-white p-2 rounded text-sm" placeholder="Market Price" />
+                  <input 
+                    type="number"
+                    value={product.market_price || 0} 
+                    onChange={(e) => updateProduct(product.id, 'market_price', parseInt(e.target.value) || 0)} 
+                    className="bg-white/10 text-white p-2 rounded text-sm" 
+                    placeholder="Market Price" 
+                  />
                   
-                  <input type="number" value={product.hubby_price || 0} onChange={(e) => updateField(product.id, 'hubby_price', parseInt(e.target.value) || 0)} className="bg-white/10 text-white p-2 rounded text-sm" placeholder="Hubby Price" />
+                  <input 
+                    type="number"
+                    value={product.hubby_price || 0} 
+                    onChange={(e) => updateProduct(product.id, 'hubby_price', parseInt(e.target.value) || 0)} 
+                    className="bg-white/10 text-white p-2 rounded text-sm" 
+                    placeholder="Hubby Price" 
+                  />
                   
-                  <input type="number" value={product.discount_percent || ''} onChange={(e) => updateDiscount(product.id, e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm" placeholder="Discount %" />
+                  <input 
+                    type="number"
+                    value={product.discount_percent || ''} 
+                    onChange={(e) => updateProduct(product.id, 'discount_percent', e.target.value)} 
+                    className="bg-white/10 text-white p-2 rounded text-sm" 
+                    placeholder="Discount %" 
+                  />
                   
-                  <button onClick={() => deleteProduct(product.id)} className="bg-red-600/50 text-white px-3 py-2 rounded-lg text-sm">Delete</button>
+                  <button onClick={() => deleteProduct(product.id)} className="bg-red-600/50 text-white px-3 py-2 rounded-lg text-sm">
+                    Delete
+                  </button>
                 </div>
                 
                 {product.special_price > 0 && (
                   <div className="mt-2 text-xs text-green-400 ml-8">
-                    ✨ Special Price: {product.special_price.toLocaleString()} MMK (was {product.hubby_price?.toLocaleString()} MMK)
+                    ✨ Special Price: {product.special_price.toLocaleString()} MMK
                   </div>
                 )}
               </div>
@@ -219,7 +270,7 @@ export default function Admin() {
           </div>
           
           <div className="mt-6 p-3 bg-blue-500/20 text-blue-400 rounded text-sm text-center">
-            Drag ⠿ to reorder. Enter discount % to show special price.
+            Drag ⠿ to reorder. Enter discount % → special price auto calculates.
           </div>
         </div>
       </div>
