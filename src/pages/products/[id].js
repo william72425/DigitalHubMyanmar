@@ -8,6 +8,7 @@ export default function ProductDetail() {
   const { id } = router.query;
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showContactOptions, setShowContactOptions] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -16,6 +17,33 @@ export default function ProductDetail() {
       setLoading(false);
     }
   }, [id]);
+
+  const getDisplayPrice = () => {
+    if (product?.special_price && product.special_price > 0) {
+      return { price: product.special_price, isSpecial: true };
+    }
+    return { price: product?.hubby_price, isSpecial: false };
+  };
+
+  const handleBuyClick = () => {
+    setShowContactOptions(true);
+  };
+
+  const sendToContact = (platform, contactId) => {
+    const displayPrice = getDisplayPrice();
+    const message = `ဟုတ်ကဲ့ပါ။ ${product.name} (${product.duration}) ကို ${displayPrice.price.toLocaleString()} MMK ဖြင့် ဝယ်ယူလိုပါသည်။`;
+    let url = '';
+    
+    if (platform === 'telegram') {
+      url = `https://t.me/${contactId}?text=${encodeURIComponent(message)}`;
+    } else if (platform === 'messenger') {
+      url = `https://m.me/${contactId}`;
+    } else if (platform === 'viber') {
+      url = `viber://chat?number=${contactId}`;
+    }
+    
+    if (url) window.open(url, '_blank');
+  };
 
   if (loading || !product) {
     return (
@@ -26,7 +54,7 @@ export default function ProductDetail() {
   }
 
   const logoSize = product.logo_size || 70;
-  const displayPrice = product.special_price || product.hubby_price;
+  const displayPrice = getDisplayPrice();
 
   return (
     <>
@@ -42,6 +70,7 @@ export default function ProductDetail() {
           </button>
 
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6">
+            {/* Header */}
             <div className="flex items-center gap-5">
               {product.logo_url ? (
                 <img 
@@ -64,6 +93,7 @@ export default function ProductDetail() {
               </div>
             </div>
             
+            {/* Prices */}
             <div className="mt-6 space-y-3">
               {product.market_price > 0 && (
                 <div className="flex justify-between items-center pb-2 border-b border-white/10">
@@ -75,17 +105,52 @@ export default function ProductDetail() {
                 <span className="text-gray-300">Hubby Store ဈေး</span>
                 <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
-              {product.special_price > 0 && (
+              {displayPrice.isSpecial && (
                 <div className="flex justify-between items-center pb-2 border-b border-green-500/30">
                   <span className="text-green-400 font-semibold">✨ အထူးလျှော့ဈေး</span>
-                  <span className="text-green-400 font-bold text-xl">{product.special_price.toLocaleString()} MMK</span>
+                  <span className="text-green-400 font-bold text-xl">{displayPrice.price.toLocaleString()} MMK</span>
                 </div>
               )}
             </div>
             
-            <button className="w-full mt-6 bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition">
-              🛒 အခုပဲ {displayPrice.toLocaleString()} MMK ဖြင့် ဝယ်ယူမည်
-            </button>
+            {/* Buy Button - FIXED */}
+            {!showContactOptions ? (
+              <button 
+                onClick={handleBuyClick} 
+                className="w-full mt-6 bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition cursor-pointer"
+              >
+                🛒 အခုပဲ {displayPrice.price.toLocaleString()} MMK ဖြင့် ဝယ်ယူမည်
+              </button>
+            ) : (
+              <div className="mt-6 space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <button 
+                    onClick={() => sendToContact('telegram', 'william815')} 
+                    className="bg-[#26A5E4] text-white p-3 rounded-xl font-semibold hover:opacity-90 cursor-pointer"
+                  >
+                    📱 Telegram
+                  </button>
+                  <button 
+                    onClick={() => sendToContact('messenger', 'william72425')} 
+                    className="bg-[#0084FF] text-white p-3 rounded-xl font-semibold hover:opacity-90 cursor-pointer"
+                  >
+                    💬 Messenger
+                  </button>
+                  <button 
+                    onClick={() => sendToContact('viber', '09798268154')} 
+                    className="bg-[#7360F2] text-white p-3 rounded-xl font-semibold hover:opacity-90 cursor-pointer"
+                  >
+                    📞 Viber
+                  </button>
+                </div>
+                <button 
+                  onClick={() => setShowContactOptions(false)} 
+                  className="w-full text-gray-400 text-sm py-2 hover:text-white"
+                >
+                  ◀ နောက်သို့
+                </button>
+              </div>
+            )}
           </div>
           
           <div className="mt-6 p-3 bg-blue-500/10 rounded-lg text-center">
@@ -95,4 +160,4 @@ export default function ProductDetail() {
       </div>
     </>
   );
-    }
+            }
