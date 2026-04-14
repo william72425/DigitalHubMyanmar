@@ -11,7 +11,8 @@
     "features": [],
     "sort_order": 0,
     "discount_percent": "25",
-    "special_price": 6000
+    "special_price": 6000,
+    "logo_size": 55
   },
   {
     "id": 1,
