@@ -1,31 +1,35 @@
-import fs from 'fs';
-import path from 'path';
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-const featuresPath = path.join(process.cwd(), 'src', 'data', 'features.json');
-
-export default function handler(req, res) {
-  // Disable cache
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
+  const token = process.env.GITHUB_TOKEN;
+  const repo = 'william72425/DigitalHubMyanmar';
+  const filePath = 'src/data/features.json';
   
-  if (req.method === 'GET') {
-    try {
-      if (!fs.existsSync(featuresPath)) {
-        fs.writeFileSync(featuresPath, JSON.stringify({ features: [], product_notes: [] }, null, 2));
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+      headers: { 
+        Authorization: `token ${token}`,
+        'User-Agent': 'DigitalHub-Admin'
       }
-      const data = fs.readFileSync(featuresPath, 'utf8');
-      const jsonData = JSON.parse(data);
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const content = Buffer.from(data.content, 'base64').toString('utf8');
+      const jsonData = JSON.parse(content);
       
       // Ensure both arrays exist
       if (!jsonData.features) jsonData.features = [];
       if (!jsonData.product_notes) jsonData.product_notes = [];
       
-      res.status(200).json(jsonData);
-    } catch (error) {
-      res.status(200).json({ features: [], product_notes: [] });
+      return res.status(200).json(jsonData);
+    } else {
+      // File doesn't exist, return empty
+      return res.status(200).json({ features: [], product_notes: [] });
     }
-  } else {
-    res.status(405).end();
+  } catch (error) {
+    return res.status(200).json({ features: [], product_notes: [] });
   }
 }
