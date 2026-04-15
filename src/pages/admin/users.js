@@ -24,8 +24,8 @@ export default function AdminUsers() {
     if (savedTheme === 'light') setIsDarkMode(false);
     else if (savedTheme === 'dark') setIsDarkMode(true);
     
-    const auth = sessionStorage.getItem('admin_auth');
-    if (auth === 'true') {
+    const adminAuth = sessionStorage.getItem('admin_auth');
+    if (adminAuth === 'true') {
       setIsAuthenticated(true);
       fetchData();
     }
@@ -105,19 +105,19 @@ export default function AdminUsers() {
   };
 
   const viewCodeUsers = async (code) => {
-  setLoading(true);
-  try {
-    // Use 'used_promote_code' instead of 'promo_code_used'
-    const q = query(collection(db, 'users'), where('used_promote_code', '==', code));
-    const snapshot = await getDocs(q);
-    const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setSelectedCodeUsers(usersList);
-    setShowCodeUsers(true);
-  } catch (error) {
-    alert('Failed to load users for this code');
-  }
-  setLoading(false);
-};
+    setLoading(true);
+    try {
+      // Use 'used_promote_code' from auth.js
+      const q = query(collection(db, 'users'), where('used_promote_code', '==', code));
+      const snapshot = await getDocs(q);
+      const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setSelectedCodeUsers(usersList);
+      setShowCodeUsers(true);
+    } catch (error) {
+      alert('Failed to load users for this code');
+    }
+    setLoading(false);
+  };
 
   if (!isAuthenticated) {
     return (
@@ -165,6 +165,7 @@ export default function AdminUsers() {
             </button>
           </div>
           
+          {/* Users Tab - Fixed Promo Used column */}
           {activeTab === 'users' && (
             <div className={`rounded-2xl p-4 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
               <table className="w-full text-sm">
@@ -172,8 +173,8 @@ export default function AdminUsers() {
                   <tr>
                     <th className="text-left py-2 px-2">Username</th>
                     <th className="text-left py-2 px-2">Email</th>
-                    <th className="text-left py-2 px-2">Referral Code</th>
-                    <th className="text-left py-2 px-2">Promo Used</th>
+                    <th className="text-left py-2 px-2">Promote Code</th>
+                    <th className="text-left py-2 px-2">Used Promote Code</th>
                     <th className="text-left py-2 px-2">Joined</th>
                   </tr>
                 </thead>
@@ -182,8 +183,8 @@ export default function AdminUsers() {
                     <tr key={user.id} className="border-b border-white/10">
                       <td className="py-2 px-2">{user.username || '-'}</td>
                       <td className="py-2 px-2">{user.email}</td>
-                      <td className="py-2 px-2 text-xs font-mono">{user.referral_code || '-'}</td>
-                      <td className="py-2 px-2">{user.promo_code_used || '-'}</td>
+                      <td className="py-2 px-2 text-xs font-mono">{user.promote_code || '-'}</td>
+                      <td className="py-2 px-2 text-xs font-mono">{user.used_promote_code || '-'}</td>
                       <td className="py-2 px-2 text-xs">{user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}</td>
                     </tr>
                   ))}
@@ -192,6 +193,7 @@ export default function AdminUsers() {
             </div>
           )}
           
+          {/* Promo Codes Tab */}
           {activeTab === 'promo' && (
             <div className={`rounded-2xl p-6 ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
               <div className={`p-4 rounded-xl mb-6 ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
@@ -241,6 +243,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
+      {/* Modal for users who used promo code */}
       {showCodeUsers && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className={`rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-white/20`}>
