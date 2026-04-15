@@ -39,6 +39,14 @@
       "free": "limited features ",
       "pro": "all features",
       "sort_order": 0
+    },
+    {
+      "id": 1776236172325,
+      "product_id": 1776220603230,
+      "feature_name": "ads",
+      "free": "annoying ads",
+      "pro": "no ads",
+      "sort_order": 1
     }
   ],
   "product_notes": [
