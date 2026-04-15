@@ -1,51 +1,66 @@
-import fs from 'fs';
-import path from 'path';
-
-const featuresPath = path.join(process.cwd(), 'src', 'data', 'features.json');
-
 export default async function handler(req, res) {
-  // Allow CORS and disable cache
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  const token = process.env.GITHUB_TOKEN;
+  const repo = 'william72425/DigitalHubMyanmar';
+  const branch = 'main';
+  const filePath = 'src/data/features.json';
+  
+  if (!token) {
+    return res.status(500).json({ success: false, error: 'GITHUB_TOKEN not set' });
   }
 
   try {
     const { features, product_notes } = req.body;
     
-    // Ensure directory exists
-    const dir = path.dirname(featuresPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    const dataToSave = JSON.stringify({ 
+      features: features || [], 
+      product_notes: product_notes || [] 
+    }, null, 2);
     
-    // Read existing data to preserve what's not being updated
-    let existingData = { features: [], product_notes: [] };
-    if (fs.existsSync(featuresPath)) {
-      try {
-        existingData = JSON.parse(fs.readFileSync(featuresPath, 'utf8'));
-      } catch (e) {
-        console.log('Error parsing existing features.json');
+    const content = Buffer.from(dataToSave).toString('base64');
+    
+    // Get current file SHA (if exists)
+    let sha = null;
+    const getFileRes = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+      headers: { 
+        Authorization: `token ${token}`,
+        'User-Agent': 'DigitalHub-Admin'
       }
+    });
+    
+    if (getFileRes.ok) {
+      const fileData = await getFileRes.json();
+      sha = fileData.sha;
     }
     
-    // Merge data: use new values if provided, otherwise keep existing
-    const dataToSave = {
-      features: features !== undefined ? features : existingData.features,
-      product_notes: product_notes !== undefined ? product_notes : existingData.product_notes
-    };
+    // Update file on GitHub
+    const updateRes = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `token ${token}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'DigitalHub-Admin'
+      },
+      body: JSON.stringify({
+        message: 'Update features and notes via admin panel',
+        content: content,
+        sha: sha,
+        branch: branch,
+      }),
+    });
     
-    fs.writeFileSync(featuresPath, JSON.stringify(dataToSave, null, 2), 'utf8');
-    
-    console.log('Saved to:', featuresPath);
-    console.log('Features count:', dataToSave.features?.length);
-    console.log('Notes count:', dataToSave.product_notes?.length);
-    
-    res.status(200).json({ success: true, message: 'Saved successfully' });
+    if (updateRes.ok) {
+      return res.status(200).json({ success: true, message: 'Saved to GitHub' });
+    } else {
+      const error = await updateRes.json();
+      console.error('GitHub API error:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
   } catch (error) {
-    console.error('Save error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Save features error:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 }
