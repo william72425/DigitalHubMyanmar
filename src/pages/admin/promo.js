@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { auth, db } from '@/utils/firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import AdminNavbar from '@/components/AdminNavbar';
+import { db } from '@/utils/firebase';
+import { collection, getDocs, addDoc } from 'firebase/firestore';
+import Navbar from '@/components/Navbar';
 
-// Option Components (Modular - နောက်ပိုင်းထပ်ထည့်ရလွယ်)
 const OptionFields = ({ optionType, settings, onChange }) => {
   switch (optionType) {
     case 'first_purchase_discount':
@@ -45,16 +44,6 @@ const OptionFields = ({ optionType, settings, onChange }) => {
               />
             </div>
             <div>
-              <label className="block text-gray-400 text-sm mb-1">Maximum Discount Amount (MMK)</label>
-              <input
-                type="number"
-                value={settings.max_discount || 0}
-                onChange={(e) => onChange('max_discount', parseInt(e.target.value))}
-                className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20"
-                placeholder="0 = no limit"
-              />
-            </div>
-            <div>
               <label className="block text-gray-400 text-sm mb-1">Valid Duration</label>
               <div className="flex gap-2">
                 <input
@@ -73,28 +62,6 @@ const OptionFields = ({ optionType, settings, onChange }) => {
                   <option value="months">Months</option>
                 </select>
               </div>
-            </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Applicable Products</label>
-              <select
-                value={settings.applicable_products || 'all'}
-                onChange={(e) => onChange('applicable_products', e.target.value)}
-                className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20"
-              >
-                <option value="all">All Products</option>
-                <option value="selected">Selected Products</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Stack with Special Price</label>
-              <select
-                value={settings.stack_with_special ? 'yes' : 'no'}
-                onChange={(e) => onChange('stack_with_special', e.target.value === 'yes')}
-                className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20"
-              >
-                <option value="yes">Yes (Add together)</option>
-                <option value="no">No (Replace)</option>
-              </select>
             </div>
           </div>
         </div>
@@ -124,86 +91,6 @@ const OptionFields = ({ optionType, settings, onChange }) => {
                 className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20"
               />
             </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Entry Method</label>
-              <select
-                value={settings.entry_method || 'register'}
-                onChange={(e) => onChange('entry_method', e.target.value)}
-                className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20"
-              >
-                <option value="register">Register Only</option>
-                <option value="register_purchase">Register + First Purchase</option>
-                <option value="register_invite">Register + Invite Friend</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Entries Per User</label>
-              <input
-                type="number"
-                value={settings.entries_per_user || 1}
-                onChange={(e) => onChange('entries_per_user', parseInt(e.target.value))}
-                className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20"
-              />
-            </div>
-          </div>
-          
-          <h4 className="font-semibold text-white mt-4">Prize Pool</h4>
-          <div className="space-y-2">
-            {['grand_prize', 'first_prize', 'second_prize', 'third_prize', 'consolation'].map((prize, idx) => (
-              <div key={prize} className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  placeholder={`${prize.replace('_', ' ').toUpperCase()} Name`}
-                  value={settings[`${prize}_name`] || ''}
-                  onChange={(e) => onChange(`${prize}_name`, e.target.value)}
-                  className="p-2 rounded-lg bg-white/10 text-white border border-white/20"
-                />
-                <input
-                  type="number"
-                  placeholder="Quantity"
-                  value={settings[`${prize}_quantity`] || 0}
-                  onChange={(e) => onChange(`${prize}_quantity`, parseInt(e.target.value))}
-                  className="p-2 rounded-lg bg-white/10 text-white border border-white/20"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-      
-    case 'tiered_rewards':
-      return (
-        <div className="space-y-4">
-          <h3 className="font-semibold text-white">Tiered Rewards Settings</h3>
-          <div className="space-y-3">
-            {['bronze', 'silver', 'gold', 'platinum'].map((tier, idx) => (
-              <div key={tier} className="p-3 bg-white/5 rounded-lg">
-                <h4 className="font-semibold text-white capitalize">{tier}</h4>
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  <input
-                    type="number"
-                    placeholder="Min Users"
-                    value={settings[`${tier}_min`] || 0}
-                    onChange={(e) => onChange(`${tier}_min`, parseInt(e.target.value))}
-                    className="p-2 rounded-lg bg-white/10 text-white border border-white/20 text-sm"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Max Users"
-                    value={settings[`${tier}_max`] || 0}
-                    onChange={(e) => onChange(`${tier}_max`, parseInt(e.target.value))}
-                    className="p-2 rounded-lg bg-white/10 text-white border border-white/20 text-sm"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Reward"
-                    value={settings[`${tier}_reward`] || ''}
-                    onChange={(e) => onChange(`${tier}_reward`, e.target.value)}
-                    className="p-2 rounded-lg bg-white/10 text-white border border-white/20 text-sm"
-                  />
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       );
@@ -235,21 +122,14 @@ export default function AdminPromo() {
     if (savedTheme === 'light') setIsDarkMode(false);
     else if (savedTheme === 'dark') setIsDarkMode(true);
     
-    const checkAdminAuth = () => {
-  const auth = sessionStorage.getItem('admin_auth');
-  if (auth !== 'true') {
-    router.push('/admin');
-    return false;
-  }
-  return true;
-};
-
-useEffect(() => {
-  if (!checkAdminAuth()) return;
-  fetchPromoCodes();
-}, []);
+    // Check admin auth
+    const adminAuth = sessionStorage.getItem('admin_auth');
+    if (adminAuth !== 'true') {
+      router.push('/admin');
+      return;
+    }
     
-    return () => unsubscribe();
+    fetchPromoCodes();
   }, []);
 
   const toggleTheme = () => {
@@ -294,15 +174,6 @@ useEffect(() => {
         is_active: true,
         settings: formData.settings,
         version: 1,
-        versions: [{
-          version: 1,
-          settings: formData.settings,
-          used_by_users: [],
-          used_count: 0,
-          valid_from: formData.valid_from,
-          valid_until: formData.valid_until,
-          created_at: new Date().toISOString()
-        }],
         created_at: new Date().toISOString()
       });
       alert('Promo code created!');
@@ -334,7 +205,7 @@ useEffect(() => {
     <>
       <Head><title>Admin - Promo Codes | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex justify-between items-center mb-6">
@@ -352,7 +223,6 @@ useEffect(() => {
                   <th className="text-left py-2 px-2">Valid From</th>
                   <th className="text-left py-2 px-2">Valid Until</th>
                   <th className="text-left py-2 px-2">Status</th>
-                  <th className="text-left py-2 px-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -364,10 +234,6 @@ useEffect(() => {
                     <td className="py-2 px-2">{code.valid_from || '-'}</td>
                     <td className="py-2 px-2">{code.valid_until || '-'}</td>
                     <td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td>
-                    <td className="py-2 px-2">
-                      <button className="text-blue-400 mr-2">Edit</button>
-                      <button className="text-red-400">Delete</button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -406,7 +272,6 @@ useEffect(() => {
                 >
                   <option value="first_purchase_discount">First Purchase Discount</option>
                   <option value="giveaway">Giveaway Entry</option>
-                  <option value="tiered_rewards">Tiered Rewards</option>
                 </select>
               </div>
               
