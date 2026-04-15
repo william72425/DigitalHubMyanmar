@@ -64,4 +64,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {showCodeUsers && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"><div className={`rounded-2xl p-6 w-full max-w
+      {showCodeUsers && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"><div className={`rounded-2xl p-6 w-full max-w-2xl ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-white/20`}><div className="flex justify-between items-center mb-4"><h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Users who used this code</h2><button onClick={() => setShowCodeUsers(false)} className="text-gray-400 text-2xl">&times;</button></div><table className="w-full text-sm"><thead className="border-b border-white/20"><tr><th className="text-left py-2">Username</th><th className="text-left py-2">Email</th></tr></thead><tbody>{selectedCodeUsers.map((user) => (<tr key={user.id}><td className="py-2">{user.username || '-'}</td><td className="py-2">{user.email}</td></tr>))}</tbody></table><button onClick={() => setShowCodeUsers(false)} className="w-full bg-[#FF6B35] text-white p-2 rounded-lg mt-4">Close</button></div></div>)}
+    </>
+  );
+}
