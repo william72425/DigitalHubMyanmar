@@ -25,6 +25,7 @@ export default function Admin() {
   });
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
+  const [pendingChanges, setPendingChanges] = useState(false);
 
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_auth');
@@ -49,54 +50,26 @@ export default function Admin() {
   };
 
   const saveToGitHub = async (updatedProducts) => {
-    setLoading(true);
-    setMessage('⏳ Saving products...');
-    
     const res = await fetch('/api/admin/save-products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ products: updatedProducts })
     });
-    
     const data = await res.json();
-    
-    if (data.success) {
-      setMessage('✅ Products saved!');
-      setTimeout(() => setMessage(''), 3000);
-    } else {
-      setMessage('❌ Save failed');
-    }
-    setLoading(false);
+    return data.success;
   };
 
   const saveFeaturesToGitHub = async (updatedFeatures, updatedNotes) => {
-    setLoading(true);
-    setMessage('⏳ Saving features and notes...');
-    
-    try {
-      const res = await fetch('/api/admin/save-features', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          features: updatedFeatures, 
-          product_notes: updatedNotes 
-        })
-      });
-      
-      const data = await res.json();
-      
-      if (data.success) {
-        setMessage('✅ Features and notes saved!');
-        setTimeout(() => setMessage(''), 2000);
-        // Refresh features to show latest
-        fetchFeatures();
-      } else {
-        setMessage(`❌ Save failed: ${data.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      setMessage('❌ Network error');
-    }
-    setLoading(false);
+    const res = await fetch('/api/admin/save-features', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        features: updatedFeatures, 
+        product_notes: updatedNotes 
+      })
+    });
+    const data = await res.json();
+    return data.success;
   };
 
   const uploadLogoToGitHub = async (file, productId) => {
@@ -117,7 +90,7 @@ export default function Admin() {
         const data = await res.json();
         
         if (res.ok && data.logoUrl) {
-          setMessage('✅ Logo uploaded!');
+          setMessage('✅ Logo uploaded! Click "Save All Changes" to deploy.');
           resolve(data.logoUrl);
         } else {
           setMessage('❌ Upload failed');
@@ -135,6 +108,7 @@ export default function Admin() {
   };
 
   const updateProduct = (id, field, value) => {
+    setPendingChanges(true);
     const newProducts = products.map(p => {
       if (p.id === id) {
         const updated = { ...p, [field]: value };
@@ -165,6 +139,7 @@ export default function Admin() {
   };
 
   const addProduct = () => {
+    setPendingChanges(true);
     const newProduct = {
       id: Date.now(),
       name: 'New Product',
@@ -179,13 +154,18 @@ export default function Admin() {
       sort_order: products.length
     };
     setProducts([...products, newProduct]);
+    setMessage('✅ Product added! Click "Save All Changes" to deploy.');
+    setTimeout(() => setMessage(''), 3000);
   };
 
   const deleteProduct = (id) => {
     if (confirm('Delete this product?')) {
+      setPendingChanges(true);
       const newProducts = products.filter(p => p.id !== id);
       newProducts.forEach((p, i) => p.sort_order = i);
       setProducts(newProducts);
+      setMessage('✅ Product deleted! Click "Save All Changes" to deploy.');
+      setTimeout(() => setMessage(''), 3000);
     }
   };
 
@@ -215,6 +195,7 @@ export default function Admin() {
       setMessage('❌ Feature name required');
       return;
     }
+    setPendingChanges(true);
     let updatedFeatures;
     if (features.find(f => f.id === currentFeature.id)) {
       updatedFeatures = features.map(f => f.id === currentFeature.id ? currentFeature : f);
@@ -222,16 +203,19 @@ export default function Admin() {
       updatedFeatures = [...features, currentFeature];
     }
     setFeatures(updatedFeatures);
-    saveFeaturesToGitHub(updatedFeatures, notes);
     setShowFeatureModal(false);
-    setCurrentFeature({ id: null, product_id: null, feature_name: '', free: '', pro: '', sort_order: 0 });
+    setMessage('✅ Feature changed! Click "Save All Changes" to deploy.');
+    setTimeout(() => setMessage(''), 3000);
+    // ❌ NO auto save to GitHub
   };
 
   const deleteFeature = (id) => {
     if (confirm('Delete this feature?')) {
+      setPendingChanges(true);
       const updatedFeatures = features.filter(f => f.id !== id);
       setFeatures(updatedFeatures);
-      saveFeaturesToGitHub(updatedFeatures, notes);
+      setMessage('✅ Feature deleted! Click "Save All Changes" to deploy.');
+      setTimeout(() => setMessage(''), 3000);
     }
   };
 
@@ -257,6 +241,7 @@ export default function Admin() {
       return;
     }
     
+    setPendingChanges(true);
     let updatedNotes;
     if (noteContent.trim() === '') {
       updatedNotes = notes.filter(n => n.product_id !== selectedProductId);
@@ -278,10 +263,10 @@ export default function Admin() {
     }
     
     setNotes(updatedNotes);
-    saveFeaturesToGitHub(features, updatedNotes);
     setShowNoteModal(false);
-    setMessage(noteContent.trim() === '' ? '✅ Note removed!' : '✅ Note saved for this product!');
-    setTimeout(() => setMessage(''), 2000);
+    setMessage(noteContent.trim() === '' ? '✅ Note removed! Click "Save All Changes" to deploy.' : '✅ Note saved! Click "Save All Changes" to deploy.');
+    setTimeout(() => setMessage(''), 3000);
+    // ❌ NO auto save to GitHub
   };
 
   const handleDragStart = (e, index) => {
@@ -292,6 +277,7 @@ export default function Admin() {
   const handleDragOver = (e, index) => {
     e.preventDefault();
     if (draggedItem !== null && draggedItem !== index) {
+      setPendingChanges(true);
       const newProducts = [...products];
       const dragged = newProducts[draggedItem];
       newProducts.splice(draggedItem, 1);
@@ -306,8 +292,29 @@ export default function Admin() {
     setDraggedItem(null);
   };
 
-  const handleSaveAll = () => {
-    saveToGitHub(products);
+  const handleSaveAll = async () => {
+    setLoading(true);
+    setMessage('⏳ Saving all changes to GitHub...');
+    
+    let productsSaved = false;
+    let featuresSaved = false;
+    
+    productsSaved = await saveToGitHub(products);
+    featuresSaved = await saveFeaturesToGitHub(features, notes);
+    
+    if (productsSaved && featuresSaved) {
+      setMessage('✅ ALL CHANGES SAVED! Website will update automatically.');
+      setPendingChanges(false);
+    } else if (productsSaved && !featuresSaved) {
+      setMessage('⚠️ Products saved, but features/notes failed. Try again.');
+    } else if (!productsSaved && featuresSaved) {
+      setMessage('⚠️ Features saved, but products failed. Try again.');
+    } else {
+      setMessage('❌ Save failed. Check your connection and try again.');
+    }
+    
+    setTimeout(() => setMessage(''), 4000);
+    setLoading(false);
   };
 
   const handleLogin = async (e) => {
@@ -362,15 +369,27 @@ export default function Admin() {
             <h1 className="text-2xl font-bold text-white">🛸 Admin Panel</h1>
             <div className="flex gap-3">
               <button onClick={addProduct} className="bg-green-600 text-white px-4 py-2 rounded-lg">+ Add Product</button>
-              <button onClick={handleSaveAll} disabled={loading || uploading} className="bg-[#FF6B35] text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50">
-                {loading ? 'Saving...' : uploading ? 'Uploading...' : '💾 Save Products'}
+              <button 
+                onClick={handleSaveAll} 
+                disabled={loading || uploading || !pendingChanges} 
+                className={`px-6 py-2 rounded-lg font-semibold disabled:opacity-50 ${
+                  pendingChanges ? 'bg-[#FF6B35] text-white animate-pulse' : 'bg-gray-500 text-white'
+                }`}
+              >
+                {loading ? 'Saving...' : uploading ? 'Uploading...' : pendingChanges ? '💾 Save All Changes' : '✓ All Saved'}
               </button>
             </div>
           </div>
           
           {message && (
-            <div className={`mb-4 p-3 rounded-lg text-center ${message.includes('✅') ? 'bg-green-500/20 text-green-400' : message.includes('📤') ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/20 text-red-400'}`}>
+            <div className={`mb-4 p-3 rounded-lg text-center ${message.includes('✅') ? 'bg-green-500/20 text-green-400' : message.includes('📤') ? 'bg-blue-500/20 text-blue-400' : message.includes('⚠️') ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
               {message}
+            </div>
+          )}
+          
+          {pendingChanges && (
+            <div className="mb-4 p-2 bg-yellow-500/20 text-yellow-400 text-center rounded text-sm">
+              ⚠️ You have unsaved changes. Click "Save All Changes" to deploy.
             </div>
           )}
           
@@ -405,6 +424,7 @@ export default function Admin() {
                           if (e.target.files[0]) {
                             const url = await uploadLogoToGitHub(e.target.files[0], product.id);
                             if (url) {
+                              setPendingChanges(true);
                               const newProducts = products.map(p => p.id === product.id ? { ...p, logo_url: url } : p);
                               setProducts(newProducts);
                             }
@@ -413,6 +433,7 @@ export default function Admin() {
                         }} />
                         <div className="flex flex-col items-center">
                           <input type="range" min="40" max="120" value={logoSize} onChange={(e) => {
+                            setPendingChanges(true);
                             const newSize = parseInt(e.target.value);
                             const newProducts = products.map(p => p.id === product.id ? { ...p, logo_size: newSize } : p);
                             setProducts(newProducts);
@@ -508,7 +529,7 @@ export default function Admin() {
           </div>
 
           <div className="mt-6 p-3 bg-blue-500/20 text-blue-400 rounded text-sm text-center">
-            💡 Drag ⠿ to reorder | Discount % → auto special price | Logo size slider
+            💡 Drag ⠿ to reorder | Discount % → auto special price | Logo size slider | Save All Changes button deploys everything at once
           </div>
         </div>
       </div>
