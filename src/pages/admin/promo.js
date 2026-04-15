@@ -235,13 +235,19 @@ export default function AdminPromo() {
     if (savedTheme === 'light') setIsDarkMode(false);
     else if (savedTheme === 'dark') setIsDarkMode(true);
     
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user || user.email !== 'thantzin84727@gmail.com') {
-        router.push('/');
-        return;
-      }
-      await fetchPromoCodes();
-    });
+    const checkAdminAuth = () => {
+  const auth = sessionStorage.getItem('admin_auth');
+  if (auth !== 'true') {
+    router.push('/admin');
+    return false;
+  }
+  return true;
+};
+
+useEffect(() => {
+  if (!checkAdminAuth()) return;
+  fetchPromoCodes();
+}, []);
     
     return () => unsubscribe();
   }, []);
