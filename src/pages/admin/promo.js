@@ -178,11 +178,35 @@ export default function AdminPromo() {
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
         <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
         <div className="container mx-auto px-4 py-24 max-w-7xl">
-          <div className="flex justify-between items-center mb-6"><h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Codes</h1><button onClick={() => { setEditingCode(null); setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} }); setShowAddModal(true); }} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">+ Add Promo Code</button></div>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Codes</h1>
+            <button onClick={() => { setEditingCode(null); setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} }); setShowAddModal(true); }} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">+ Add Promo Code</button>
+          </div>
           <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
             <table className="w-full text-sm">
-              <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}}><tr><th className="text-left py-2 px-2">Code</th><th className="text-left py-2 px-2">Option</th><th className="text-left py-2 px-2">Used/Limit</th><th className="text-left py-2 px-2">Status</th><th className="text-left py-2 px-2">Actions</th></tr></thead>
-              <tbody>{promoCodes.map((code) => (<tr key={code.id} className="border-b border-white/10"><td className="py-2 px-2 font-mono">{code.code}</td><td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td><td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td><td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td><td className="py-2 px-2"><button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button><button onClick={() => deletePromoCode(code.id)} className="text-red-400">Delete</button></td></tr>))}</tbody>
+              <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
+                <tr>
+                  <th className="text-left py-2 px-2">Code</th>
+                  <th className="text-left py-2 px-2">Option</th>
+                  <th className="text-left py-2 px-2">Used/Limit</th>
+                  <th className="text-left py-2 px-2">Status</th>
+                  <th className="text-left py-2 px-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {promoCodes.map((code) => (
+                  <tr key={code.id} className="border-b border-white/10">
+                    <td className="py-2 px-2 font-mono">{code.code}</td>
+                    <td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td>
+                    <td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td>
+                    <td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td>
+                    <td className="py-2 px-2">
+                      <button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button>
+                      <button onClick={() => deletePromoCode(code.id)} className="text-red-400">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </div>
