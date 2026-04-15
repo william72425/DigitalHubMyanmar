@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { auth, db } from '@/utils/firebase';
 import { collection, getDocs, addDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
-import Navbar from '@/components/Navbar';
+import AdminNavbar from '@/components/AdminNavbar';
 
 export default function AdminUsers() {
   const router = useRouter();
