@@ -27,12 +27,10 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-md border-b border-white/20">
       <div className="container mx-auto px-4 py-3 max-w-7xl">
         <div className="flex justify-between items-center">
-          {/* Logo */}
           <Link href="/" className="text-xl font-bold bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] bg-clip-text text-transparent">
             Digital Hub
           </Link>
           
-          {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-4">
             <Link href="/theme" className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} hover:text-[#FF6B35]`}>
               🎨 Theme
@@ -56,13 +54,11 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
             </button>
           </div>
 
-          {/* Mobile Menu Button */}
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-white/10">
             {mobileMenuOpen ? '✕' : '☰'}
           </button>
         </div>
 
-        {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden mt-3 pt-3 border-t border-white/20 flex flex-col gap-3">
             <Link href="/theme" onClick={() => setMobileMenuOpen(false)} className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} hover:text-[#FF6B35]`}>
