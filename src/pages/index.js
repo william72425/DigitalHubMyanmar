@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import productsData from '@/data/products.json';
+import Navbar from '@/components/Navbar';
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
@@ -63,15 +64,10 @@ export default function Home() {
           isDarkMode ? 'bg-[#00D4FF]/10' : 'bg-cyan-200/50'
         }`}></div>
 
-        <div className="fixed top-4 right-4 z-50">
-          <button onClick={toggleTheme} className={`p-3 rounded-full backdrop-blur-md shadow-lg ${
-            isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200/80 hover:bg-gray-300/80'
-          }`}>
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
-        </div>
+        {/* Navbar */}
+        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
 
-        <div className="container mx-auto px-4 py-4 max-w-6xl relative z-10">
+        <div className="container mx-auto px-4 py-20 max-w-6xl relative z-10">
           
           <div className="text-center py-6 md:py-8">
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent">
@@ -94,7 +90,7 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Product Grid - All boxes same height */}
+          {/* Product Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredServices.map((service) => {
               const displayPrice = getDisplayPrice(service);
@@ -112,23 +108,19 @@ export default function Home() {
                       : isDarkMode ? 'border-white/10 hover:border-[#FF6B35]/50' : 'border-gray-200 hover:border-[#FF6B35]/50'
                     }
                   `}>
-                    {/* Discount Badge */}
                     {hasDiscount && (
                       <div className="absolute -top-2 -right-2 bg-gradient-to-r from-[#FF6B35] to-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
                         🔥 {service.discount_percent}% လျှော့
                       </div>
                     )}
                     
-                    {/* Special Badge */}
                     {isSpecial && (
                       <div className="absolute -top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 animate-pulse">
                         ✨ အထူးဈေး
                       </div>
                     )}
                     
-                    {/* Logo Left + Info Right - Fixed heights */}
                     <div className="flex items-start gap-4">
-                      {/* Logo */}
                       <div className="flex-shrink-0">
                         {service.logo_url ? (
                           <img 
@@ -147,7 +139,6 @@ export default function Home() {
                         )}
                       </div>
                       
-                      {/* Info - Fixed structure for equal height */}
                       <div className="flex-1 min-w-0">
                         <h3 className={`font-bold text-base md:text-lg truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                           {service.name}
@@ -155,7 +146,6 @@ export default function Home() {
                         <p className="text-xs text-gray-400 mt-0.5">📅 {service.duration}</p>
                         
                         <div className="mt-2 space-y-0.5">
-                          {/* Market Price */}
                           {service.market_price > 0 && (
                             <div className="text-[10px] md:text-xs text-gray-500">
                               <span className="text-gray-400">ဈေးကွက်ဈေး:</span>{' '}
@@ -163,7 +153,6 @@ export default function Home() {
                             </div>
                           )}
                           
-                          {/* Hubby Price (if special, show line-through) */}
                           {isSpecial ? (
                             <div className="text-[10px] md:text-xs text-gray-500">
                               <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
@@ -175,7 +164,6 @@ export default function Home() {
                             </div>
                           )}
                           
-                          {/* Special Price with Label */}
                           {isSpecial && (
                             <div className="text-green-500 font-bold text-sm md:text-base">
                               <span className="text-green-600">အထူးလျှော့ဈေး:</span> {displayPrice.price.toLocaleString()} MMK
@@ -209,4 +197,4 @@ export default function Home() {
       `}</style>
     </>
   );
-      }
+}
