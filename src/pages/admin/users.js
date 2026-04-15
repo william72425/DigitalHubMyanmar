@@ -7,6 +7,8 @@ import AdminNavbar from '@/components/AdminNavbar';
 
 export default function AdminUsers() {
   const router = useRouter();
+  const [password, setPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [users, setUsers] = useState([]);
   const [promoCodes, setPromoCodes] = useState([]);
@@ -15,27 +17,43 @@ export default function AdminUsers() {
   const [newCode, setNewCode] = useState({ code: '', discount_percent: 10, usage_limit: 100 });
   const [selectedCodeUsers, setSelectedCodeUsers] = useState([]);
   const [showCodeUsers, setShowCodeUsers] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') setIsDarkMode(false);
     else if (savedTheme === 'dark') setIsDarkMode(true);
     
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user || user.email !== 'thantzin84727@gmail.com') {
-        router.push('/');
-        return;
-      }
-      await fetchData();
-    });
-    
-    return () => unsubscribe();
+    const auth = sessionStorage.getItem('admin_auth');
+    if (auth === 'true') {
+      setIsAuthenticated(true);
+      fetchData();
+    }
   }, []);
 
   const toggleTheme = () => {
     const newTheme = !isDarkMode;
     setIsDarkMode(newTheme);
     localStorage.setItem('theme', newTheme ? 'dark' : 'light');
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    const res = await fetch('/api/admin/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      sessionStorage.setItem('admin_auth', 'true');
+      setIsAuthenticated(true);
+      fetchData();
+    } else {
+      setMessage('❌ Wrong password');
+    }
+    setLoading(false);
   };
 
   const fetchData = async () => {
@@ -100,6 +118,26 @@ export default function AdminUsers() {
     setLoading(false);
   };
 
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Head><title>Admin Login</title></Head>
+        <div className="min-h-screen bg-gradient-to-br from-[#020617] to-[#0a0f2a] flex items-center justify-center p-4">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 w-full max-w-md">
+            <h1 className="text-2xl font-bold text-white text-center mb-6">Admin Login</h1>
+            {message && <div className="mb-4 p-2 bg-red-500/20 text-red-400 text-center rounded">{message}</div>}
+            <form onSubmit={handleLogin}>
+              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 mb-4" autoFocus />
+              <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-lg font-semibold">
+                {loading ? 'Checking...' : 'Login'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
@@ -112,13 +150,10 @@ export default function AdminUsers() {
     <>
       <Head><title>Admin - Users & Promo | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
-          <div className="flex items-center gap-4 mb-6">
-            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>👥 Users & Promo Management</h1>
-            <a href="/admin" className="text-sm bg-[#FF6B35] text-white px-3 py-1 rounded-lg">← Back to Products Admin</a>
-          </div>
+          <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>👥 Users & Promo Management</h1>
           
           <div className="flex gap-2 mb-6 border-b border-white/20 pb-2 flex-wrap">
             <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg ${activeTab === 'users' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -161,10 +196,10 @@ export default function AdminUsers() {
               <div className={`p-4 rounded-xl mb-6 ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                 <h3 className={`font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>+ Add New Promo Code</h3>
                 <div className="flex flex-wrap gap-3">
-                  <input type="text" placeholder="Code (e.g., PARTNER10)" value={newCode.code} onChange={(e) => setNewCode({...newCode, code: e.target.value})} className={`px-3 py-2 rounded-lg ${isDarkMode ? 'bg-white/10 text-white' : 'bg-white text-gray-800'} border border-white/20`} />
+                  <input type="text" placeholder="Code" value={newCode.code} onChange={(e) => setNewCode({...newCode, code: e.target.value})} className={`px-3 py-2 rounded-lg ${isDarkMode ? 'bg-white/10 text-white' : 'bg-white text-gray-800'} border border-white/20`} />
                   <input type="number" placeholder="Discount %" value={newCode.discount_percent} onChange={(e) => setNewCode({...newCode, discount_percent: parseInt(e.target.value)})} className="w-24 px-3 py-2 rounded-lg bg-white/10 text-white border border-white/20" />
-                  <input type="number" placeholder="Usage Limit" value={newCode.usage_limit} onChange={(e) => setNewCode({...newCode, usage_limit: parseInt(e.target.value)})} className="w-28 px-3 py-2 rounded-lg bg-white/10 text-white border border-white/20" />
-                  <button onClick={addPromoCode} className="bg-green-600 text-white px-4 py-2 rounded-lg">Add Code</button>
+                  <input type="number" placeholder="Limit" value={newCode.usage_limit} onChange={(e) => setNewCode({...newCode, usage_limit: parseInt(e.target.value)})} className="w-28 px-3 py-2 rounded-lg bg-white/10 text-white border border-white/20" />
+                  <button onClick={addPromoCode} className="bg-green-600 text-white px-4 py-2 rounded-lg">Add</button>
                 </div>
               </div>
               
@@ -174,7 +209,7 @@ export default function AdminUsers() {
                     <tr>
                       <th className="text-left py-2 px-2">Code</th>
                       <th className="text-left py-2 px-2">Discount</th>
-                      <th className="text-left py-2 px-2">Used / Limit</th>
+                      <th className="text-left py-2 px-2">Used/Limit</th>
                       <th className="text-left py-2 px-2">Status</th>
                       <th className="text-left py-2 px-2">Users</th>
                       <th className="text-left py-2 px-2">Actions</th>
