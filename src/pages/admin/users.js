@@ -105,18 +105,19 @@ export default function AdminUsers() {
   };
 
   const viewCodeUsers = async (code) => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, 'users'), where('promo_code_used', '==', code));
-      const snapshot = await getDocs(q);
-      const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setSelectedCodeUsers(usersList);
-      setShowCodeUsers(true);
-    } catch (error) {
-      alert('Failed to load users for this code');
-    }
-    setLoading(false);
-  };
+  setLoading(true);
+  try {
+    // Use 'used_promote_code' instead of 'promo_code_used'
+    const q = query(collection(db, 'users'), where('used_promote_code', '==', code));
+    const snapshot = await getDocs(q);
+    const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setSelectedCodeUsers(usersList);
+    setShowCodeUsers(true);
+  } catch (error) {
+    alert('Failed to load users for this code');
+  }
+  setLoading(false);
+};
 
   if (!isAuthenticated) {
     return (
