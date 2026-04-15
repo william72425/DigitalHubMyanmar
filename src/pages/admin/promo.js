@@ -173,28 +173,67 @@ export default function AdminPromo() {
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
         <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
         <div className="container mx-auto px-4 py-24 max-w-7xl">
-          <div className="flex justify-between items-center mb-6"><h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Codes</h1><button onClick={() => { setEditingCode(null); setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, used_count: 0, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} }); setShowAddModal(true); }} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">+ Add Promo Code</button></div>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Codes</h1>
+            <button onClick={() => { setEditingCode(null); setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, used_count: 0, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} }); setShowAddModal(true); }} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">+ Add Promo Code</button>
+          </div>
           <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
             <table className="w-full text-sm">
-              <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}}><tr><th className="text-left py-2 px-2">Code</th><th className="text-left py-2 px-2">Option</th><th className="text-left py-2 px-2">Used/Limit</th><th className="text-left py-2 px-2">Valid From</th><th className="text-left py-2 px-2">Valid Until</th><th className="text-left py-2 px-2">Status</th><th className="text-left py-2 px-2">Actions</th></tr></thead>
-              <tbody>{promoCodes.map((code) => (<tr key={code.id} className="border-b border-white/10"><td className="py-2 px-2 font-mono">{code.code}</td><td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td><td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td><td className="py-2 px-2">{code.valid_from || '-'}</td><td className="py-2 px-2">{code.valid_until || '-'}</td><td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td><td className="py-2 px-2"><button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button><button onClick={() => deletePromoCode(code.id)} className="text-red-400">Delete</button></td></table>))}</tbody>
+              <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
+                <tr>
+                  <th className="text-left py-2 px-2">Code</th>
+                  <th className="text-left py-2 px-2">Option</th>
+                  <th className="text-left py-2 px-2">Used/Limit</th>
+                  <th className="text-left py-2 px-2">Valid From</th>
+                  <th className="text-left py-2 px-2">Valid Until</th>
+                  <th className="text-left py-2 px-2">Status</th>
+                  <th className="text-left py-2 px-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {promoCodes.map((code) => (
+                  <tr key={code.id} className="border-b border-white/10">
+                    <td className="py-2 px-2 font-mono">{code.code}</td>
+                    <td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td>
+                    <td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td>
+                    <td className="py-2 px-2">{code.valid_from || '-'}</td>
+                    <td className="py-2 px-2">{code.valid_until || '-'}</td>
+                    <td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td>
+                    <td className="py-2 px-2">
+                      <button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button>
+                      <button onClick={() => deletePromoCode(code.id)} className="text-red-400">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      {showAddModal && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto"><div className={`rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-white/20`}>
-        <div className="flex justify-between items-center mb-4"><h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{editingCode ? 'Edit Promo Code' : 'Create New Promo Code'}</h2><button onClick={() => setShowAddModal(false)} className="text-gray-400 text-2xl">&times;</button></div>
-        <div className="space-y-4">
-          <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Promo Code</label><input type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
-          <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Option Type</label><select value={formData.option_type} onChange={(e) => { setFormData({...formData, option_type: e.target.value, settings: {}}); }} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
-            <option value="first_purchase_discount">🎯 First Purchase Discount</option><option value="giveaway">🎁 Giveaway Entry</option><option value="tiered_rewards">📊 Tiered Rewards</option><option value="stackable_discount">📚 Stackable Discount</option>
-          </select></div>
-          <OptionFields optionType={formData.option_type} settings={formData.settings} onChange={handleSettingChange} />
-          <div className="grid grid-cols-2 gap-4"><div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usage Limit</label><input type="number" value={formData.usage_limit} onChange={(e) => setFormData({...formData, usage_limit: parseInt(e.target.value)})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div><div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid From</label><input type="date" value={formData.valid_from} onChange={(e) => setFormData({...formData, valid_from: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div><div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid Until (Optional)</label><input type="date" value={formData.valid_until} onChange={(e) => setFormData({...formData, valid_until: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div></div>
-          <button onClick={editingCode ? updatePromoCode : createPromoCode} className="w-full bg-green-600 text-white p-2 rounded-lg font-semibold">{editingCode ? 'Update Promo Code' : 'Create Promo Code'}</button>
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className={`rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-white/20`}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{editingCode ? 'Edit Promo Code' : 'Create New Promo Code'}</h2>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 text-2xl">&times;</button>
+            </div>
+            <div className="space-y-4">
+              <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Promo Code</label><input type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
+              <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Option Type</label><select value={formData.option_type} onChange={(e) => { setFormData({...formData, option_type: e.target.value, settings: {}}); }} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+                <option value="first_purchase_discount">🎯 First Purchase Discount</option><option value="giveaway">🎁 Giveaway Entry</option><option value="tiered_rewards">📊 Tiered Rewards</option><option value="stackable_discount">📚 Stackable Discount</option>
+              </select></div>
+              <OptionFields optionType={formData.option_type} settings={formData.settings} onChange={handleSettingChange} />
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usage Limit</label><input type="number" value={formData.usage_limit} onChange={(e) => setFormData({...formData, usage_limit: parseInt(e.target.value)})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
+                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid From</label><input type="date" value={formData.valid_from} onChange={(e) => setFormData({...formData, valid_from: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
+                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid Until (Optional)</label><input type="date" value={formData.valid_until} onChange={(e) => setFormData({...formData, valid_until: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
+              </div>
+              <button onClick={editingCode ? updatePromoCode : createPromoCode} className="w-full bg-green-600 text-white p-2 rounded-lg font-semibold">{editingCode ? 'Update Promo Code' : 'Create Promo Code'}</button>
+            </div>
+          </div>
         </div>
-      </div></div>)}
+      )}
     </>
   );
 }
