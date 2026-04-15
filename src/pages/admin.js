@@ -71,20 +71,25 @@ export default function Admin() {
 
   const saveFeaturesToGitHub = async (updatedFeatures, updatedNotes) => {
     setLoading(true);
-    setMessage('⏳ Saving features...');
+    setMessage('⏳ Saving features and notes...');
     
     try {
       const res = await fetch('/api/admin/save-features', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ features: updatedFeatures, product_notes: updatedNotes })
+        body: JSON.stringify({ 
+          features: updatedFeatures, 
+          product_notes: updatedNotes 
+        })
       });
       
       const data = await res.json();
       
       if (data.success) {
-        setMessage('✅ Features saved!');
+        setMessage('✅ Features and notes saved!');
         setTimeout(() => setMessage(''), 2000);
+        // Refresh features to show latest
+        fetchFeatures();
       } else {
         setMessage(`❌ Save failed: ${data.error || 'Unknown error'}`);
       }
@@ -247,40 +252,37 @@ export default function Admin() {
   };
 
   const saveNote = () => {
-  if (!selectedProductId) {
-    setMessage('❌ Please select a product first');
-    return;
-  }
-  
-  let updatedNotes;
-  if (noteContent.trim() === '') {
-    updatedNotes = notes.filter(n => n.product_id !== selectedProductId);
-  } else {
-    const existingIndex = notes.findIndex(n => n.product_id === selectedProductId);
-    const newNote = {
-      id: existingIndex >= 0 ? notes[existingIndex].id : Date.now(),
-      product_id: selectedProductId,
-      title: noteTitle || '📌 မှတ်ချက်',
-      content: noteContent
-    };
-    
-    if (existingIndex >= 0) {
-      updatedNotes = [...notes];
-      updatedNotes[existingIndex] = newNote;
-    } else {
-      updatedNotes = [...notes, newNote];
+    if (!selectedProductId) {
+      setMessage('❌ Please select a product first');
+      return;
     }
-  }
-  
-  setNotes(updatedNotes);
-  
-  // Save both features AND notes together
-  saveFeaturesToGitHub(features, updatedNotes);
-  
-  setShowNoteModal(false);
-  setMessage(noteContent.trim() === '' ? '✅ Note removed!' : '✅ Note saved!');
-  setTimeout(() => setMessage(''), 2000);
-};
+    
+    let updatedNotes;
+    if (noteContent.trim() === '') {
+      updatedNotes = notes.filter(n => n.product_id !== selectedProductId);
+    } else {
+      const existingIndex = notes.findIndex(n => n.product_id === selectedProductId);
+      const newNote = {
+        id: existingIndex >= 0 ? notes[existingIndex].id : Date.now(),
+        product_id: selectedProductId,
+        title: noteTitle || '📌 မှတ်ချက်',
+        content: noteContent
+      };
+      
+      if (existingIndex >= 0) {
+        updatedNotes = [...notes];
+        updatedNotes[existingIndex] = newNote;
+      } else {
+        updatedNotes = [...notes, newNote];
+      }
+    }
+    
+    setNotes(updatedNotes);
+    saveFeaturesToGitHub(features, updatedNotes);
+    setShowNoteModal(false);
+    setMessage(noteContent.trim() === '' ? '✅ Note removed!' : '✅ Note saved for this product!');
+    setTimeout(() => setMessage(''), 2000);
+  };
 
   const handleDragStart = (e, index) => {
     setDraggedItem(index);
