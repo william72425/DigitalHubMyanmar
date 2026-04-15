@@ -51,5 +51,18 @@
     "special_price": null,
     "discount_percent": "",
     "logo_size": 45
+  },
+  {
+    "id": 1776220100911,
+    "name": "Express VPN",
+    "category": "VPNs",
+    "market_price": 6000,
+    "hubby_price": 5000,
+    "discount_percent": "30",
+    "special_price": 3500,
+    "logo_url": "/logos/1776220100911-1776220228098.png",
+    "logo_size": 70,
+    "duration": "1 month",
+    "sort_order": 3
   }
 ]
