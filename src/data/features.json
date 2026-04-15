@@ -31,6 +31,14 @@
       "free": "rgaggggg",
       "pro": "eeeesfefffefggg",
       "sort_order": 1
+    },
+    {
+      "id": 1776236136989,
+      "product_id": 1776220603230,
+      "feature_name": "access",
+      "free": "limited features ",
+      "pro": "all features",
+      "sort_order": 0
     }
   ],
   "product_notes": [
