@@ -90,5 +90,18 @@
     "logo_size": 45,
     "duration": "1 month",
     "sort_order": 5
+  },
+  {
+    "id": 1776236244309,
+    "name": "Toggle VPN",
+    "category": "VPNs",
+    "market_price": 5000,
+    "hubby_price": 3500,
+    "discount_percent": null,
+    "special_price": null,
+    "logo_url": "/logos/1776236244309-1776236367081.webp",
+    "logo_size": 45,
+    "duration": "1 month",
+    "sort_order": 6
   }
 ]
