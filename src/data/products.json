@@ -61,8 +61,34 @@
     "discount_percent": "30",
     "special_price": 3500,
     "logo_url": "/logos/1776220100911-1776220228098.png",
-    "logo_size": 70,
+    "logo_size": 45,
     "duration": "1 month",
     "sort_order": 3
+  },
+  {
+    "id": 1776220499012,
+    "name": "Kling AI",
+    "category": "AI Tools",
+    "market_price": 45000,
+    "hubby_price": 30000,
+    "discount_percent": null,
+    "special_price": null,
+    "logo_url": "/logos/1776220499012-1776220534303.png",
+    "logo_size": 45,
+    "duration": "1 month",
+    "sort_order": 4
+  },
+  {
+    "id": 1776220603230,
+    "name": "Capcut ",
+    "category": "Video Editing",
+    "market_price": 10000,
+    "hubby_price": 7000,
+    "discount_percent": null,
+    "special_price": null,
+    "logo_url": "/logos/1776220603230-1776220659197.png",
+    "logo_size": 45,
+    "duration": "1 month",
+    "sort_order": 5
   }
 ]
