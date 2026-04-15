@@ -1,4 +1,28 @@
 {
-  "features": [],
-  "product_notes": []
+  "features": [
+    {
+      "id": 1,
+      "product_id": 1,
+      "feature_name": "Image Library",
+      "free": "limited images",
+      "pro": "full access",
+      "sort_order": 0
+    },
+    {
+      "id": 2,
+      "product_id": 1,
+      "feature_name": "Team Access",
+      "free": "no",
+      "pro": "unlimited",
+      "sort_order": 1
+    }
+  ],
+  "product_notes": [
+    {
+      "id": 1,
+      "product_id": 1,
+      "title": "📌 Canva Pro မှတ်ချက်",
+      "content": "Team invite is private, no one can see your project including admin"
+    }
+  ]
 }
