@@ -4,8 +4,6 @@ import path from 'path';
 const featuresPath = path.join(process.cwd(), 'src', 'data', 'features.json');
 
 export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
@@ -18,8 +16,17 @@ export default async function handler(req, res) {
       fs.mkdirSync(dir, { recursive: true });
     }
     
-    const dataToSave = JSON.stringify({ features: features || [], product_notes: product_notes || [] }, null, 2);
-    fs.writeFileSync(featuresPath, dataToSave, 'utf8');
+    // Keep existing data structure
+    const existingData = fs.existsSync(featuresPath) 
+      ? JSON.parse(fs.readFileSync(featuresPath, 'utf8')) 
+      : { features: [], product_notes: [] };
+    
+    const dataToSave = {
+      features: features !== undefined ? features : existingData.features,
+      product_notes: product_notes !== undefined ? product_notes : existingData.product_notes
+    };
+    
+    fs.writeFileSync(featuresPath, JSON.stringify(dataToSave, null, 2), 'utf8');
     
     res.status(200).json({ success: true, message: 'Saved successfully' });
   } catch (error) {
