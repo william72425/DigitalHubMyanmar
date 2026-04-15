@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import { auth, db } from '@/utils/firebase';
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
-import toast, { Toaster } from 'react-hot-toast';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -48,14 +47,14 @@ export default function AdminDashboard() {
       const promoList = promoSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setPromoCodes(promoList);
     } catch (error) {
-      toast.error('Failed to load data');
+      alert('Failed to load data');
     }
     setLoading(false);
   };
 
   const addPromoCode = async () => {
     if (!newCode.code.trim()) {
-      toast.error('Please enter a promo code');
+      alert('Please enter a promo code');
       return;
     }
     
@@ -69,18 +68,18 @@ export default function AdminDashboard() {
         created_by: 'admin',
         created_at: new Date().toISOString()
       });
-      toast.success('Promo code added!');
+      alert('Promo code added!');
       setNewCode({ code: '', discount_percent: 10, usage_limit: 100 });
       fetchData();
     } catch (error) {
-      toast.error('Failed to add promo code');
+      alert('Failed to add promo code');
     }
   };
 
   const deletePromoCode = async (id) => {
     if (confirm('Delete this promo code?')) {
       await deleteDoc(doc(db, 'promo_codes', id));
-      toast.success('Deleted!');
+      alert('Deleted!');
       fetchData();
     }
   };
@@ -96,7 +95,6 @@ export default function AdminDashboard() {
   return (
     <>
       <Head><title>Admin Dashboard | Digital Hub Myanmar</title></Head>
-      <Toaster position="top-right" />
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
         <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
         
