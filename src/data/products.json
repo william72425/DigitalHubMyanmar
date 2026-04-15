@@ -103,5 +103,18 @@
     "logo_size": 45,
     "duration": "1 month",
     "sort_order": 6
+  },
+  {
+    "id": 1776237245641,
+    "name": "Youtube Premium",
+    "category": "Others",
+    "market_price": 8000,
+    "hubby_price": 6000,
+    "discount_percent": "20",
+    "special_price": 4800,
+    "logo_url": null,
+    "logo_size": 70,
+    "duration": "1 month",
+    "sort_order": 7
   }
 ]
