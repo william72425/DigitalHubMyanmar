@@ -4,10 +4,7 @@ import path from 'path';
 const featuresPath = path.join(process.cwd(), 'src', 'data', 'features.json');
 
 export default function handler(req, res) {
-  // Disable cache
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
   
   if (req.method === 'GET') {
     try {
