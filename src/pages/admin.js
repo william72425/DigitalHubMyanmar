@@ -247,37 +247,40 @@ export default function Admin() {
   };
 
   const saveNote = () => {
-    if (!selectedProductId) {
-      setMessage('❌ Please select a product first');
-      return;
-    }
+  if (!selectedProductId) {
+    setMessage('❌ Please select a product first');
+    return;
+  }
+  
+  let updatedNotes;
+  if (noteContent.trim() === '') {
+    updatedNotes = notes.filter(n => n.product_id !== selectedProductId);
+  } else {
+    const existingIndex = notes.findIndex(n => n.product_id === selectedProductId);
+    const newNote = {
+      id: existingIndex >= 0 ? notes[existingIndex].id : Date.now(),
+      product_id: selectedProductId,
+      title: noteTitle || '📌 မှတ်ချက်',
+      content: noteContent
+    };
     
-    let updatedNotes;
-    if (noteContent.trim() === '') {
-      updatedNotes = notes.filter(n => n.product_id !== selectedProductId);
+    if (existingIndex >= 0) {
+      updatedNotes = [...notes];
+      updatedNotes[existingIndex] = newNote;
     } else {
-      const existingIndex = notes.findIndex(n => n.product_id === selectedProductId);
-      const newNote = {
-        id: existingIndex >= 0 ? notes[existingIndex].id : Date.now(),
-        product_id: selectedProductId,
-        title: noteTitle || '📌 မှတ်ချက်',
-        content: noteContent
-      };
-      
-      if (existingIndex >= 0) {
-        updatedNotes = [...notes];
-        updatedNotes[existingIndex] = newNote;
-      } else {
-        updatedNotes = [...notes, newNote];
-      }
+      updatedNotes = [...notes, newNote];
     }
-    
-    setNotes(updatedNotes);
-    saveFeaturesToGitHub(features, updatedNotes);
-    setShowNoteModal(false);
-    setMessage(noteContent.trim() === '' ? '✅ Note removed!' : '✅ Note saved for this product!');
-    setTimeout(() => setMessage(''), 2000);
-  };
+  }
+  
+  setNotes(updatedNotes);
+  
+  // Save both features AND notes together
+  saveFeaturesToGitHub(features, updatedNotes);
+  
+  setShowNoteModal(false);
+  setMessage(noteContent.trim() === '' ? '✅ Note removed!' : '✅ Note saved!');
+  setTimeout(() => setMessage(''), 2000);
+};
 
   const handleDragStart = (e, index) => {
     setDraggedItem(index);
