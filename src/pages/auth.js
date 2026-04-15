@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '@/utils/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { motion } from 'framer-motion';
@@ -11,25 +11,70 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [referralCode, setReferralCode] = useState('');
+  const [promoteCode, setPromoteCode] = useState('');
+  const [promoteCodeValid, setPromoteCodeValid] = useState(null);
+  const [promoteCodeDiscount, setPromoteCodeDiscount] = useState(0);
+  const [promoteCodeType, setPromoteCodeType] = useState(null); // 'partner' or 'user'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const router = useRouter();
 
-  // Get referral code from URL
+  // Get promote code from URL (for referral)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const ref = urlParams.get('ref');
     if (ref) {
-      setReferralCode(ref);
-      localStorage.setItem('referrer_code', ref);
+      setPromoteCode(ref);
     }
   }, []);
 
-  // Generate random referral code
-  const generateReferralCode = () => {
+  // Generate random promote code for user
+  const generatePromoteCode = () => {
     return 'HUBBY' + Math.random().toString(36).substring(2, 8).toUpperCase();
+  };
+
+  // Check promote code validity
+  const checkPromoteCode = async (code) => {
+    if (!code.trim()) {
+      setPromoteCodeValid(null);
+      setPromoteCodeDiscount(0);
+      setPromoteCodeType(null);
+      return;
+    }
+    
+    try {
+      // First check if it's a partner promo code
+      const partnerQuery = query(collection(db, 'promo_codes'), where('code', '==', code.toUpperCase()));
+      const partnerSnapshot = await getDocs(partnerQuery);
+      
+      if (!partnerSnapshot.empty) {
+        const promoData = partnerSnapshot.docs[0].data();
+        if (promoData.is_active && promoData.used_count < promoData.usage_limit) {
+          setPromoteCodeValid(true);
+          setPromoteCodeDiscount(promoData.discount_percent || 0);
+          setPromoteCodeType('partner');
+          return;
+        }
+      }
+      
+      // Then check if it's a user promote code
+      const userQuery = query(collection(db, 'users'), where('promote_code', '==', code.toUpperCase()));
+      const userSnapshot = await getDocs(userQuery);
+      
+      if (!userSnapshot.empty) {
+        setPromoteCodeValid(true);
+        setPromoteCodeDiscount(10); // 10% discount for user referral
+        setPromoteCodeType('user');
+        return;
+      }
+      
+      setPromoteCodeValid(false);
+      setPromoteCodeDiscount(0);
+      setPromoteCodeType(null);
+    } catch (error) {
+      setPromoteCodeValid(false);
+    }
   };
 
   const handleLogin = async (e) => {
@@ -53,39 +98,73 @@ export default function Auth() {
     setMessage('');
     
     try {
-      // Create user in Firebase Auth
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
       
-      const newReferralCode = generateReferralCode();
+      const newPromoteCode = generatePromoteCode();
+      let usedPromoteCode = null;
+      let referredBy = null;
+      let discountPercent = 0;
+      
+      // If promote code was used
+      if (promoteCodeValid && promoteCode) {
+        usedPromoteCode = promoteCode.toUpperCase();
+        discountPercent = promoteCodeDiscount;
+        
+        // If it's a partner code, update usage count
+        if (promoteCodeType === 'partner') {
+          const partnerQuery = query(collection(db, 'promo_codes'), where('code', '==', usedPromoteCode));
+          const partnerSnapshot = await getDocs(partnerQuery);
+          if (!partnerSnapshot.empty) {
+            const promoDoc = partnerSnapshot.docs[0];
+            await updateDoc(doc(db, 'promo_codes', promoDoc.id), {
+              used_count: (promoDoc.data().used_count || 0) + 1
+            });
+          }
+        }
+        
+        // If it's a user code, record who referred
+        if (promoteCodeType === 'user') {
+          const userQuery = query(collection(db, 'users'), where('promote_code', '==', usedPromoteCode));
+          const userSnapshot = await getDocs(userQuery);
+          if (!userSnapshot.empty) {
+            referredBy = userSnapshot.docs[0].id;
+          }
+        }
+      }
       
       // Store user data in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         username: username,
         email: email,
-        referral_code: newReferralCode,
-        referred_by: referralCode || null,
+        promote_code: newPromoteCode,
+        used_promote_code: usedPromoteCode,
+        referred_by: referredBy,
+        discount_percent: discountPercent,
+        discount_used: false,
         created_at: new Date().toISOString(),
-        discount_used: false
+        last_login: new Date().toISOString()
       });
       
       // If referred by someone, add to referrals collection
-      if (referralCode) {
+      if (referredBy) {
         await setDoc(doc(db, 'referrals', Date.now().toString()), {
-          referrer_code: referralCode,
+          referrer_id: referredBy,
           referred_user_id: user.uid,
+          discount_percent: discountPercent,
           created_at: new Date().toISOString()
         });
-        
-        // Give discount to referrer (optional)
-        setMessage('✅ Account created! You were referred!');
-      } else {
-        setMessage('✅ Account created! Share your referral code!');
       }
       
-      // Clear form and switch to login
+      if (usedPromoteCode && discountPercent > 0) {
+        setMessage(`✅ Account created! You got ${discountPercent}% discount on your first purchase!`);
+      } else {
+        setMessage('✅ Account created! Share your promote code to get discounts!');
+      }
+      
       setTimeout(() => {
         setIsLogin(true);
         setPassword('');
+        setPromoteCode('');
         setMessage('');
       }, 2000);
       
@@ -109,12 +188,11 @@ export default function Auth() {
               Digital Hub Myanmar
             </h1>
             <p className="text-gray-400 text-sm mt-2">Hubby Store Member Login</p>
-            {referralCode && (
-              <p className="text-[#FF6B35] text-xs mt-2">🎁 You were invited! Get 10% off on sign up!</p>
+            {promoteCode && !isLogin && (
+              <p className="text-[#FF6B35] text-xs mt-2">🎁 Promote code detected! You'll get discount on first purchase!</p>
             )}
           </div>
 
-          {/* Tab Switcher */}
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => { setIsLogin(true); setError(''); setMessage(''); }}
@@ -127,7 +205,7 @@ export default function Auth() {
               Login
             </button>
             <button
-              onClick={() => { setIsLogin(false); setError(''); setMessage(''); }}
+              onClick={() => { setIsLogin(false); setError(''); setMessage(''); setPromoteCodeValid(null); }}
               className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
                 !isLogin 
                   ? 'bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white shadow-lg' 
@@ -149,7 +227,6 @@ export default function Auth() {
             </div>
           )}
 
-          {/* Login Form */}
           {isLogin ? (
             <motion.form
               initial={{ opacity: 0, x: -20 }}
@@ -188,7 +265,6 @@ export default function Auth() {
               </button>
             </motion.form>
           ) : (
-            // Register Form
             <motion.form
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -228,11 +304,32 @@ export default function Auth() {
                   required
                 />
               </div>
-              {referralCode && (
-                <div className="mb-4 p-2 bg-[#FF6B35]/20 rounded-lg">
-                  <p className="text-[#FF6B35] text-xs text-center">🎉 You're joining with referral! Get 10% off!</p>
-                </div>
-              )}
+              
+              {/* Promote Code Field - Only one field */}
+              <div className="mb-4">
+                <label className="block text-gray-300 text-sm mb-2">Promote Code (Optional)</label>
+                <input
+                  type="text"
+                  value={promoteCode}
+                  onChange={(e) => {
+                    setPromoteCode(e.target.value);
+                    checkPromoteCode(e.target.value);
+                  }}
+                  className="w-full p-3 rounded-xl bg-white/10 text-white border border-white/20 focus:border-[#FF6B35] outline-none"
+                  placeholder="Enter promote code if you have"
+                />
+                {promoteCodeValid === true && (
+                  <p className="text-green-400 text-xs mt-1">
+                    ✅ Valid! You'll get {promoteCodeDiscount}% discount on first purchase!
+                  </p>
+                )}
+                {promoteCodeValid === false && (
+                  <p className="text-red-400 text-xs mt-1">
+                    ❌ Invalid promote code
+                  </p>
+                )}
+              </div>
+              
               <button
                 type="submit"
                 disabled={loading}
@@ -250,4 +347,4 @@ export default function Auth() {
       </div>
     </>
   );
-    }
+}
