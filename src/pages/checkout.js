@@ -21,6 +21,7 @@ export default function Checkout() {
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [promoPercent, setPromoPercent] = useState(0);
   const [hasSpecialPrice, setHasSpecialPrice] = useState(false);
+  const [priceError, setPriceError] = useState(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -65,7 +66,10 @@ export default function Checkout() {
       if (userDoc.exists()) {
         const data = userDoc.data();
         setUserData(data);
-        console.log('User data:', { used_promote_code: data.used_promote_code, first_purchase_discount_used: data.first_purchase_discount_used });
+        console.log('User data:', { 
+          used_promote_code: data.used_promote_code, 
+          first_purchase_discount_used: data.first_purchase_discount_used 
+        });
         
         // Only apply first purchase discount if user has NO active orders
         if (!hasOrder && data.used_promote_code && !data.first_purchase_discount_used && product) {
@@ -92,35 +96,41 @@ export default function Checkout() {
         let firstDisc = 0;
         let hasSpecial = false;
         
+        console.log('Starting price:', price);
+        
         // STEP 1: Admin Special Price
         if (product.special_price && product.special_price > 0) {
           specialDisc = product.hubby_price - product.special_price;
           price = product.special_price;
           hasSpecial = true;
-          console.log('Applied special price:', product.special_price, 'Discount:', specialDisc);
+          console.log('After special price:', price, 'Discount:', specialDisc);
         }
         
         // STEP 2: First Purchase Discount
         const isEligible = discountPercent > 0 && !hasOrder && !userDoc.data()?.first_purchase_discount_used;
-        console.log('First purchase eligible:', isEligible, 'Discount percent:', discountPercent, 'Has order:', hasOrder);
+        console.log('First purchase eligible:', isEligible, 'Discount percent:', discountPercent);
         
         if (isEligible) {
           firstDisc = Math.round(price * discountPercent / 100);
           if (firstDisc > price) firstDisc = price;
           price = price - firstDisc;
-          console.log('Applied first purchase discount:', firstDisc, 'New price:', price);
+          console.log('After first purchase discount:', price, 'Discount:', firstDisc);
         }
         
         setHasSpecialPrice(hasSpecial);
         setSpecialDiscount(specialDisc);
         setFirstPurchaseDiscount(firstDisc);
         setFinalPrice(price);
+        setPriceError(null);
         
-        console.log('FINAL PRICE CALCULATED:', price);
+        console.log('FINAL PRICE SET TO:', price);
+      } else {
+        setPriceError('Product not loaded');
       }
       setLoading(false);
     } catch (error) {
       console.error('Error loading user data:', error);
+      setPriceError(error.message);
       if (product) setFinalPrice(product.hubby_price);
       setLoading(false);
     }
@@ -171,6 +181,10 @@ export default function Checkout() {
     );
   }
 
+  // Ensure finalPrice is a valid number
+  const displayPrice = (typeof finalPrice === 'number' && !isNaN(finalPrice) && finalPrice > 0) ? finalPrice : product.hubby_price;
+  console.log('Display price calculated:', displayPrice, 'Original finalPrice:', finalPrice);
+
   return (
     <>
       <Head><title>Checkout | Digital Hub Myanmar</title></Head>
@@ -179,6 +193,12 @@ export default function Checkout() {
         
         <div className="container mx-auto px-4 py-24 max-w-4xl">
           <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🛒 Checkout</h1>
+          
+          {priceError && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm">
+              Error: {priceError}
+            </div>
+          )}
           
           {/* Bill Card */}
           <div className={`rounded-2xl overflow-hidden mb-6 ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} shadow-2xl border ${isDarkMode ? 'border-white/20' : 'border-gray-200'}`}>
@@ -226,7 +246,7 @@ export default function Checkout() {
                 <div className={`flex justify-between pt-4 mt-2 border-t-2 ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
                   <span className="text-lg font-bold">Total Amount</span>
                   <span className={`text-2xl font-bold ${isDarkMode ? 'text-[#FF6B35]' : 'text-orange-600'}`}>
-                    {finalPrice.toLocaleString()} MMK
+                    {displayPrice.toLocaleString()} MMK
                   </span>
                 </div>
                 
@@ -237,6 +257,11 @@ export default function Checkout() {
                     </p>
                   </div>
                 )}
+                
+                {/* Debug info - remove later */}
+                <div className="text-xs text-gray-500 mt-4 pt-2 border-t border-white/10">
+                  <p>Debug: finalPrice={finalPrice}, displayPrice={displayPrice}</p>
+                </div>
               </div>
             </div>
             
@@ -263,7 +288,7 @@ export default function Checkout() {
             disabled={processing}
             className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50"
           >
-            {processing ? 'Processing...' : `✅ Confirm Order - ${finalPrice.toLocaleString()} MMK`}
+            {processing ? 'Processing...' : `✅ Confirm Order - ${displayPrice.toLocaleString()} MMK`}
           </button>
           
           <p className="text-center text-gray-500 text-xs mt-4">
