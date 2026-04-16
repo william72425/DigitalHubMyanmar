@@ -14,48 +14,66 @@ export default function ProductDetail() {
   const [features, setFeatures] = useState([]);
   const [productNote, setProductNote] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [userDiscounts, setUserDiscounts] = useState({ promoDiscount: 0, promoType: 'percent', referralDiscount: 0 });
-  const [showContactOptions, setShowContactOptions] = useState(false);
   const [user, setUser] = useState(null);
+  const [userDiscounts, setUserDiscounts] = useState({ 
+    promoDiscount: 0, 
+    promoType: 'percent', 
+    stackWithSpecial: false,
+    referralDiscount: 0 
+  });
+  const [showBuyOptions, setShowBuyOptions] = useState(false);
   const [finalPrice, setFinalPrice] = useState(0);
   const [discountBreakdown, setDiscountBreakdown] = useState([]);
 
+  // Auth Check
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setUser(user);
         await loadUserDiscounts(user.uid);
+      } else {
+        setUser(null);
       }
     });
     return () => unsubscribe();
   }, []);
 
   const loadUserDiscounts = async (userId) => {
-  const userDoc = await getDoc(doc(db, 'users', userId));
-  if (userDoc.exists()) {
-    const userData = userDoc.data();
-    let promoDiscount = 0;
-    let promoType = 'percent';
-    let stackWithSpecial = false;
-    
-    if (userData.used_promote_code && !userData.discount_used) {
-      const promoQuery = await fetch(`/api/promo/check?code=${userData.used_promote_code}&productId=${product?.id}`);
-      const promoData = await promoQuery.json();
-      if (promoData.option_type === 'first_purchase_discount') {
-        promoDiscount = promoData.settings?.discount_value || 0;
-        promoType = promoData.settings?.discount_type || 'percent';
-        stackWithSpecial = promoData.settings?.stack_with_special || false;
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists() && product) {
+        const userData = userDoc.data();
+        let promoDiscount = 0;
+        let promoType = 'percent';
+        let stackWithSpecial = false;
+        
+        if (userData.used_promote_code && !userData.discount_used) {
+          const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}&productId=${product.id}`);
+          const promoData = await promoRes.json();
+          if (promoData.option_type === 'first_purchase_discount') {
+            promoDiscount = promoData.settings?.discount_value || 0;
+            promoType = promoData.settings?.discount_type || 'percent';
+            stackWithSpecial = promoData.settings?.stack_with_special || false;
+          }
+        }
+        
+        const discounts = {
+          promoDiscount,
+          promoType,
+          stackWithSpecial,
+          referralDiscount: userData.referral_discount || 0
+        };
+        
+        setUserDiscounts(discounts);
+        
+        const result = calculateStackedDiscount(product, discounts);
+        setFinalPrice(result.finalPrice);
+        setDiscountBreakdown(result.appliedDiscounts);
       }
+    } catch (error) {
+      console.error('Error loading user discounts:', error);
     }
-    
-    setUserDiscounts({
-      promoDiscount,
-      promoType,
-      stackWithSpecial,
-      referralDiscount: userData.referral_discount || 0
-    });
-  }
-};
+  };
 
   useEffect(() => {
     if (id) {
@@ -79,14 +97,35 @@ export default function ProductDetail() {
     }
   }, [id]);
 
-  // Calculate final price when product or discounts change
+  // Recalculate when product or userDiscounts change
   useEffect(() => {
-    if (product) {
+    if (product && userDiscounts) {
       const result = calculateStackedDiscount(product, userDiscounts);
       setFinalPrice(result.finalPrice);
       setDiscountBreakdown(result.appliedDiscounts);
     }
   }, [product, userDiscounts]);
+
+  const handleExternalBuy = (platform, contactId) => {
+    const message = `ဟုတ်ကဲ့ပါ။ ${product.name} (${product.duration}) ကို ${finalPrice.toLocaleString()} MMK ဖြင့် ဝယ်ယူလိုပါသည်။`;
+    let url = '';
+    if (platform === 'telegram') {
+      url = `https://t.me/${contactId}?text=${encodeURIComponent(message)}`;
+    } else if (platform === 'messenger') {
+      url = `https://m.me/${contactId}`;
+    } else if (platform === 'viber') {
+      url = `viber://chat?number=${contactId}`;
+    }
+    if (url) window.open(url, '_blank');
+  };
+
+  const handleDirectBuy = () => {
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+    router.push(`/checkout?id=${product.id}`);
+  };
 
   if (loading || !product) {
     return (
@@ -146,13 +185,6 @@ export default function ProductDetail() {
                 </div>
               ))}
               
-              {product.special_price > 0 && !userDiscounts.promoDiscount && (
-                <div className="flex justify-between items-center pb-2 border-b border-green-500/30">
-                  <span className="text-green-400 font-semibold">✨ အထူးလျှော့ဈေး</span>
-                  <span className="text-green-400 font-bold text-xl">{product.special_price.toLocaleString()} MMK</span>
-                </div>
-              )}
-              
               <div className="flex justify-between items-center pt-3 mt-2 border-t border-white/20">
                 <span className="text-lg font-bold">စုစုပေါင်း</span>
                 <span className="text-[#FF6B35] font-bold text-xl">{finalPrice.toLocaleString()} MMK</span>
@@ -197,19 +229,53 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Buy Button */}
-          {!showContactOptions ? (
-            <button onClick={() => setShowContactOptions(true)} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 cursor-pointer shadow-lg">
+          {/* Buy Options Popup */}
+          {!showBuyOptions ? (
+            <button 
+              onClick={() => setShowBuyOptions(true)} 
+              className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 cursor-pointer shadow-lg"
+            >
               🛒 အခုပဲ {finalPrice.toLocaleString()} MMK ဖြင့် ဝယ်ယူမည်
             </button>
           ) : (
             <div className="space-y-3">
+              {/* Row 1: External Options */}
               <div className="grid grid-cols-3 gap-3">
-                <button onClick={() => window.open('https://t.me/william815?text=' + encodeURIComponent(`ဟုတ်ကဲ့ပါ။ ${product.name} (${product.duration}) ကို ${finalPrice.toLocaleString()} MMK ဖြင့် ဝယ်ယူလိုပါသည်။`), '_blank')} className="bg-[#26A5E4] text-white p-3 rounded-xl font-semibold">📱 Telegram</button>
-                <button onClick={() => window.open('https://m.me/william72425', '_blank')} className="bg-[#0084FF] text-white p-3 rounded-xl font-semibold">💬 Messenger</button>
-                <button onClick={() => window.open('viber://chat?number=09798268154', '_blank')} className="bg-[#7360F2] text-white p-3 rounded-xl font-semibold">📞 Viber</button>
+                <button 
+                  onClick={() => handleExternalBuy('telegram', 'william815')} 
+                  className="bg-[#26A5E4] text-white p-3 rounded-xl font-semibold hover:opacity-90"
+                >
+                  📱 Telegram
+                </button>
+                <button 
+                  onClick={() => handleExternalBuy('messenger', 'william72425')} 
+                  className="bg-[#0084FF] text-white p-3 rounded-xl font-semibold hover:opacity-90"
+                >
+                  💬 Messenger
+                </button>
+                <button 
+                  onClick={() => handleExternalBuy('viber', '09798268154')} 
+                  className="bg-[#7360F2] text-white p-3 rounded-xl font-semibold hover:opacity-90"
+                >
+                  📞 Viber
+                </button>
               </div>
-              <button onClick={() => setShowContactOptions(false)} className="w-full text-gray-400 text-sm py-2">◀ နောက်သို့</button>
+              
+              {/* Row 2: Direct Website Buy */}
+              <button 
+                onClick={handleDirectBuy} 
+                className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white p-3 rounded-xl font-semibold hover:opacity-90"
+              >
+                🛍️ Buy Directly on Website
+              </button>
+              
+              {/* Back button */}
+              <button 
+                onClick={() => setShowBuyOptions(false)} 
+                className="w-full text-gray-400 text-sm py-2 hover:text-white"
+              >
+                ◀ နောက်သို့
+              </button>
             </div>
           )}
 
