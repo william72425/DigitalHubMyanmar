@@ -2,7 +2,7 @@ import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { auth, db } from '@/utils/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import productsData from '@/data/products.json';
 import featuresData from '@/data/features.json';
 import { calculateStackedDiscount } from '@/utils/discountCalculator';
@@ -20,12 +20,14 @@ export default function ProductDetail() {
     promoDiscount: 0, 
     promoType: 'percent', 
     stackWithSpecial: false,
-    specificPromoCode: null
+    specificPromoCode: null,
+    referralDiscount: 0
   });
   const [showBuyOptions, setShowBuyOptions] = useState(false);
   const [finalPrice, setFinalPrice] = useState(0);
   const [discountBreakdown, setDiscountBreakdown] = useState([]);
   const [isFirstPurchaseEligible, setIsFirstPurchaseEligible] = useState(false);
+  const [hasActiveOrder, setHasActiveOrder] = useState(false);
 
   // Auth Check
   useEffect(() => {
@@ -44,6 +46,16 @@ export default function ProductDetail() {
 
   const loadUserData = async (userId) => {
     try {
+      // Check if user has any active orders (pending, processing, completed)
+      const ordersQuery = query(
+        collection(db, 'orders'),
+        where('user_id', '==', userId),
+        where('status', 'in', ['pending', 'processing', 'completed'])
+      );
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const hasOrder = !ordersSnapshot.empty;
+      setHasActiveOrder(hasOrder);
+      
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
         const data = userDoc.data();
@@ -54,8 +66,10 @@ export default function ProductDetail() {
         let stackWithSpecial = false;
         let specificPromoCode = null;
         
-        // Check for first purchase promo code
-        if (data.used_promote_code && !data.first_purchase_discount_used && product) {
+        // Only apply first purchase discount if user has NO orders at all
+        const isFirstPurchase = !hasOrder && !data.first_purchase_discount_used;
+        
+        if (isFirstPurchase && data.used_promote_code && product) {
           try {
             const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}&userId=${userId}`);
             const promoData = await promoRes.json();
@@ -82,10 +96,10 @@ export default function ProductDetail() {
         
         // Calculate final price
         if (product) {
-          const result = calculateStackedDiscount(product, discounts, data);
+          const result = calculateStackedDiscount(product, discounts, { ...data, hasActiveOrder: hasOrder });
           setFinalPrice(result.finalPrice);
           setDiscountBreakdown(result.appliedDiscounts);
-          setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
+          setIsFirstPurchaseEligible(result.isFirstPurchaseEligible && !hasOrder);
         }
       }
       setLoading(false);
@@ -119,12 +133,12 @@ export default function ProductDetail() {
   // Recalculate when product or userDiscounts or userData changes
   useEffect(() => {
     if (product && userDiscounts && userData) {
-      const result = calculateStackedDiscount(product, userDiscounts, userData);
+      const result = calculateStackedDiscount(product, userDiscounts, { ...userData, hasActiveOrder });
       setFinalPrice(result.finalPrice);
       setDiscountBreakdown(result.appliedDiscounts);
-      setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
+      setIsFirstPurchaseEligible(result.isFirstPurchaseEligible && !hasActiveOrder);
     }
-  }, [product, userDiscounts, userData]);
+  }, [product, userDiscounts, userData, hasActiveOrder]);
 
   const handleExternalBuy = (platform, contactId) => {
     const message = `ဟုတ်ကဲ့ပါ။ ${product.name} (${product.duration}) ကို ${finalPrice.toLocaleString()} MMK ဖြင့် ဝယ်ယူလိုပါသည်။`;
@@ -156,6 +170,7 @@ export default function ProductDetail() {
   }
 
   const logoSize = product.logo_size || 70;
+  const hasDiscountApplied = discountBreakdown.length > 0;
 
   return (
     <>
@@ -186,17 +201,29 @@ export default function ProductDetail() {
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
             <div className="space-y-3">
+              {/* Market Price */}
               {product.market_price > 0 && (
                 <div className="flex justify-between items-center pb-2 border-b border-white/10">
                   <span className="text-gray-300">ဈေးကွက် ပျမ်းမျှဈေး</span>
                   <span className="line-through text-gray-400">{product.market_price.toLocaleString()} MMK</span>
                 </div>
               )}
+              
+              {/* Hubby Store Price (Original) */}
               <div className="flex justify-between items-center pb-2 border-b border-white/10">
                 <span className="text-gray-300">Hubby Store ဈေး</span>
                 <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
               
+              {/* Special Price from Admin (if exists) */}
+              {product.special_price > 0 && product.special_price < product.hubby_price && (
+                <div className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
+                  <span>✨ Admin Special Price</span>
+                  <span>{product.special_price.toLocaleString()} MMK</span>
+                </div>
+              )}
+              
+              {/* Discount Breakdown from Promo/Referral */}
               {discountBreakdown.map((discount, idx) => (
                 <div key={idx} className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
                   <span>🎉 {discount.label}</span>
@@ -204,14 +231,23 @@ export default function ProductDetail() {
                 </div>
               ))}
               
+              {/* Final Price */}
               <div className="flex justify-between items-center pt-3 mt-2 border-t border-white/20">
                 <span className="text-lg font-bold">စုစုပေါင်း</span>
                 <span className="text-[#FF6B35] font-bold text-xl">{finalPrice.toLocaleString()} MMK</span>
               </div>
               
-              {isFirstPurchaseEligible && userDiscounts.promoDiscount > 0 && (
-                <div className="text-xs text-green-500 text-center mt-2">
-                  🎉 First purchase discount applied! Valid for new users only.
+              {/* First Purchase Discount Note */}
+              {isFirstPurchaseEligible && userDiscounts.promoDiscount > 0 && !hasActiveOrder && (
+                <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
+                  🎉 First purchase discount ({userDiscounts.promoDiscount}% OFF) applied! Valid for new users only.
+                </div>
+              )}
+              
+              {/* If user has active order, show message */}
+              {hasActiveOrder && userDiscounts.promoDiscount > 0 && (
+                <div className="text-xs text-yellow-500 text-center mt-2 bg-yellow-500/10 p-2 rounded-lg">
+                  ⚠️ You already have an active order. First purchase discount is only for users with no orders.
                 </div>
               )}
             </div>
