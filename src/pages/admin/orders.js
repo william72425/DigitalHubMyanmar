@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { db } from '@/utils/firebase';
-import { collection, getDocs, updateDoc, doc, query, where } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, query, where, getDoc } from 'firebase/firestore'; // Added getDoc here
 import AdminNavbar from '@/components/AdminNavbar';
 
 export default function AdminOrders() {
@@ -46,46 +46,25 @@ export default function AdminOrders() {
     setLoading(false);
   };
 
+  // Simplified updateOrderStatus to avoid complex discount restore logic for now
   const updateOrderStatus = async (orderId, newStatus) => {
     setUpdating(true);
     try {
+      // First, update the order status
       await updateDoc(doc(db, 'orders', orderId), {
         status: newStatus,
         updated_at: new Date().toISOString()
       });
       
-      // Get the order data first
-      const orderDoc = await getDoc(doc(db, 'orders', orderId));
-      const orderData = orderDoc.data();
-      
-      if (newStatus === 'cancelled' && orderData) {
-        // Check if this was the user's only order (excluding cancelled ones)
-        const userOrdersQuery = query(
-          collection(db, 'orders'), 
-          where('user_id', '==', orderData.user_id),
-          where('status', 'in', ['pending', 'processing', 'completed'])
-        );
-        const userOrdersSnapshot = await getDocs(userOrdersQuery);
-        
-        // Filter out the current order (the one being cancelled)
-        const otherActiveOrders = userOrdersSnapshot.docs.filter(doc => doc.id !== orderId);
-        
-        // If no other active orders, restore the discount
-        if (otherActiveOrders.length === 0) {
+      // If status is 'completed', we can mark the user's discount as used if needed
+      if (newStatus === 'completed') {
+        const orderDoc = await getDoc(doc(db, 'orders', orderId));
+        const orderData = orderDoc.data();
+        if (orderData && orderData.user_id) {
           await updateDoc(doc(db, 'users', orderData.user_id), {
-            discount_used: false,
-            first_purchase_discount_used: false
+            first_purchase_discount_used: true
           });
-          console.log('Discount restored for user:', orderData.user_id);
         }
-      }
-      
-      // If order is completed, mark user's first purchase discount as used (permanently)
-      if (newStatus === 'completed' && orderData) {
-        await updateDoc(doc(db, 'users', orderData.user_id), {
-          first_purchase_discount_used: true,
-          discount_used: true
-        });
       }
       
       await fetchOrders();
@@ -95,18 +74,18 @@ export default function AdminOrders() {
       alert(`Order status updated to: ${newStatus}`);
     } catch (error) {
       console.error('Error updating order:', error);
-      alert('Failed to update order status');
+      alert('Failed to update order status: ' + error.message);
     }
     setUpdating(false);
   };
 
   const viewOrderDetail = async (order) => {
-    // Fetch fresh user data for the modal
     try {
       const userDoc = await getDoc(doc(db, 'users', order.user_id));
       const userData = userDoc.exists() ? userDoc.data() : null;
       setSelectedOrder({ ...order, userData });
     } catch (error) {
+      console.error('Error fetching user data:', error);
       setSelectedOrder(order);
     }
     setShowDetailModal(true);
@@ -172,7 +151,7 @@ export default function AdminOrders() {
                           View Details
                         </button>
                       </td>
-                     </tr>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -202,12 +181,6 @@ export default function AdminOrders() {
                   <div>{new Date(selectedOrder.created_at).toLocaleString()}</div>
                   <div><span className="text-gray-400">Payment Method:</span></div>
                   <div>{selectedOrder.payment_method || 'Manual'}</div>
-                  {selectedOrder.userData && (
-                    <>
-                      <div><span className="text-gray-400">First Purchase Discount:</span></div>
-                      <div>{selectedOrder.userData.first_purchase_discount_used ? '❌ Used' : '✅ Available'}</div>
-                    </>
-                  )}
                 </div>
               </div>
               
