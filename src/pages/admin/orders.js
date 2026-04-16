@@ -60,24 +60,12 @@ export default function AdminOrders() {
       const orderData = orderDoc.data();
       
       if (orderData && orderData.user_id) {
-        // If cancelled: restore first purchase discount
+        // If cancelled: ALWAYS restore first purchase discount
         if (newStatus === 'cancelled') {
-          // Check if user has any other active orders (pending, processing, completed)
-          const userOrdersQuery = query(
-            collection(db, 'orders'),
-            where('user_id', '==', orderData.user_id),
-            where('status', 'in', ['pending', 'processing', 'completed'])
-          );
-          const userOrdersSnapshot = await getDocs(userOrdersQuery);
-          const otherActiveOrders = userOrdersSnapshot.docs.filter(doc => doc.id !== orderId);
-          
-          // If no other active orders, restore discount
-          if (otherActiveOrders.length === 0) {
-            await updateDoc(doc(db, 'users', orderData.user_id), {
-              first_purchase_discount_used: false
-            });
-            console.log('✅ Discount restored for user:', orderData.user_id);
-          }
+          await updateDoc(doc(db, 'users', orderData.user_id), {
+            first_purchase_discount_used: false
+          });
+          console.log('✅ Discount RESTORED for user:', orderData.user_id);
         }
         
         // If completed: mark discount as used permanently
@@ -85,7 +73,7 @@ export default function AdminOrders() {
           await updateDoc(doc(db, 'users', orderData.user_id), {
             first_purchase_discount_used: true
           });
-          console.log('✅ Discount marked as used for user:', orderData.user_id);
+          console.log('✅ Discount MARKED AS USED for user:', orderData.user_id);
         }
       }
       
@@ -172,8 +160,8 @@ export default function AdminOrders() {
                         <button onClick={() => viewOrderDetail(order)} className="text-blue-400 hover:text-blue-300 text-sm">
                           View Details
                         </button>
-                       </td>
-                     </tr>
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -192,7 +180,6 @@ export default function AdminOrders() {
             </div>
             
             <div className="space-y-4">
-              {/* Order Info */}
               <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div><span className="text-gray-400">Order ID:</span></div>
@@ -206,13 +193,14 @@ export default function AdminOrders() {
                   {selectedOrder.userData && (
                     <>
                       <div><span className="text-gray-400">First Purchase Discount:</span></div>
-                      <div>{selectedOrder.userData.first_purchase_discount_used ? '❌ Used' : '✅ Available'}</div>
+                      <div className={selectedOrder.userData.first_purchase_discount_used ? 'text-red-400' : 'text-green-400'}>
+                        {selectedOrder.userData.first_purchase_discount_used ? '❌ Used' : '✅ Available'}
+                      </div>
                     </>
                   )}
                 </div>
               </div>
               
-              {/* Product Info */}
               <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                 <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🛍️ Product</h3>
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -227,7 +215,6 @@ export default function AdminOrders() {
                 </div>
               </div>
               
-              {/* Discount Breakdown */}
               {selectedOrder.discount_breakdown && selectedOrder.discount_breakdown.length > 0 && (
                 <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                   <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🎁 Discounts Applied</h3>
@@ -242,7 +229,6 @@ export default function AdminOrders() {
                 </div>
               )}
               
-              {/* Promo Code Used */}
               {selectedOrder.promo_code_used && (
                 <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                   <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Code Used</h3>
@@ -250,7 +236,6 @@ export default function AdminOrders() {
                 </div>
               )}
               
-              {/* Status Update */}
               <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                 <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📌 Update Status</h3>
                 <div className="flex flex-wrap gap-2">
@@ -274,7 +259,6 @@ export default function AdminOrders() {
                 </div>
               </div>
               
-              {/* Payment Proof Note */}
               <div className="p-4 bg-yellow-500/10 rounded-xl">
                 <p className="text-yellow-500 text-sm">
                   📸 Payment proof should be sent to Telegram: <span className="font-bold">@william815</span>
