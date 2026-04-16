@@ -4,6 +4,8 @@ import Head from 'next/head';
 import { auth, db } from '@/utils/firebase';
 import { doc, getDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
+import { calculateStackedDiscount } from '@/utils/discountCalculator';
+import productsData from '@/data/products.json';
 
 export default function Checkout() {
   const router = useRouter();
@@ -14,9 +16,9 @@ export default function Checkout() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [discountBreakdown, setDiscountBreakdown] = useState([]);
   const [finalPrice, setFinalPrice] = useState(0);
-  const [discountApplied, setDiscountApplied] = useState(false);
-  const [discountAmount, setDiscountAmount] = useState(0);
+  const [userDiscounts, setUserDiscounts] = useState({ promoDiscount: 0, promoType: 'percent', referralDiscount: 0 });
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -40,40 +42,48 @@ export default function Checkout() {
   const loadUserData = async (userId) => {
     const userDoc = await getDoc(doc(db, 'users', userId));
     if (userDoc.exists()) {
-      setUserData(userDoc.data());
+      const data = userDoc.data();
+      setUserData(data);
+      
+      let promoDiscount = 0;
+      let promoType = 'percent';
+      
+      if (data.used_promote_code && !data.discount_used) {
+        const promoQuery = await fetch(`/api/promo/check?code=${data.used_promote_code}`);
+        const promoData = await promoQuery.json();
+        if (promoData.option_type === 'first_purchase_discount') {
+          promoDiscount = promoData.settings?.discount_value || 0;
+          promoType = promoData.settings?.discount_type || 'percent';
+        }
+      }
+      
+      setUserDiscounts({
+        promoDiscount,
+        promoType,
+        referralDiscount: data.referral_discount || 0
+      });
     }
   };
 
   const loadProduct = async () => {
     if (!id) return;
-    try {
-      const res = await fetch('/api/admin/products');
-      const products = await res.json();
-      const found = products.find(p => p.id === parseInt(id));
-      setProduct(found);
-      
-      // Calculate discount if first purchase and has promo code
-      if (userData?.used_promote_code && !userData?.discount_used) {
-        // Check if promo code is first_purchase_discount type
-        const promoQuery = await fetch(`/api/promo/check?code=${userData.used_promote_code}`);
-        const promoData = await promoQuery.json();
-        
-        if (promoData.option_type === 'first_purchase_discount') {
-          const discountPercent = promoData.settings?.discount_value || 20;
-          const discountAmt = Math.round(found.hubby_price * discountPercent / 100);
-          setDiscountAmount(discountAmt);
-          setFinalPrice(found.hubby_price - discountAmt);
-          setDiscountApplied(true);
-        } else {
-          setFinalPrice(found.hubby_price);
-        }
-      } else {
-        setFinalPrice(found?.hubby_price || 0);
-      }
-    } catch (error) {
-      console.error('Error loading product:', error);
+    const found = productsData.find(p => p.id === parseInt(id));
+    setProduct(found);
+    
+    if (found) {
+      const result = calculateStackedDiscount(found, userDiscounts);
+      setFinalPrice(result.finalPrice);
+      setDiscountBreakdown(result.appliedDiscounts);
     }
   };
+
+  useEffect(() => {
+    if (product && userDiscounts) {
+      const result = calculateStackedDiscount(product, userDiscounts);
+      setFinalPrice(result.finalPrice);
+      setDiscountBreakdown(result.appliedDiscounts);
+    }
+  }, [product, userDiscounts]);
 
   const createOrder = async () => {
     setProcessing(true);
@@ -85,7 +95,7 @@ export default function Checkout() {
         product_name: product.name,
         duration: product.duration,
         original_price: product.hubby_price,
-        discount_applied: discountAmount,
+        discount_breakdown: discountBreakdown,
         final_price: finalPrice,
         promo_code_used: userData?.used_promote_code || null,
         status: 'pending',
@@ -95,15 +105,12 @@ export default function Checkout() {
       
       await addDoc(collection(db, 'orders'), orderData);
       
-      // Mark discount as used
-      if (discountApplied && !userData?.discount_used) {
-        await updateDoc(doc(db, 'users', user.uid), {
-          discount_used: true
-        });
+      if (userData?.used_promote_code && !userData?.discount_used) {
+        await updateDoc(doc(db, 'users', user.uid), { discount_used: true });
       }
       
       alert('Order created! Please send payment proof to Telegram: @william815');
-      router.push('/dashboard/orders');
+      router.push('/orders');
     } catch (error) {
       alert('Failed to create order');
     }
@@ -150,12 +157,12 @@ export default function Checkout() {
                 <span>{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
               
-              {discountApplied && (
-                <div className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
-                  <span>🎉 First Purchase Discount</span>
-                  <span>-{discountAmount.toLocaleString()} MMK</span>
+              {discountBreakdown.map((discount, idx) => (
+                <div key={idx} className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
+                  <span>🎉 {discount.label}</span>
+                  <span>-{discount.amount.toLocaleString()} MMK</span>
                 </div>
-              )}
+              ))}
               
               <div className="flex justify-between py-3 text-lg font-bold">
                 <span>Total</span>
