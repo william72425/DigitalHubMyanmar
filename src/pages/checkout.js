@@ -48,7 +48,7 @@ export default function Checkout() {
 
   const loadUserData = async (userId) => {
     try {
-      // Check for active orders (pending, processing, completed)
+      // Check for active orders
       const ordersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
@@ -61,7 +61,6 @@ export default function Checkout() {
       const userDoc = await getDoc(doc(db, 'users', userId));
       let promoDiscount = 0;
       let promoType = 'percent';
-      let stackWithSpecial = false;
       let maxDiscountAmount = 0;
       let isFirstPurchase = false;
       
@@ -77,7 +76,6 @@ export default function Checkout() {
             if (promoData && promoData.option_type === 'first_purchase_discount') {
               promoDiscount = promoData.settings?.discount_value || 0;
               promoType = promoData.settings?.discount_type || 'percent';
-              stackWithSpecial = promoData.settings?.stack_with_special || false;
               maxDiscountAmount = promoData.settings?.max_discount || 0;
               isFirstPurchase = true;
             }
@@ -93,7 +91,6 @@ export default function Checkout() {
       const discounts = {
         promoDiscount,
         promoType,
-        stackWithSpecial,
         maxDiscountAmount
       };
       
@@ -109,7 +106,6 @@ export default function Checkout() {
       setLoading(false);
     } catch (error) {
       console.error('Error loading user data:', error);
-      // Fallback: show regular price
       if (product) {
         setFinalPrice(product.hubby_price);
         setDiscountBreakdown([]);
@@ -138,7 +134,6 @@ export default function Checkout() {
       
       await addDoc(collection(db, 'orders'), orderData);
       
-      // Mark discount as used when order is created (pending)
       if (userData?.used_promote_code && !userData?.first_purchase_discount_used) {
         await updateDoc(doc(db, 'users', user.uid), { 
           first_purchase_discount_used: true 
@@ -169,7 +164,6 @@ export default function Checkout() {
   }
 
   const hasSpecialPrice = product.special_price && product.special_price > 0;
-  const hasAnyDiscount = discountBreakdown.length > 0 || hasSpecialPrice;
 
   return (
     <>
@@ -197,7 +191,6 @@ export default function Checkout() {
                 <span>{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
               
-              {/* Admin Special Price */}
               {hasSpecialPrice && (
                 <div className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
                   <span>✨ Admin Special Price</span>
@@ -205,7 +198,6 @@ export default function Checkout() {
                 </div>
               )}
               
-              {/* First Purchase Discount */}
               {discountBreakdown.map((discount, idx) => (
                 <div key={idx} className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
                   <span>🎉 {discount.label}</span>
@@ -221,12 +213,6 @@ export default function Checkout() {
               {isFirstPurchaseEligible && promoDiscountPercent > 0 && !hasActiveOrder && (
                 <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
                   🎉 First purchase discount ({promoDiscountPercent}% OFF) applied!
-                </div>
-              )}
-              
-              {hasActiveOrder && promoDiscountPercent > 0 && (
-                <div className="text-xs text-yellow-500 text-center mt-2 bg-yellow-500/10 p-2 rounded-lg">
-                  ⚠️ You already have an active order. First purchase discount is only for new users.
                 </div>
               )}
             </div>
