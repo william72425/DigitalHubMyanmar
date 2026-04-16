@@ -31,15 +31,26 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
             Digital Hub
           </Link>
           
+          {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-4">
             <Link href="/theme" className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} hover:text-[#FF6B35]`}>
               🎨 Theme
             </Link>
+            
+            {/* My Orders Link - Only for logged in users */}
+            {user && (
+              <Link href="/orders" className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} hover:text-[#FF6B35]`}>
+                📦 My Orders
+              </Link>
+            )}
+            
+            {/* Admin Dashboard - Only for admin */}
             {user && isAdmin && (
               <Link href="/admin-dashboard" className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} hover:text-[#FF6B35]`}>
                 🔧 Admin
               </Link>
             )}
+            
             {user ? (
               <button onClick={handleLogout} className="text-sm text-red-400 hover:text-red-500">
                 🚪 Logout
@@ -54,16 +65,26 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
             </button>
           </div>
 
+          {/* Mobile Menu Button */}
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-white/10">
             {mobileMenuOpen ? '✕' : '☰'}
           </button>
         </div>
 
+        {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden mt-3 pt-3 border-t border-white/20 flex flex-col gap-3">
             <Link href="/theme" onClick={() => setMobileMenuOpen(false)} className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} hover:text-[#FF6B35]`}>
               🎨 Theme
             </Link>
+            
+            {/* My Orders Link - Mobile */}
+            {user && (
+              <Link href="/orders" onClick={() => setMobileMenuOpen(false)} className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} hover:text-[#FF6B35]`}>
+                📦 My Orders
+              </Link>
+            )}
+            
             {user && isAdmin && (
               <Link href="/admin-dashboard" onClick={() => setMobileMenuOpen(false)} className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} hover:text-[#FF6B35]`}>
                 🔧 Admin
