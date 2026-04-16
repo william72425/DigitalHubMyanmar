@@ -45,6 +45,7 @@ export default function AdminNavbar({ isDarkMode, toggleTheme }) {
                 <div className="absolute right-0 mt-2 w-48 bg-white/10 backdrop-blur-md rounded-lg shadow-lg overflow-hidden hidden group-hover:block">
                   <Link href="/admin" className="block px-4 py-2 text-sm hover:bg-white/10">📦 Products & Features</Link>
                   <Link href="/admin/users" className="block px-4 py-2 text-sm hover:bg-white/10">👥 Users & Promo</Link>
+                  <Link href="/admin/orders" className="block px-4 py-2 text-sm hover:bg-white/10">📦 Orders</Link>
                 </div>
               </div>
             )}
