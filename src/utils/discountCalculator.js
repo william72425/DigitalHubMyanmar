@@ -4,29 +4,11 @@ export function calculateStackedDiscount(product, userDiscounts, userData) {
   let appliedDiscounts = [];
   let discountAmount = 0;
   
-  // Check if user has completed order (should NOT get first purchase discount)
-  const hasCompletedOrder = userData?.hasCompletedOrder || false;
-  
-  // 1. Check for Admin Special Price
-  const hasSpecialPrice = product.special_price && product.special_price > 0;
-  if (hasSpecialPrice) {
-    const specialDiscountAmount = product.hubby_price - product.special_price;
-    if (specialDiscountAmount > 0) {
-      discountAmount += specialDiscountAmount;
-      appliedDiscounts.push({ 
-        type: 'special', 
-        amount: specialDiscountAmount, 
-        label: '✨ Admin Special Price' 
-      });
-      finalPrice = product.special_price;
-    }
-  }
-
-  // 2. First Purchase Discount - ONLY if user has NO completed orders
+  // 1. Check if user is eligible for first purchase discount
   const hasFirstPurchaseDiscount = userDiscounts.promoDiscount && userDiscounts.promoDiscount > 0;
-  const isFirstPurchase = !hasCompletedOrder && !userData?.first_purchase_discount_used;
+  const isFirstPurchase = !userData?.hasActiveOrder && !userData?.first_purchase_discount_used;
   
-  if (hasFirstPurchaseDiscount && isFirstPurchase && finalPrice > 0) {
+  if (hasFirstPurchaseDiscount && isFirstPurchase) {
     let promoAmount = 0;
     if (userDiscounts.promoType === 'percent') {
       promoAmount = Math.round(finalPrice * userDiscounts.promoDiscount / 100);
@@ -39,6 +21,7 @@ export function calculateStackedDiscount(product, userDiscounts, userData) {
       promoAmount = userDiscounts.maxDiscountAmount;
     }
     
+    // Make sure promo amount doesn't exceed final price
     if (promoAmount > finalPrice) {
       promoAmount = finalPrice;
     }
