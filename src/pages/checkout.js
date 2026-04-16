@@ -18,15 +18,16 @@ export default function Checkout() {
   const [processing, setProcessing] = useState(false);
   const [discountBreakdown, setDiscountBreakdown] = useState([]);
   const [finalPrice, setFinalPrice] = useState(0);
-  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
-  const [orderCreated, setOrderCreated] = useState(false);
-  const [orderId, setOrderId] = useState(null);
   const [userDiscounts, setUserDiscounts] = useState({ 
     promoDiscount: 0, 
     promoType: 'percent', 
     stackWithSpecial: false,
     referralDiscount: 0 
   });
+  const [authChecked, setAuthChecked] = useState(false);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+  const [orderCreated, setOrderCreated] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -39,16 +40,34 @@ export default function Checkout() {
         return;
       }
       setUser(user);
-      await loadProduct();
-      await loadUserData(user.uid);
+      setAuthChecked(true);
     });
 
     return () => unsubscribe();
-  }, [id]);
+  }, [router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!id) {
+      router.push('/');
+      return;
+    }
+    loadProduct();
+  }, [authChecked, id, router]);
+
+  useEffect(() => {
+    if (user && product) {
+      loadUserData(user.uid);
+    }
+  }, [user, product]);
 
   const loadProduct = async () => {
     if (!id) return;
     const found = productsData.find(p => p.id === parseInt(id));
+    if (!found) {
+      router.push('/');
+      return;
+    }
     setProduct(found);
   };
 
@@ -64,12 +83,17 @@ export default function Checkout() {
         let stackWithSpecial = false;
         
         if (data.used_promote_code && !data.discount_used && product) {
-          const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}`);
-          const promoData = await promoRes.json();
-          if (promoData.option_type === 'first_purchase_discount') {
-            promoDiscount = promoData.settings?.discount_value || 0;
-            promoType = promoData.settings?.discount_type || 'percent';
-            stackWithSpecial = promoData.settings?.stack_with_special || false;
+          try {
+            const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}`);
+            const promoData = await promoRes.json();
+            
+            if (promoData.option_type === 'first_purchase_discount') {
+              promoDiscount = promoData.settings?.discount_value || 0;
+              promoType = promoData.settings?.discount_type || 'percent';
+              stackWithSpecial = promoData.settings?.stack_with_special || false;
+            }
+          } catch (err) {
+            console.error('Promo check failed:', err);
           }
         }
         
@@ -94,6 +118,14 @@ export default function Checkout() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (product && userDiscounts && userData) {
+      const result = calculateStackedDiscount(product, userDiscounts, userData);
+      setFinalPrice(result.finalPrice);
+      setDiscountBreakdown(result.appliedDiscounts);
+    }
+  }, [product, userDiscounts, userData]);
 
   const createOrder = async () => {
     setProcessing(true);
@@ -159,7 +191,7 @@ export default function Checkout() {
     localStorage.setItem('theme', newTheme ? 'dark' : 'light');
   };
 
-  if (loading || !product) {
+  if (!authChecked || loading || !product) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></div>
