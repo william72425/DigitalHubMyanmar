@@ -24,6 +24,7 @@ export default function Checkout() {
     stackWithSpecial: false,
     referralDiscount: 0 
   });
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -36,17 +37,34 @@ export default function Checkout() {
         return;
       }
       setUser(user);
-      await loadProduct();
-      await loadUserData(user.uid);
-      setLoading(false);
+      setAuthChecked(true);
     });
 
     return () => unsubscribe();
-  }, [id]);
+  }, [router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!id) {
+      router.push('/');
+      return;
+    }
+    loadProduct();
+  }, [authChecked, id, router]);
+
+  useEffect(() => {
+    if (user && product) {
+      loadUserData(user.uid);
+    }
+  }, [user, product]);
 
   const loadProduct = async () => {
     if (!id) return;
     const found = productsData.find(p => p.id === parseInt(id));
+    if (!found) {
+      router.push('/');
+      return;
+    }
     setProduct(found);
   };
 
@@ -61,15 +79,18 @@ export default function Checkout() {
         let promoType = 'percent';
         let stackWithSpecial = false;
         
-        // Check if user has a promo code and hasn't used it yet
         if (data.used_promote_code && !data.discount_used && product) {
-          const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}`);
-          const promoData = await promoRes.json();
-          
-          if (promoData.option_type === 'first_purchase_discount') {
-            promoDiscount = promoData.settings?.discount_value || 0;
-            promoType = promoData.settings?.discount_type || 'percent';
-            stackWithSpecial = promoData.settings?.stack_with_special || false;
+          try {
+            const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}`);
+            const promoData = await promoRes.json();
+            
+            if (promoData.option_type === 'first_purchase_discount') {
+              promoDiscount = promoData.settings?.discount_value || 0;
+              promoType = promoData.settings?.discount_type || 'percent';
+              stackWithSpecial = promoData.settings?.stack_with_special || false;
+            }
+          } catch (err) {
+            console.error('Promo check failed:', err);
           }
         }
         
@@ -82,19 +103,19 @@ export default function Checkout() {
         
         setUserDiscounts(discounts);
         
-        // Calculate final price after discounts
         if (product) {
           const result = calculateStackedDiscount(product, discounts);
           setFinalPrice(result.finalPrice);
           setDiscountBreakdown(result.appliedDiscounts);
         }
       }
+      setLoading(false);
     } catch (error) {
       console.error('Error loading user data:', error);
+      setLoading(false);
     }
   };
 
-  // Recalculate when product or userDiscounts change
   useEffect(() => {
     if (product && userDiscounts) {
       const result = calculateStackedDiscount(product, userDiscounts);
@@ -123,11 +144,8 @@ export default function Checkout() {
       
       await addDoc(collection(db, 'orders'), orderData);
       
-      // Mark discount as used if this is first purchase with promo
       if (userData?.used_promote_code && !userData?.discount_used) {
-        await updateDoc(doc(db, 'users', user.uid), { 
-          discount_used: true 
-        });
+        await updateDoc(doc(db, 'users', user.uid), { discount_used: true });
       }
       
       alert('Order created! Please send payment proof to Telegram: @william815');
@@ -145,7 +163,7 @@ export default function Checkout() {
     localStorage.setItem('theme', newTheme ? 'dark' : 'light');
   };
 
-  if (loading || !product) {
+  if (!authChecked || loading || !product) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></div>
