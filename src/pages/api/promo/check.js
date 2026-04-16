@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Check if product is applicable
+    // Check if the product is applicable
     if (promoData.settings?.applicable_products === 'selected') {
       const selectedProducts = promoData.settings?.selected_products || [];
       if (productId && !selectedProducts.includes(parseInt(productId))) {
