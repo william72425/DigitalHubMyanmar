@@ -4,6 +4,41 @@ import { useRouter } from 'next/router';
 import { db } from '@/utils/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import AdminNavbar from '@/components/AdminNavbar';
+import productsData from '@/data/products.json';
+
+// Product Selector Component
+const ProductSelector = ({ settings, onChange }) => {
+  const [selectedProducts, setSelectedProducts] = useState(settings.selected_products || []);
+  
+  const toggleProduct = (productId) => {
+    const newSelection = selectedProducts.includes(productId)
+      ? selectedProducts.filter(id => id !== productId)
+      : [...selectedProducts, productId];
+    setSelectedProducts(newSelection);
+    onChange('selected_products', newSelection);
+  };
+  
+  if (settings.applicable_products !== 'selected') return null;
+  
+  return (
+    <div className="mt-4">
+      <label className="block text-gray-400 text-sm mb-2">Select Products</label>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-2 bg-white/5 rounded-lg">
+        {productsData.map((product) => (
+          <label key={product.id} className="flex items-center gap-2 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={selectedProducts.includes(product.id)}
+              onChange={() => toggleProduct(product.id)}
+              className="w-4 h-4 rounded border-white/20"
+            />
+            {product.name}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // Option 1: First Purchase Discount Fields
 const FirstPurchaseDiscountFields = ({ settings, onChange }) => (
@@ -18,6 +53,7 @@ const FirstPurchaseDiscountFields = ({ settings, onChange }) => (
       <div><label className="block text-gray-400 text-sm mb-1">Applicable Products</label><select value={settings.applicable_products || 'all'} onChange={(e) => onChange('applicable_products', e.target.value)} className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20"><option value="all">All Products</option><option value="selected">Selected Products</option></select></div>
       <div><label className="block text-gray-400 text-sm mb-1">Stack with Special Price</label><select value={settings.stack_with_special ? 'yes' : 'no'} onChange={(e) => onChange('stack_with_special', e.target.value === 'yes')} className="w-full p-2 rounded-lg bg-white/10 text-white border border-white/20"><option value="yes">Yes (Add together)</option><option value="no">No (Replace)</option></select></div>
     </div>
+    <ProductSelector settings={settings} onChange={onChange} />
   </div>
 );
 
@@ -140,33 +176,8 @@ export default function AdminPromo() {
           </div>
           <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
             <table className="w-full text-sm">
-              <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
-                <tr>
-                  <th className="text-left py-2 px-2">Code</th>
-                  <th className="text-left py-2 px-2">Option</th>
-                  <th className="text-left py-2 px-2">Used/Limit</th>
-                  <th className="text-left py-2 px-2">Valid From</th>
-                  <th className="text-left py-2 px-2">Valid Until</th>
-                  <th className="text-left py-2 px-2">Status</th>
-                  <th className="text-left py-2 px-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {promoCodes.map((code) => (
-                  <tr key={code.id} className="border-b border-white/10">
-                    <td className="py-2 px-2 font-mono">{code.code}</td>
-                    <td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td>
-                    <td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td>
-                    <td className="py-2 px-2">{code.valid_from || '-'}</td>
-                    <td className="py-2 px-2">{code.valid_until || '-'}</td>
-                    <td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td>
-                    <td className="py-2 px-2">
-                      <button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button>
-                      <button onClick={() => deletePromoCode(code.id)} className="text-red-400">Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+              <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}}><tr><th className="text-left py-2 px-2">Code</th><th className="text-left py-2 px-2">Option</th><th className="text-left py-2 px-2">Used/Limit</th><th className="text-left py-2 px-2">Valid From</th><th className="text-left py-2 px-2">Valid Until</th><th className="text-left py-2 px-2">Status</th><th className="text-left py-2 px-2">Actions</th></tr></thead>
+              <tbody>{promoCodes.map((code) => (<tr key={code.id} className="border-b border-white/10"><td className="py-2 px-2 font-mono">{code.code}</td><td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td><td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td><td className="py-2 px-2">{code.valid_from || '-'}</td><td className="py-2 px-2">{code.valid_until || '-'}</td><td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td><td className="py-2 px-2"><button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button><button onClick={() => deletePromoCode(code.id)} className="text-red-400">Delete</button></td></tr>))}</tbody>
             </table>
           </div>
         </div>
@@ -182,10 +193,7 @@ export default function AdminPromo() {
             <div className="space-y-4">
               <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Promo Code</label><input type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
               <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Option Type</label><select value={formData.option_type} onChange={(e) => { setFormData({...formData, option_type: e.target.value, settings: {}}); }} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
-                <option value="first_purchase_discount">🎯 First Purchase Discount</option>
-                <option value="giveaway">🎁 Giveaway Entry</option>
-                <option value="tiered_rewards">📊 Tiered Rewards</option>
-                <option value="stackable_discount">📚 Stackable Discount</option>
+                <option value="first_purchase_discount">🎯 First Purchase Discount</option><option value="giveaway">🎁 Giveaway Entry</option><option value="tiered_rewards">📊 Tiered Rewards</option><option value="stackable_discount">📚 Stackable Discount</option>
               </select></div>
               <OptionFields optionType={formData.option_type} settings={formData.settings} onChange={handleSettingChange} />
               <div className="grid grid-cols-2 gap-4">
