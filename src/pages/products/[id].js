@@ -31,29 +31,31 @@ export default function ProductDetail() {
   }, []);
 
   const loadUserDiscounts = async (userId) => {
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      let promoDiscount = 0;
-      let promoType = 'percent';
-      
-      // Check if user has a promo code and hasn't used it yet
-      if (userData.used_promote_code && !userData.discount_used) {
-        const promoQuery = await fetch(`/api/promo/check?code=${userData.used_promote_code}`);
-        const promoData = await promoQuery.json();
-        if (promoData.option_type === 'first_purchase_discount') {
-          promoDiscount = promoData.settings?.discount_value || 0;
-          promoType = promoData.settings?.discount_type || 'percent';
-        }
+  const userDoc = await getDoc(doc(db, 'users', userId));
+  if (userDoc.exists()) {
+    const userData = userDoc.data();
+    let promoDiscount = 0;
+    let promoType = 'percent';
+    let stackWithSpecial = false;
+    
+    if (userData.used_promote_code && !userData.discount_used) {
+      const promoQuery = await fetch(`/api/promo/check?code=${userData.used_promote_code}&productId=${product?.id}`);
+      const promoData = await promoQuery.json();
+      if (promoData.option_type === 'first_purchase_discount') {
+        promoDiscount = promoData.settings?.discount_value || 0;
+        promoType = promoData.settings?.discount_type || 'percent';
+        stackWithSpecial = promoData.settings?.stack_with_special || false;
       }
-      
-      setUserDiscounts({
-        promoDiscount,
-        promoType,
-        referralDiscount: userData.referral_discount || 0
-      });
     }
-  };
+    
+    setUserDiscounts({
+      promoDiscount,
+      promoType,
+      stackWithSpecial,
+      referralDiscount: userData.referral_discount || 0
+    });
+  }
+};
 
   useEffect(() => {
     if (id) {
