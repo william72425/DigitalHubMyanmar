@@ -22,7 +22,6 @@ export default function ProductDetail() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
 
-  // Load product first
   useEffect(() => {
     if (id) {
       const productId = parseInt(id);
@@ -43,7 +42,6 @@ export default function ProductDetail() {
     }
   }, [id]);
 
-  // Auth and user data
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
@@ -64,7 +62,6 @@ export default function ProductDetail() {
 
   const loadUserDiscounts = async (userId) => {
     try {
-      // Check for active orders
       const ordersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
@@ -155,7 +152,6 @@ export default function ProductDetail() {
 
   const logoSize = product.logo_size || 70;
   const hasSpecialPrice = product.special_price && product.special_price > 0;
-  const hasStackedDiscount = discountBreakdown.length > 0;
 
   return (
     <>
@@ -165,7 +161,6 @@ export default function ProductDetail() {
           
           <button onClick={() => router.back()} className="text-gray-400 hover:text-[#FF6B35] mb-6">← နောက်သို့</button>
 
-          {/* Product Header */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <div className="flex items-center gap-5">
               {product.logo_url ? (
@@ -186,7 +181,6 @@ export default function ProductDetail() {
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
             <div className="space-y-3">
-              {/* Market Price */}
               {product.market_price > 0 && (
                 <div className="flex justify-between items-center pb-2 border-b border-white/10">
                   <span className="text-gray-300">ဈေးကွက် ပျမ်းမျှဈေး</span>
@@ -194,21 +188,19 @@ export default function ProductDetail() {
                 </div>
               )}
               
-              {/* Hubby Store Price */}
               <div className="flex justify-between items-center pb-2 border-b border-white/10">
                 <span className="text-gray-300">Hubby Store ဈေး</span>
                 <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
               
-              {/* Admin Special Price */}
+              {/* Only show Admin Special Price as a discount line, not as a separate row */}
               {hasSpecialPrice && (
                 <div className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
                   <span>✨ Admin Special Price</span>
-                  <span>{product.special_price.toLocaleString()} MMK</span>
+                  <span>-{(product.hubby_price - product.special_price).toLocaleString()} MMK</span>
                 </div>
               )}
               
-              {/* First Purchase Discount (Stacked) */}
               {discountBreakdown.map((discount, idx) => (
                 <div key={idx} className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
                   <span>🎉 {discount.label}</span>
@@ -216,13 +208,11 @@ export default function ProductDetail() {
                 </div>
               ))}
               
-              {/* Final Price */}
               <div className="flex justify-between items-center pt-3 mt-2 border-t border-white/20">
                 <span className="text-lg font-bold">စုစုပေါင်း</span>
                 <span className="text-[#FF6B35] font-bold text-xl">{finalPrice.toLocaleString()} MMK</span>
               </div>
               
-              {/* First Purchase Note */}
               {isFirstPurchaseEligible && promoDiscountPercent > 0 && !hasActiveOrder && (
                 <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
                   🎉 First purchase discount ({promoDiscountPercent}% OFF) applied!
@@ -231,7 +221,6 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Features Section */}
           {features.length > 0 && (
             <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
               <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
@@ -260,7 +249,6 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* NOTE BOX */}
           {productNote && productNote.content && productNote.content.trim() !== '' && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
               <h3 className="text-yellow-500 font-bold mb-2">{productNote.title || '📌 မှတ်ချက်'}</h3>
@@ -268,12 +256,8 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Buy Options */}
           {!showBuyOptions ? (
-            <button 
-              onClick={() => setShowBuyOptions(true)} 
-              className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 cursor-pointer shadow-lg"
-            >
+            <button onClick={() => setShowBuyOptions(true)} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 cursor-pointer shadow-lg">
               🛒 အခုပဲ {finalPrice.toLocaleString()} MMK ဖြင့် ဝယ်ယူမည်
             </button>
           ) : (
