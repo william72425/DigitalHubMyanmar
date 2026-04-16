@@ -3,15 +3,32 @@ export function calculateStackedDiscount(product, userDiscounts, userData) {
   let finalPrice = product.hubby_price;
   let appliedDiscounts = [];
   let discountAmount = 0;
+  let currentPrice = product.hubby_price;
   
-  // 1. Check if user is eligible for first purchase discount
+  // 1. Admin Special Price (if exists) - This is a direct price override
+  const hasSpecialPrice = product.special_price && product.special_price > 0;
+  if (hasSpecialPrice) {
+    const specialDiscountAmount = product.hubby_price - product.special_price;
+    if (specialDiscountAmount > 0) {
+      discountAmount += specialDiscountAmount;
+      appliedDiscounts.push({ 
+        type: 'special', 
+        amount: specialDiscountAmount, 
+        label: '✨ Admin Special Price' 
+      });
+      currentPrice = product.special_price;
+      finalPrice = product.special_price;
+    }
+  }
+
+  // 2. First Purchase Discount from Promo Code
   const hasFirstPurchaseDiscount = userDiscounts.promoDiscount && userDiscounts.promoDiscount > 0;
   const isFirstPurchase = !userData?.hasActiveOrder && !userData?.first_purchase_discount_used;
   
   if (hasFirstPurchaseDiscount && isFirstPurchase) {
     let promoAmount = 0;
     if (userDiscounts.promoType === 'percent') {
-      promoAmount = Math.round(finalPrice * userDiscounts.promoDiscount / 100);
+      promoAmount = Math.round(currentPrice * userDiscounts.promoDiscount / 100);
     } else {
       promoAmount = userDiscounts.promoDiscount;
     }
@@ -21,9 +38,9 @@ export function calculateStackedDiscount(product, userDiscounts, userData) {
       promoAmount = userDiscounts.maxDiscountAmount;
     }
     
-    // Make sure promo amount doesn't exceed final price
-    if (promoAmount > finalPrice) {
-      promoAmount = finalPrice;
+    // Make sure promo amount doesn't exceed current price
+    if (promoAmount > currentPrice) {
+      promoAmount = currentPrice;
     }
     
     if (promoAmount > 0) {
@@ -33,7 +50,7 @@ export function calculateStackedDiscount(product, userDiscounts, userData) {
         amount: promoAmount, 
         label: `🎉 First Purchase (${userDiscounts.promoDiscount}% OFF)` 
       });
-      finalPrice = finalPrice - promoAmount;
+      finalPrice = currentPrice - promoAmount;
     }
   }
 
