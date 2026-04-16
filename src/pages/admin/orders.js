@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { db } from '@/utils/firebase';
-import { collection, getDocs, updateDoc, doc, query, where, getDoc } from 'firebase/firestore'; // Added getDoc here
+import { collection, getDocs, updateDoc, doc, query, where, getDoc } from 'firebase/firestore';
 import AdminNavbar from '@/components/AdminNavbar';
 
 export default function AdminOrders() {
@@ -46,24 +46,46 @@ export default function AdminOrders() {
     setLoading(false);
   };
 
-  // Simplified updateOrderStatus to avoid complex discount restore logic for now
   const updateOrderStatus = async (orderId, newStatus) => {
     setUpdating(true);
     try {
-      // First, update the order status
+      // Update order status
       await updateDoc(doc(db, 'orders', orderId), {
         status: newStatus,
         updated_at: new Date().toISOString()
       });
       
-      // If status is 'completed', we can mark the user's discount as used if needed
-      if (newStatus === 'completed') {
-        const orderDoc = await getDoc(doc(db, 'orders', orderId));
-        const orderData = orderDoc.data();
-        if (orderData && orderData.user_id) {
+      // Get order data
+      const orderDoc = await getDoc(doc(db, 'orders', orderId));
+      const orderData = orderDoc.data();
+      
+      if (orderData && orderData.user_id) {
+        // If cancelled: restore first purchase discount
+        if (newStatus === 'cancelled') {
+          // Check if user has any other active orders (pending, processing, completed)
+          const userOrdersQuery = query(
+            collection(db, 'orders'),
+            where('user_id', '==', orderData.user_id),
+            where('status', 'in', ['pending', 'processing', 'completed'])
+          );
+          const userOrdersSnapshot = await getDocs(userOrdersQuery);
+          const otherActiveOrders = userOrdersSnapshot.docs.filter(doc => doc.id !== orderId);
+          
+          // If no other active orders, restore discount
+          if (otherActiveOrders.length === 0) {
+            await updateDoc(doc(db, 'users', orderData.user_id), {
+              first_purchase_discount_used: false
+            });
+            console.log('✅ Discount restored for user:', orderData.user_id);
+          }
+        }
+        
+        // If completed: mark discount as used permanently
+        if (newStatus === 'completed') {
           await updateDoc(doc(db, 'users', orderData.user_id), {
             first_purchase_discount_used: true
           });
+          console.log('✅ Discount marked as used for user:', orderData.user_id);
         }
       }
       
@@ -150,8 +172,8 @@ export default function AdminOrders() {
                         <button onClick={() => viewOrderDetail(order)} className="text-blue-400 hover:text-blue-300 text-sm">
                           View Details
                         </button>
-                      </td>
-                    </tr>
+                       </td>
+                     </tr>
                   ))}
                 </tbody>
               </table>
@@ -181,6 +203,12 @@ export default function AdminOrders() {
                   <div>{new Date(selectedOrder.created_at).toLocaleString()}</div>
                   <div><span className="text-gray-400">Payment Method:</span></div>
                   <div>{selectedOrder.payment_method || 'Manual'}</div>
+                  {selectedOrder.userData && (
+                    <>
+                      <div><span className="text-gray-400">First Purchase Discount:</span></div>
+                      <div>{selectedOrder.userData.first_purchase_discount_used ? '❌ Used' : '✅ Available'}</div>
+                    </>
+                  )}
                 </div>
               </div>
               
