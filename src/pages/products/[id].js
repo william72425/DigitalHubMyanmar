@@ -189,7 +189,7 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Price Section - Admin Special Price Hidden */}
+          {/* Price Section */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
             <div className="space-y-3">
@@ -240,7 +240,7 @@ export default function ProductDetail() {
                     <th className="text-left py-3 px-2 text-gray-400">အင်္ဂါရပ်များ</th>
                     <th className="text-center py-3 px-2 text-gray-400 w-1/3">✨ အခမဲ့</th>
                     <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 text-[#FF6B35] font-bold w-1/3">💎 Premium</th>
-                  </td>
+                  </tr>
                 </thead>
                 <tbody>
                   {features.map((feature, idx) => (
