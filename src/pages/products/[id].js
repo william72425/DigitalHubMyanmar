@@ -179,7 +179,6 @@ export default function ProductDetail() {
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
             <div className="space-y-3">
-              {/* Market Price */}
               {product.market_price > 0 && (
                 <div className="flex justify-between items-center pb-2 border-b border-white/10">
                   <span className="text-gray-300">ဈေးကွက် ပျမ်းမျှဈေး</span>
@@ -187,13 +186,11 @@ export default function ProductDetail() {
                 </div>
               )}
               
-              {/* Hubby Store Price */}
               <div className="flex justify-between items-center pb-2 border-b border-white/10">
                 <span className="text-gray-300">Hubby Store ဈေး</span>
                 <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
               
-              {/* Admin Special Price */}
               {hasSpecialPrice && (
                 <div className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
                   <span>✨ Admin Special Price</span>
@@ -201,7 +198,6 @@ export default function ProductDetail() {
                 </div>
               )}
               
-              {/* First Purchase Discount */}
               {discountBreakdown.map((discount, idx) => (
                 <div key={idx} className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
                   <span>🎉 {discount.label}</span>
@@ -209,13 +205,11 @@ export default function ProductDetail() {
                 </div>
               ))}
               
-              {/* Final Price */}
               <div className="flex justify-between items-center pt-3 mt-2 border-t border-white/20">
                 <span className="text-lg font-bold">စုစုပေါင်း</span>
                 <span className="text-[#FF6B35] font-bold text-xl">{finalPrice.toLocaleString()} MMK</span>
               </div>
               
-              {/* First Purchase Note */}
               {isFirstPurchaseEligible && promoDiscount > 0 && !hasActiveOrder && (
                 <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
                   🎉 First purchase discount ({promoDiscount}% OFF) applied!
@@ -246,7 +240,7 @@ export default function ProductDetail() {
                       <td className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/10 to-[#00D4FF]/10">
                         <span className="text-[#FF6B35] font-semibold">✓ {feature.pro || feature.free || 'အပြည့်အစုံ'}</span>
                       </td>
-                    <tr>
+                    </tr>
                   ))}
                 </tbody>
               </table>
