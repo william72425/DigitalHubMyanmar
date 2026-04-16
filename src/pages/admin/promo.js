@@ -176,8 +176,33 @@ export default function AdminPromo() {
           </div>
           <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
             <table className="w-full text-sm">
-              <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}}><tr><th className="text-left py-2 px-2">Code</th><th className="text-left py-2 px-2">Option</th><th className="text-left py-2 px-2">Used/Limit</th><th className="text-left py-2 px-2">Valid From</th><th className="text-left py-2 px-2">Valid Until</th><th className="text-left py-2 px-2">Status</th><th className="text-left py-2 px-2">Actions</th></tr></thead>
-              <tbody>{promoCodes.map((code) => (<tr key={code.id} className="border-b border-white/10"><td className="py-2 px-2 font-mono">{code.code}</td><td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td><td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td><td className="py-2 px-2">{code.valid_from || '-'}</td><td className="py-2 px-2">{code.valid_until || '-'}</td><td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td><td className="py-2 px-2"><button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button><button onClick={() => deletePromoCode(code.id)} className="text-red-400">Delete</button></td></tr>))}</tbody>
+              <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
+                <tr>
+                  <th className="text-left py-2 px-2">Code</th>
+                  <th className="text-left py-2 px-2">Option</th>
+                  <th className="text-left py-2 px-2">Used/Limit</th>
+                  <th className="text-left py-2 px-2">Valid From</th>
+                  <th className="text-left py-2 px-2">Valid Until</th>
+                  <th className="text-left py-2 px-2">Status</th>
+                  <th className="text-left py-2 px-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {promoCodes.map((code) => (
+                  <tr key={code.id} className="border-b border-white/10">
+                    <td className="py-2 px-2 font-mono">{code.code}</td>
+                    <td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td>
+                    <td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td>
+                    <td className="py-2 px-2">{code.valid_from || '-'}</td>
+                    <td className="py-2 px-2">{code.valid_until || '-'}</td>
+                    <td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td>
+                    <td className="py-2 px-2">
+                      <button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button>
+                      <button onClick={() => deletePromoCode(code.id)} className="text-red-400">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </div>
