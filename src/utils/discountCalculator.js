@@ -4,7 +4,10 @@ export function calculateStackedDiscount(product, userDiscounts, userData) {
   let appliedDiscounts = [];
   let discountAmount = 0;
   
-  // 1. Check for Admin Special Price (this overrides hubby price)
+  // Check if user has completed order (should NOT get first purchase discount)
+  const hasCompletedOrder = userData?.hasCompletedOrder || false;
+  
+  // 1. Check for Admin Special Price
   const hasSpecialPrice = product.special_price && product.special_price > 0;
   if (hasSpecialPrice) {
     const specialDiscountAmount = product.hubby_price - product.special_price;
@@ -19,9 +22,9 @@ export function calculateStackedDiscount(product, userDiscounts, userData) {
     }
   }
 
-  // 2. Check if user is eligible for first purchase discount
+  // 2. First Purchase Discount - ONLY if user has NO completed orders
   const hasFirstPurchaseDiscount = userDiscounts.promoDiscount && userDiscounts.promoDiscount > 0;
-  const isFirstPurchase = !userData?.hasActiveOrder && !userData?.first_purchase_discount_used;
+  const isFirstPurchase = !hasCompletedOrder && !userData?.first_purchase_discount_used;
   
   if (hasFirstPurchaseDiscount && isFirstPurchase && finalPrice > 0) {
     let promoAmount = 0;
@@ -36,7 +39,6 @@ export function calculateStackedDiscount(product, userDiscounts, userData) {
       promoAmount = userDiscounts.maxDiscountAmount;
     }
     
-    // Make sure promo amount doesn't exceed final price
     if (promoAmount > finalPrice) {
       promoAmount = finalPrice;
     }
