@@ -48,7 +48,6 @@ export default function Checkout() {
 
   const loadUserData = async (userId) => {
     try {
-      // Check for active orders
       const ordersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
@@ -68,7 +67,6 @@ export default function Checkout() {
         const data = userDoc.data();
         setUserData(data);
         
-        // Only apply first purchase discount if user has NO active orders
         if (!hasOrder && data.used_promote_code && !data.first_purchase_discount_used && product) {
           try {
             const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}`);
@@ -108,7 +106,6 @@ export default function Checkout() {
       console.error('Error loading user data:', error);
       if (product) {
         setFinalPrice(product.hubby_price);
-        setDiscountBreakdown([]);
       }
       setLoading(false);
     }
@@ -164,6 +161,7 @@ export default function Checkout() {
   }
 
   const hasSpecialPrice = product.special_price && product.special_price > 0;
+  const specialDiscountAmount = hasSpecialPrice ? product.hubby_price - product.special_price : 0;
 
   return (
     <>
@@ -191,10 +189,11 @@ export default function Checkout() {
                 <span>{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
               
-              {hasSpecialPrice && (
+              {/* Admin Special Price as discount line */}
+              {hasSpecialPrice && specialDiscountAmount > 0 && (
                 <div className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
                   <span>✨ Admin Special Price</span>
-                  <span>{product.special_price.toLocaleString()} MMK</span>
+                  <span>-{specialDiscountAmount.toLocaleString()} MMK</span>
                 </div>
               )}
               
