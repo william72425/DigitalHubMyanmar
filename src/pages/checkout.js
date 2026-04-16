@@ -21,7 +21,7 @@ export default function Checkout() {
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [promoPercent, setPromoPercent] = useState(0);
   const [hasSpecialPrice, setHasSpecialPrice] = useState(false);
-  const [priceError, setPriceError] = useState(null);
+  const [productLoaded, setProductLoaded] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -35,20 +35,34 @@ export default function Checkout() {
       }
       setUser(user);
       await loadProduct();
-      await loadUserData(user.uid);
     });
 
     return () => unsubscribe();
   }, [id]);
 
   const loadProduct = async () => {
-    if (!id) return;
+    if (!id) {
+      console.log('No product ID');
+      return;
+    }
     const found = productsData.find(p => p.id === parseInt(id));
-    setProduct(found);
-    console.log('Product loaded:', found?.name, 'Hubby price:', found?.hubby_price, 'Special price:', found?.special_price);
+    if (found) {
+      setProduct(found);
+      setProductLoaded(true);
+      console.log('Product loaded:', found.name, found.hubby_price);
+      await loadUserData(user?.uid);
+    } else {
+      console.log('Product not found for id:', id);
+      setLoading(false);
+    }
   };
 
   const loadUserData = async (userId) => {
+    if (!userId || !product) {
+      console.log('Missing userId or product for user data');
+      return;
+    }
+    
     try {
       // Check for active orders
       const ordersQuery = query(
@@ -89,7 +103,7 @@ export default function Checkout() {
       
       setPromoPercent(discountPercent);
       
-      // MANUAL CALCULATION - DIRECT
+      // MANUAL CALCULATION
       if (product) {
         let price = product.hubby_price;
         let specialDisc = 0;
@@ -103,7 +117,7 @@ export default function Checkout() {
           specialDisc = product.hubby_price - product.special_price;
           price = product.special_price;
           hasSpecial = true;
-          console.log('After special price:', price, 'Discount:', specialDisc);
+          console.log('After special price:', price);
         }
         
         // STEP 2: First Purchase Discount
@@ -114,24 +128,19 @@ export default function Checkout() {
           firstDisc = Math.round(price * discountPercent / 100);
           if (firstDisc > price) firstDisc = price;
           price = price - firstDisc;
-          console.log('After first purchase discount:', price, 'Discount:', firstDisc);
+          console.log('After first purchase discount:', price);
         }
         
         setHasSpecialPrice(hasSpecial);
         setSpecialDiscount(specialDisc);
         setFirstPurchaseDiscount(firstDisc);
         setFinalPrice(price);
-        setPriceError(null);
         
-        console.log('FINAL PRICE SET TO:', price);
-      } else {
-        setPriceError('Product not loaded');
+        console.log('FINAL PRICE:', price);
       }
       setLoading(false);
     } catch (error) {
       console.error('Error loading user data:', error);
-      setPriceError(error.message);
-      if (product) setFinalPrice(product.hubby_price);
       setLoading(false);
     }
   };
@@ -181,9 +190,7 @@ export default function Checkout() {
     );
   }
 
-  // Ensure finalPrice is a valid number
-  const displayPrice = (typeof finalPrice === 'number' && !isNaN(finalPrice) && finalPrice > 0) ? finalPrice : product.hubby_price;
-  console.log('Display price calculated:', displayPrice, 'Original finalPrice:', finalPrice);
+  const displayPrice = (finalPrice > 0) ? finalPrice : product.hubby_price;
 
   return (
     <>
@@ -193,12 +200,6 @@ export default function Checkout() {
         
         <div className="container mx-auto px-4 py-24 max-w-4xl">
           <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🛒 Checkout</h1>
-          
-          {priceError && (
-            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm">
-              Error: {priceError}
-            </div>
-          )}
           
           {/* Bill Card */}
           <div className={`rounded-2xl overflow-hidden mb-6 ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} shadow-2xl border ${isDarkMode ? 'border-white/20' : 'border-gray-200'}`}>
@@ -257,11 +258,6 @@ export default function Checkout() {
                     </p>
                   </div>
                 )}
-                
-                {/* Debug info - remove later */}
-                <div className="text-xs text-gray-500 mt-4 pt-2 border-t border-white/10">
-                  <p>Debug: finalPrice={finalPrice}, displayPrice={displayPrice}</p>
-                </div>
               </div>
             </div>
             
