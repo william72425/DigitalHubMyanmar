@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { auth, db } from '@/utils/firebase';
-import { doc, getDoc, addDoc, collection, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
 import productsData from '@/data/products.json';
 
@@ -15,13 +15,19 @@ export default function Checkout() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [finalPrice, setFinalPrice] = useState(0);
-  const [specialDiscount, setSpecialDiscount] = useState(0);
-  const [firstPurchaseDiscount, setFirstPurchaseDiscount] = useState(0);
-  const [hasActiveOrder, setHasActiveOrder] = useState(false);
-  const [promoPercent, setPromoPercent] = useState(0);
-  const [hasSpecialPrice, setHasSpecialPrice] = useState(false);
-  const [productLoaded, setProductLoaded] = useState(false);
+  
+  // Order summary data - same as detail page
+  const [orderData, setOrderData] = useState({
+    marketPrice: 0,
+    hubbyPrice: 0,
+    specialPrice: 0,
+    specialDiscount: 0,
+    firstPurchaseDiscount: 0,
+    finalPrice: 0,
+    promoPercent: 0,
+    hasSpecialPrice: false,
+    hasFirstPurchaseDiscount: false
+  });
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -34,115 +40,81 @@ export default function Checkout() {
         return;
       }
       setUser(user);
-      await loadProduct();
+      await loadProductAndCalculate();
     });
 
     return () => unsubscribe();
   }, [id]);
 
-  const loadProduct = async () => {
-    if (!id) {
-      console.log('No product ID');
-      return;
-    }
-    const found = productsData.find(p => p.id === parseInt(id));
-    if (found) {
-      setProduct(found);
-      setProductLoaded(true);
-      console.log('Product loaded:', found.name, found.hubby_price);
-      await loadUserData(user?.uid);
-    } else {
-      console.log('Product not found for id:', id);
-      setLoading(false);
-    }
-  };
-
-  const loadUserData = async (userId) => {
-    if (!userId || !product) {
-      console.log('Missing userId or product for user data');
-      return;
-    }
+  const loadProductAndCalculate = async () => {
+    if (!id) return;
     
-    try {
-      // Check for active orders
-      const ordersQuery = query(
-        collection(db, 'orders'),
-        where('user_id', '==', userId),
-        where('status', 'in', ['pending', 'processing', 'completed'])
-      );
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const hasOrder = !ordersSnapshot.empty;
-      setHasActiveOrder(hasOrder);
-      
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      let discountPercent = 0;
-      
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        setUserData(data);
-        console.log('User data:', { 
-          used_promote_code: data.used_promote_code, 
-          first_purchase_discount_used: data.first_purchase_discount_used 
-        });
-        
-        // Only apply first purchase discount if user has NO active orders
-        if (!hasOrder && data.used_promote_code && !data.first_purchase_discount_used && product) {
-          try {
-            const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}`);
-            const promoData = await promoRes.json();
-            console.log('Promo API response:', promoData);
-            if (promoData && promoData.option_type === 'first_purchase_discount') {
-              discountPercent = promoData.settings?.discount_value || 0;
-              console.log('First purchase discount percent:', discountPercent);
-            }
-          } catch (err) {
-            console.error('Promo check failed:', err);
-          }
-        }
-      }
-      
-      setPromoPercent(discountPercent);
-      
-      // MANUAL CALCULATION
-      if (product) {
-        let price = product.hubby_price;
-        let specialDisc = 0;
-        let firstDisc = 0;
-        let hasSpecial = false;
-        
-        console.log('Starting price:', price);
-        
-        // STEP 1: Admin Special Price
-        if (product.special_price && product.special_price > 0) {
-          specialDisc = product.hubby_price - product.special_price;
-          price = product.special_price;
-          hasSpecial = true;
-          console.log('After special price:', price);
-        }
-        
-        // STEP 2: First Purchase Discount
-        const isEligible = discountPercent > 0 && !hasOrder && !userDoc.data()?.first_purchase_discount_used;
-        console.log('First purchase eligible:', isEligible, 'Discount percent:', discountPercent);
-        
-        if (isEligible) {
-          firstDisc = Math.round(price * discountPercent / 100);
-          if (firstDisc > price) firstDisc = price;
-          price = price - firstDisc;
-          console.log('After first purchase discount:', price);
-        }
-        
-        setHasSpecialPrice(hasSpecial);
-        setSpecialDiscount(specialDisc);
-        setFirstPurchaseDiscount(firstDisc);
-        setFinalPrice(price);
-        
-        console.log('FINAL PRICE:', price);
-      }
+    // Load product
+    const found = productsData.find(p => p.id === parseInt(id));
+    if (!found) {
       setLoading(false);
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      setLoading(false);
+      return;
     }
+    setProduct(found);
+    
+    // Load user data
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (userDoc.exists()) {
+      setUserData(userDoc.data());
+      
+      // Check for active orders
+      const ordersQuery = query(collection(db, 'orders'), where('user_id', '==', user.uid), where('status', 'in', ['pending', 'processing', 'completed']));
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const hasActiveOrder = !ordersSnapshot.empty;
+      
+      // Get promo discount if available
+      let promoDiscountPercent = 0;
+      const userDataObj = userDoc.data();
+      if (!hasActiveOrder && userDataObj.used_promote_code && !userDataObj.first_purchase_discount_used) {
+        try {
+          const promoRes = await fetch(`/api/promo/check?code=${userDataObj.used_promote_code}&productId=${found.id}`);
+          const promoData = await promoRes.json();
+          if (promoData && promoData.option_type === 'first_purchase_discount') {
+            promoDiscountPercent = promoData.settings?.discount_value || 0;
+          }
+        } catch (err) {
+          console.error('Promo check failed:', err);
+        }
+      }
+      
+      // Calculate exactly like detail page
+      let price = found.hubby_price;
+      let specialDisc = 0;
+      let firstDisc = 0;
+      let hasSpecial = false;
+      
+      // Admin Special Price
+      if (found.special_price && found.special_price > 0) {
+        specialDisc = found.hubby_price - found.special_price;
+        price = found.special_price;
+        hasSpecial = true;
+      }
+      
+      // First Purchase Discount
+      if (promoDiscountPercent > 0 && !hasActiveOrder && !userDataObj.first_purchase_discount_used) {
+        firstDisc = Math.round(price * promoDiscountPercent / 100);
+        if (firstDisc > price) firstDisc = price;
+        price = price - firstDisc;
+      }
+      
+      setOrderData({
+        marketPrice: found.market_price || 0,
+        hubbyPrice: found.hubby_price,
+        specialPrice: found.special_price || 0,
+        specialDiscount: specialDisc,
+        firstPurchaseDiscount: firstDisc,
+        finalPrice: price,
+        promoPercent: promoDiscountPercent,
+        hasSpecialPrice: hasSpecial,
+        hasFirstPurchaseDiscount: firstDisc > 0
+      });
+    }
+    setLoading(false);
   };
 
   const createOrder = async () => {
@@ -155,16 +127,16 @@ export default function Checkout() {
         product_name: product.name,
         duration: product.duration,
         original_price: product.hubby_price,
-        final_price: finalPrice,
-        special_discount: specialDiscount,
-        first_purchase_discount: firstPurchaseDiscount,
+        final_price: orderData.finalPrice,
+        special_discount: orderData.specialDiscount,
+        first_purchase_discount: orderData.firstPurchaseDiscount,
         promo_code_used: userData?.used_promote_code || null,
         status: 'pending',
         payment_method: 'manual',
         created_at: new Date().toISOString()
       });
       
-      if (userData?.used_promote_code && !userData?.first_purchase_discount_used && firstPurchaseDiscount > 0) {
+      if (userData?.used_promote_code && !userData?.first_purchase_discount_used && orderData.hasFirstPurchaseDiscount) {
         await updateDoc(doc(db, 'users', user.uid), { first_purchase_discount_used: true });
       }
       
@@ -190,8 +162,6 @@ export default function Checkout() {
     );
   }
 
-  const displayPrice = (finalPrice > 0) ? finalPrice : product.hubby_price;
-
   return (
     <>
       <Head><title>Checkout | Digital Hub Myanmar</title></Head>
@@ -201,68 +171,56 @@ export default function Checkout() {
         <div className="container mx-auto px-4 py-24 max-w-4xl">
           <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🛒 Checkout</h1>
           
-          {/* Bill Card */}
-          <div className={`rounded-2xl overflow-hidden mb-6 ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} shadow-2xl border ${isDarkMode ? 'border-white/20' : 'border-gray-200'}`}>
-            <div className={`px-6 py-4 ${isDarkMode ? 'bg-[#FF6B35]/20 border-b border-white/10' : 'bg-orange-50 border-b border-gray-200'}`}>
-              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🧾 Order Summary</h2>
-              <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Digital Hub Myanmar</p>
-            </div>
+          {/* Order Summary - Same as Detail Page */}
+          <div className={`rounded-2xl p-6 mb-6 ${isDarkMode ? 'bg-white/10' : 'bg-white/60 shadow-sm'}`}>
+            <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Order Summary</h2>
             
-            <div className="p-6">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Product</span>
-                  <div className="text-right">
-                    <div className="font-semibold">{product.name}</div>
-                    <div className="text-xs text-gray-500">{product.duration}</div>
-                  </div>
-                </div>
-                
-                {product.market_price > 0 && (
-                  <div className="flex justify-between py-2">
-                    <span className="text-gray-400">ဈေးကွက် ပျမ်းမျှဈေး</span>
-                    <span className="line-through text-gray-500">{product.market_price.toLocaleString()} MMK</span>
-                  </div>
-                )}
-                
-                <div className="flex justify-between py-2 border-b border-dashed border-white/10">
-                  <span className="text-gray-400">Hubby Store ဈေး</span>
-                  <span className="font-medium">{product.hubby_price?.toLocaleString()} MMK</span>
-                </div>
-                
-                {hasSpecialPrice && specialDiscount > 0 && (
-                  <div className="flex justify-between text-green-400">
-                    <span>✨ Admin Special Discount</span>
-                    <span>-{specialDiscount.toLocaleString()} MMK</span>
-                  </div>
-                )}
-                
-                {firstPurchaseDiscount > 0 && (
-                  <div className="flex justify-between text-green-400">
-                    <span>🎉 First Purchase ({promoPercent}% OFF)</span>
-                    <span>-{firstPurchaseDiscount.toLocaleString()} MMK</span>
-                  </div>
-                )}
-                
-                <div className={`flex justify-between pt-4 mt-2 border-t-2 ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
-                  <span className="text-lg font-bold">Total Amount</span>
-                  <span className={`text-2xl font-bold ${isDarkMode ? 'text-[#FF6B35]' : 'text-orange-600'}`}>
-                    {displayPrice.toLocaleString()} MMK
-                  </span>
-                </div>
-                
-                {firstPurchaseDiscount > 0 && (
-                  <div className="mt-3 p-2 bg-green-500/10 rounded-lg text-center">
-                    <p className="text-xs text-green-500">
-                      🎉 First purchase discount ({promoPercent}% OFF) applied!
-                    </p>
-                  </div>
-                )}
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-white/10">
+                <span className="text-gray-400">Product</span>
+                <span className="font-semibold">{product.name}</span>
               </div>
-            </div>
-            
-            <div className={`px-6 py-3 ${isDarkMode ? 'bg-white/5 border-t border-white/10' : 'bg-gray-50 border-t border-gray-200'}`}>
-              <p className="text-center text-xs text-gray-500">Thank you for shopping at Digital Hub Myanmar</p>
+              <div className="flex justify-between py-2 border-b border-white/10">
+                <span className="text-gray-400">Duration</span>
+                <span>{product.duration}</span>
+              </div>
+              
+              {orderData.marketPrice > 0 && (
+                <div className="flex justify-between py-2 border-b border-white/10">
+                  <span className="text-gray-400">ဈေးကွက် ပျမ်းမျှဈေး</span>
+                  <span className="line-through text-gray-400">{orderData.marketPrice.toLocaleString()} MMK</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between py-2 border-b border-white/10">
+                <span className="text-gray-400">Hubby Store ဈေး</span>
+                <span className="text-[#FF6B35] font-bold">{orderData.hubbyPrice.toLocaleString()} MMK</span>
+              </div>
+              
+              {orderData.hasSpecialPrice && orderData.specialDiscount > 0 && (
+                <div className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
+                  <span>✨ Admin Special Discount</span>
+                  <span>-{orderData.specialDiscount.toLocaleString()} MMK</span>
+                </div>
+              )}
+              
+              {orderData.hasFirstPurchaseDiscount && orderData.firstPurchaseDiscount > 0 && (
+                <div className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
+                  <span>🎉 First Purchase ({orderData.promoPercent}% OFF)</span>
+                  <span>-{orderData.firstPurchaseDiscount.toLocaleString()} MMK</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between py-3 text-lg font-bold border-t border-white/20 pt-3">
+                <span className="text-gray-300">Special price for you</span>
+                <span className="text-[#FF6B35] text-xl">{orderData.finalPrice.toLocaleString()} MMK</span>
+              </div>
+              
+              {orderData.hasFirstPurchaseDiscount && (
+                <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
+                  🎉 First purchase discount ({orderData.promoPercent}% OFF) applied!
+                </div>
+              )}
             </div>
           </div>
           
@@ -284,7 +242,7 @@ export default function Checkout() {
             disabled={processing}
             className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50"
           >
-            {processing ? 'Processing...' : `✅ Confirm Order - ${displayPrice.toLocaleString()} MMK`}
+            {processing ? 'Processing...' : `✅ Confirm Order - ${orderData.finalPrice.toLocaleString()} MMK`}
           </button>
           
           <p className="text-center text-gray-500 text-xs mt-4">
