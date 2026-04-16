@@ -18,7 +18,12 @@ export default function Checkout() {
   const [processing, setProcessing] = useState(false);
   const [discountBreakdown, setDiscountBreakdown] = useState([]);
   const [finalPrice, setFinalPrice] = useState(0);
-  const [userDiscounts, setUserDiscounts] = useState({ promoDiscount: 0, promoType: 'percent', referralDiscount: 0 });
+  const [userDiscounts, setUserDiscounts] = useState({ 
+    promoDiscount: 0, 
+    promoType: 'percent', 
+    stackWithSpecial: false,
+    referralDiscount: 0 
+  });
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -31,52 +36,65 @@ export default function Checkout() {
         return;
       }
       setUser(user);
-      await loadUserData(user.uid);
       await loadProduct();
+      await loadUserData(user.uid);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [id]);
 
-  const loadUserData = async (userId) => {
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    if (userDoc.exists()) {
-      const data = userDoc.data();
-      setUserData(data);
-      
-      let promoDiscount = 0;
-      let promoType = 'percent';
-      
-      if (data.used_promote_code && !data.discount_used) {
-        const promoQuery = await fetch(`/api/promo/check?code=${data.used_promote_code}`);
-        const promoData = await promoQuery.json();
-        if (promoData.option_type === 'first_purchase_discount') {
-          promoDiscount = promoData.settings?.discount_value || 0;
-          promoType = promoData.settings?.discount_type || 'percent';
-        }
-      }
-      
-      setUserDiscounts({
-        promoDiscount,
-        promoType,
-        referralDiscount: data.referral_discount || 0
-      });
-    }
-  };
-
   const loadProduct = async () => {
     if (!id) return;
     const found = productsData.find(p => p.id === parseInt(id));
     setProduct(found);
-    
-    if (found) {
-      const result = calculateStackedDiscount(found, userDiscounts);
-      setFinalPrice(result.finalPrice);
-      setDiscountBreakdown(result.appliedDiscounts);
+  };
+
+  const loadUserData = async (userId) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setUserData(data);
+        
+        let promoDiscount = 0;
+        let promoType = 'percent';
+        let stackWithSpecial = false;
+        
+        // Check if user has a promo code and hasn't used it yet
+        if (data.used_promote_code && !data.discount_used && product) {
+          const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}`);
+          const promoData = await promoRes.json();
+          
+          if (promoData.option_type === 'first_purchase_discount') {
+            promoDiscount = promoData.settings?.discount_value || 0;
+            promoType = promoData.settings?.discount_type || 'percent';
+            stackWithSpecial = promoData.settings?.stack_with_special || false;
+          }
+        }
+        
+        const discounts = {
+          promoDiscount,
+          promoType,
+          stackWithSpecial,
+          referralDiscount: data.referral_discount || 0
+        };
+        
+        setUserDiscounts(discounts);
+        
+        // Calculate final price after discounts
+        if (product) {
+          const result = calculateStackedDiscount(product, discounts);
+          setFinalPrice(result.finalPrice);
+          setDiscountBreakdown(result.appliedDiscounts);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
     }
   };
 
+  // Recalculate when product or userDiscounts change
   useEffect(() => {
     if (product && userDiscounts) {
       const result = calculateStackedDiscount(product, userDiscounts);
@@ -105,14 +123,18 @@ export default function Checkout() {
       
       await addDoc(collection(db, 'orders'), orderData);
       
+      // Mark discount as used if this is first purchase with promo
       if (userData?.used_promote_code && !userData?.discount_used) {
-        await updateDoc(doc(db, 'users', user.uid), { discount_used: true });
+        await updateDoc(doc(db, 'users', user.uid), { 
+          discount_used: true 
+        });
       }
       
       alert('Order created! Please send payment proof to Telegram: @william815');
       router.push('/orders');
     } catch (error) {
-      alert('Failed to create order');
+      console.error('Order creation error:', error);
+      alert('Failed to create order: ' + error.message);
     }
     setProcessing(false);
   };
