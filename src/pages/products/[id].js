@@ -21,6 +21,7 @@ export default function ProductDetail() {
   const [showBuyOptions, setShowBuyOptions] = useState(false);
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Load product first
   useEffect(() => {
@@ -50,6 +51,7 @@ export default function ProductDetail() {
         setUser(user);
         await loadUserDiscounts(user.uid);
       } else {
+        setAuthChecked(true);
         setLoading(false);
       }
     });
@@ -82,7 +84,7 @@ export default function ProductDetail() {
           try {
             const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}&productId=${product.id}`);
             const promoData = await promoRes.json();
-            if (promoData.option_type === 'first_purchase_discount') {
+            if (promoData && promoData.option_type === 'first_purchase_discount') {
               discountPercent = promoData.settings?.discount_value || 0;
               promoType = promoData.settings?.discount_type || 'percent';
               stackWithSpecial = promoData.settings?.stack_with_special || false;
@@ -97,23 +99,31 @@ export default function ProductDetail() {
       setPromoDiscount(discountPercent);
       
       // Calculate final price
-if (product) {
-  const userDiscountsObj = {
-    promoDiscount: discountPercent,
-    promoType,
-    stackWithSpecial,
-    maxDiscountAmount
+      if (product) {
+        const userDiscountsObj = {
+          promoDiscount: discountPercent,
+          promoType,
+          stackWithSpecial,
+          maxDiscountAmount
+        };
+        const userDataObj = { 
+          hasActiveOrder: hasOrder,
+          first_purchase_discount_used: userDoc.exists() ? userDoc.data().first_purchase_discount_used : false
+        };
+        
+        const result = calculateStackedDiscount(product, userDiscountsObj, userDataObj);
+        setFinalPrice(result.finalPrice);
+        setDiscountBreakdown(result.appliedDiscounts);
+        setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
+      }
+      setAuthChecked(true);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      setAuthChecked(true);
+      setLoading(false);
+    }
   };
-  const userDataObj = { 
-    hasActiveOrder: hasOrder,
-    first_purchase_discount_used: false  // Make sure this is false for new users
-  };
-  
-  const result = calculateStackedDiscount(product, userDiscountsObj, userDataObj);
-  setFinalPrice(result.finalPrice);
-  setDiscountBreakdown(result.appliedDiscounts);
-  setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
-}
 
   const handleExternalBuy = (platform, contactId) => {
     const message = `ဟုတ်ကဲ့ပါ။ ${product.name} (${product.duration}) ကို ${finalPrice.toLocaleString()} MMK ဖြင့် ဝယ်ယူလိုပါသည်။`;
@@ -146,6 +156,7 @@ if (product) {
 
   const logoSize = product.logo_size || 70;
   const hasSpecialPrice = product.special_price && product.special_price > 0;
+  const hasAnyDiscount = discountBreakdown.length > 0 || hasSpecialPrice;
 
   return (
     <>
@@ -176,6 +187,7 @@ if (product) {
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
             <div className="space-y-3">
+              {/* Market Price */}
               {product.market_price > 0 && (
                 <div className="flex justify-between items-center pb-2 border-b border-white/10">
                   <span className="text-gray-300">ဈေးကွက် ပျမ်းမျှဈေး</span>
@@ -183,11 +195,13 @@ if (product) {
                 </div>
               )}
               
+              {/* Hubby Store Price */}
               <div className="flex justify-between items-center pb-2 border-b border-white/10">
                 <span className="text-gray-300">Hubby Store ဈေး</span>
                 <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
               
+              {/* Admin Special Price */}
               {hasSpecialPrice && (
                 <div className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
                   <span>✨ Admin Special Price</span>
@@ -195,6 +209,7 @@ if (product) {
                 </div>
               )}
               
+              {/* First Purchase Discount */}
               {discountBreakdown.map((discount, idx) => (
                 <div key={idx} className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
                   <span>🎉 {discount.label}</span>
@@ -202,11 +217,13 @@ if (product) {
                 </div>
               ))}
               
+              {/* Final Price */}
               <div className="flex justify-between items-center pt-3 mt-2 border-t border-white/20">
                 <span className="text-lg font-bold">စုစုပေါင်း</span>
                 <span className="text-[#FF6B35] font-bold text-xl">{finalPrice.toLocaleString()} MMK</span>
               </div>
               
+              {/* First Purchase Note */}
               {isFirstPurchaseEligible && promoDiscount > 0 && !hasActiveOrder && (
                 <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
                   🎉 First purchase discount ({promoDiscount}% OFF) applied!
