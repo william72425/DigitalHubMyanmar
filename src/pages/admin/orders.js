@@ -49,13 +49,11 @@ export default function AdminOrders() {
   const updateOrderStatus = async (orderId, newStatus) => {
     setUpdating(true);
     try {
-      // Update order status
       await updateDoc(doc(db, 'orders', orderId), {
         status: newStatus,
         updated_at: new Date().toISOString()
       });
       
-      // If order is completed, mark user's first purchase discount as used
       if (newStatus === 'completed' && selectedOrder) {
         await updateDoc(doc(db, 'users', selectedOrder.user_id), {
           first_purchase_discount_used: true
@@ -105,7 +103,7 @@ export default function AdminOrders() {
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex justify-between items-center mb-6">
-            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📦 Order Management</h1>
+            <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📦 Order Management</h1>
             <button onClick={fetchOrders} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">🔄 Refresh</button>
           </div>
           
@@ -114,15 +112,16 @@ export default function AdminOrders() {
               <p className="text-center text-gray-400 py-8">No orders found.</p>
             ) : (
               <table className="w-full text-sm">
-                <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}}><tr>
-                  <th className="text-left py-3 px-2">Order ID</th>
-                  <th className="text-left py-3 px-2">Customer</th>
-                  <th className="text-left py-3 px-2">Product</th>
-                  <th className="text-left py-3 px-2">Amount</th>
-                  <th className="text-left py-3 px-2">Status</th>
-                  <th className="text-left py-3 px-2">Date</th>
-                  <th className="text-left py-3 px-2">Actions</th>
-                </tr>
+                <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
+                  <tr>
+                    <th className="text-left py-3 px-2">Order ID</th>
+                    <th className="text-left py-3 px-2">Customer</th>
+                    <th className="text-left py-3 px-2">Product</th>
+                    <th className="text-left py-3 px-2">Amount</th>
+                    <th className="text-left py-3 px-2">Status</th>
+                    <th className="text-left py-3 px-2">Date</th>
+                    <th className="text-left py-3 px-2">Actions</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {orders.map((order) => (
@@ -209,7 +208,7 @@ export default function AdminOrders() {
                 </div>
               )}
               
-              {/* Status Update - Fixed: Processing and Cancelled are separate */}
+              {/* Status Update */}
               <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                 <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📌 Update Status</h3>
                 <div className="flex flex-wrap gap-2">
