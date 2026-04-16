@@ -1,7 +1,11 @@
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { auth, db } from '@/utils/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import productsData from '@/data/products.json';
+import featuresData from '@/data/features.json';
+import { calculateStackedDiscount } from '@/utils/discountCalculator';
 
 export default function ProductDetail() {
   const router = useRouter();
@@ -10,7 +14,46 @@ export default function ProductDetail() {
   const [features, setFeatures] = useState([]);
   const [productNote, setProductNote] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [userDiscounts, setUserDiscounts] = useState({ promoDiscount: 0, promoType: 'percent', referralDiscount: 0 });
   const [showContactOptions, setShowContactOptions] = useState(false);
+  const [user, setUser] = useState(null);
+  const [finalPrice, setFinalPrice] = useState(0);
+  const [discountBreakdown, setDiscountBreakdown] = useState([]);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        setUser(user);
+        await loadUserDiscounts(user.uid);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const loadUserDiscounts = async (userId) => {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      let promoDiscount = 0;
+      let promoType = 'percent';
+      
+      // Check if user has a promo code and hasn't used it yet
+      if (userData.used_promote_code && !userData.discount_used) {
+        const promoQuery = await fetch(`/api/promo/check?code=${userData.used_promote_code}`);
+        const promoData = await promoQuery.json();
+        if (promoData.option_type === 'first_purchase_discount') {
+          promoDiscount = promoData.settings?.discount_value || 0;
+          promoType = promoData.settings?.discount_type || 'percent';
+        }
+      }
+      
+      setUserDiscounts({
+        promoDiscount,
+        promoType,
+        referralDiscount: userData.referral_discount || 0
+      });
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -34,12 +77,14 @@ export default function ProductDetail() {
     }
   }, [id]);
 
-  const getDisplayPrice = () => {
-    if (product?.special_price && product.special_price > 0) {
-      return { price: product.special_price, isSpecial: true };
+  // Calculate final price when product or discounts change
+  useEffect(() => {
+    if (product) {
+      const result = calculateStackedDiscount(product, userDiscounts);
+      setFinalPrice(result.finalPrice);
+      setDiscountBreakdown(result.appliedDiscounts);
     }
-    return { price: product?.hubby_price, isSpecial: false };
-  };
+  }, [product, userDiscounts]);
 
   if (loading || !product) {
     return (
@@ -50,7 +95,6 @@ export default function ProductDetail() {
   }
 
   const logoSize = product.logo_size || 70;
-  const finalPrice = getDisplayPrice().price;
 
   return (
     <>
@@ -77,7 +121,7 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Price Section */}
+          {/* Price Section with Stacked Discounts */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
             <div className="space-y-3">
@@ -91,12 +135,26 @@ export default function ProductDetail() {
                 <span className="text-gray-300">Hubby Store ဈေး</span>
                 <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
-              {product.special_price > 0 && (
+              
+              {/* Applied Discounts Breakdown */}
+              {discountBreakdown.map((discount, idx) => (
+                <div key={idx} className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
+                  <span>🎉 {discount.label}</span>
+                  <span>-{discount.amount.toLocaleString()} MMK</span>
+                </div>
+              ))}
+              
+              {product.special_price > 0 && !userDiscounts.promoDiscount && (
                 <div className="flex justify-between items-center pb-2 border-b border-green-500/30">
                   <span className="text-green-400 font-semibold">✨ အထူးလျှော့ဈေး</span>
                   <span className="text-green-400 font-bold text-xl">{product.special_price.toLocaleString()} MMK</span>
                 </div>
               )}
+              
+              <div className="flex justify-between items-center pt-3 mt-2 border-t border-white/20">
+                <span className="text-lg font-bold">စုစုပေါင်း</span>
+                <span className="text-[#FF6B35] font-bold text-xl">{finalPrice.toLocaleString()} MMK</span>
+              </div>
             </div>
           </div>
 
@@ -129,7 +187,7 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* NOTE BOX - FIXED */}
+          {/* NOTE BOX */}
           {productNote && productNote.content && productNote.content.trim() !== '' && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
               <h3 className="text-yellow-500 font-bold mb-2">{productNote.title || '📌 မှတ်ချက်'}</h3>
