@@ -14,14 +14,13 @@ export default function ProductDetail() {
   const [features, setFeatures] = useState([]);
   const [productNote, setProductNote] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
   const [finalPrice, setFinalPrice] = useState(0);
   const [discountBreakdown, setDiscountBreakdown] = useState([]);
   const [isFirstPurchaseEligible, setIsFirstPurchaseEligible] = useState(false);
   const [showBuyOptions, setShowBuyOptions] = useState(false);
-  const [promoDiscount, setPromoDiscount] = useState(0);
-  const [hasActiveOrder, setHasActiveOrder] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [promoDiscountPercent, setPromoDiscountPercent] = useState(0);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Load product first
   useEffect(() => {
@@ -48,15 +47,23 @@ export default function ProductDetail() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        setUser(user);
+        setIsLoggedIn(true);
         await loadUserDiscounts(user.uid);
       } else {
-        setAuthChecked(true);
+        // Not logged in - show regular price
+        if (product) {
+          const hasSpecialPrice = product.special_price && product.special_price > 0;
+          setFinalPrice(hasSpecialPrice ? product.special_price : product.hubby_price);
+          setDiscountBreakdown([]);
+          setIsFirstPurchaseEligible(false);
+          setHasDiscount(hasSpecialPrice);
+          setPromoDiscountPercent(0);
+        }
         setLoading(false);
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [product]);
 
   const loadUserDiscounts = async (userId) => {
     try {
@@ -68,7 +75,6 @@ export default function ProductDetail() {
       );
       const ordersSnapshot = await getDocs(ordersQuery);
       const hasOrder = !ordersSnapshot.empty;
-      setHasActiveOrder(hasOrder);
       
       // Get user data
       const userDoc = await getDoc(doc(db, 'users', userId));
@@ -96,7 +102,7 @@ export default function ProductDetail() {
         }
       }
       
-      setPromoDiscount(discountPercent);
+      setPromoDiscountPercent(discountPercent);
       
       // Calculate final price
       if (product) {
@@ -115,12 +121,16 @@ export default function ProductDetail() {
         setFinalPrice(result.finalPrice);
         setDiscountBreakdown(result.appliedDiscounts);
         setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
+        setHasDiscount(result.hasDiscount);
       }
-      setAuthChecked(true);
       setLoading(false);
     } catch (error) {
       console.error('Error loading user data:', error);
-      setAuthChecked(true);
+      // Fallback to regular price
+      if (product) {
+        const hasSpecialPrice = product.special_price && product.special_price > 0;
+        setFinalPrice(hasSpecialPrice ? product.special_price : product.hubby_price);
+      }
       setLoading(false);
     }
   };
@@ -139,7 +149,7 @@ export default function ProductDetail() {
   };
 
   const handleDirectBuy = () => {
-    if (!user) {
+    if (!isLoggedIn) {
       router.push('/auth');
       return;
     }
@@ -156,7 +166,6 @@ export default function ProductDetail() {
 
   const logoSize = product.logo_size || 70;
   const hasSpecialPrice = product.special_price && product.special_price > 0;
-  const hasAnyDiscount = discountBreakdown.length > 0 || hasSpecialPrice;
 
   return (
     <>
@@ -224,9 +233,9 @@ export default function ProductDetail() {
               </div>
               
               {/* First Purchase Note */}
-              {isFirstPurchaseEligible && promoDiscount > 0 && !hasActiveOrder && (
+              {isFirstPurchaseEligible && promoDiscountPercent > 0 && (
                 <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
-                  🎉 First purchase discount ({promoDiscount}% OFF) applied!
+                  🎉 First purchase discount ({promoDiscountPercent}% OFF) applied!
                 </div>
               )}
             </div>
