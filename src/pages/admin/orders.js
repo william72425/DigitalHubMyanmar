@@ -38,7 +38,6 @@ export default function AdminOrders() {
     try {
       const snapshot = await getDocs(collection(db, 'orders'));
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // Sort by created_at descending (newest first)
       list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setOrders(list);
     } catch (error) {
@@ -50,10 +49,19 @@ export default function AdminOrders() {
   const updateOrderStatus = async (orderId, newStatus) => {
     setUpdating(true);
     try {
+      // Update order status
       await updateDoc(doc(db, 'orders', orderId), {
         status: newStatus,
         updated_at: new Date().toISOString()
       });
+      
+      // If order is completed, mark user's first purchase discount as used
+      if (newStatus === 'completed' && selectedOrder) {
+        await updateDoc(doc(db, 'users', selectedOrder.user_id), {
+          first_purchase_discount_used: true
+        });
+      }
+      
       await fetchOrders();
       if (selectedOrder) {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
@@ -106,16 +114,15 @@ export default function AdminOrders() {
               <p className="text-center text-gray-400 py-8">No orders found.</p>
             ) : (
               <table className="w-full text-sm">
-                <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
-                  <tr>
-                    <th className="text-left py-3 px-2">Order ID</th>
-                    <th className="text-left py-3 px-2">Customer</th>
-                    <th className="text-left py-3 px-2">Product</th>
-                    <th className="text-left py-3 px-2">Amount</th>
-                    <th className="text-left py-3 px-2">Status</th>
-                    <th className="text-left py-3 px-2">Date</th>
-                    <th className="text-left py-3 px-2">Actions</th>
-                  </tr>
+                <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}}><tr>
+                  <th className="text-left py-3 px-2">Order ID</th>
+                  <th className="text-left py-3 px-2">Customer</th>
+                  <th className="text-left py-3 px-2">Product</th>
+                  <th className="text-left py-3 px-2">Amount</th>
+                  <th className="text-left py-3 px-2">Status</th>
+                  <th className="text-left py-3 px-2">Date</th>
+                  <th className="text-left py-3 px-2">Actions</th>
+                </tr>
                 </thead>
                 <tbody>
                   {orders.map((order) => (
@@ -157,8 +164,6 @@ export default function AdminOrders() {
                   <div className="font-mono text-xs">{selectedOrder.id}</div>
                   <div><span className="text-gray-400">Customer:</span></div>
                   <div>{selectedOrder.username || selectedOrder.user_id}</div>
-                  <div><span className="text-gray-400">Email:</span></div>
-                  <div>{selectedOrder.user_email || '-'}</div>
                   <div><span className="text-gray-400">Date:</span></div>
                   <div>{new Date(selectedOrder.created_at).toLocaleString()}</div>
                   <div><span className="text-gray-400">Payment Method:</span></div>
@@ -204,27 +209,54 @@ export default function AdminOrders() {
                 </div>
               )}
               
-              {/* Status Update */}
+              {/* Status Update - Fixed: Processing and Cancelled are separate */}
               <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                 <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📌 Update Status</h3>
                 <div className="flex flex-wrap gap-2">
-                  {['pending', 'processing', 'completed', 'cancelled'].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => updateOrderStatus(selectedOrder.id, status)}
-                      disabled={updating || selectedOrder.status === status}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                        selectedOrder.status === status
-                          ? 'bg-gray-500 cursor-not-allowed'
-                          : status === 'pending' ? 'bg-yellow-600 hover:bg-yellow-700'
-                            : status === 'processing' ? 'bg-blue-600 hover:bg-blue-700'
-                              : status === 'completed' ? 'bg-green-600 hover:bg-green-700'
-                                : 'bg-red-600 hover:bg-red-700'
-                      } text-white`}
-                    >
-                      {status === 'pending' ? '⏳ Pending' : status === 'processing' ? '🔄 Processing' : status === 'completed' ? '✅ Completed' : '❌ Cancelled'}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'pending')}
+                    disabled={updating || selectedOrder.status === 'pending'}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                      selectedOrder.status === 'pending'
+                        ? 'bg-gray-500 cursor-not-allowed'
+                        : 'bg-yellow-600 hover:bg-yellow-700'
+                    } text-white`}
+                  >
+                    ⏳ Pending
+                  </button>
+                  <button
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'processing')}
+                    disabled={updating || selectedOrder.status === 'processing'}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                      selectedOrder.status === 'processing'
+                        ? 'bg-gray-500 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    } text-white`}
+                  >
+                    🔄 Processing
+                  </button>
+                  <button
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'completed')}
+                    disabled={updating || selectedOrder.status === 'completed'}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                      selectedOrder.status === 'completed'
+                        ? 'bg-gray-500 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-700'
+                    } text-white`}
+                  >
+                    ✅ Completed
+                  </button>
+                  <button
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'cancelled')}
+                    disabled={updating || selectedOrder.status === 'cancelled'}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                      selectedOrder.status === 'cancelled'
+                        ? 'bg-gray-500 cursor-not-allowed'
+                        : 'bg-red-600 hover:bg-red-700'
+                    } text-white`}
+                  >
+                    ❌ Cancelled
+                  </button>
                 </div>
               </div>
               
