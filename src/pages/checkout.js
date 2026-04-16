@@ -112,6 +112,7 @@ export default function Checkout() {
       // Fallback: show regular price
       if (product) {
         setFinalPrice(product.hubby_price);
+        setDiscountBreakdown([]);
       }
       setLoading(false);
     }
@@ -167,6 +168,9 @@ export default function Checkout() {
     );
   }
 
+  const hasSpecialPrice = product.special_price && product.special_price > 0;
+  const hasAnyDiscount = discountBreakdown.length > 0 || hasSpecialPrice;
+
   return (
     <>
       <Head><title>Checkout | Digital Hub Myanmar</title></Head>
@@ -193,6 +197,15 @@ export default function Checkout() {
                 <span>{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
               
+              {/* Admin Special Price */}
+              {hasSpecialPrice && (
+                <div className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
+                  <span>✨ Admin Special Price</span>
+                  <span>{product.special_price.toLocaleString()} MMK</span>
+                </div>
+              )}
+              
+              {/* First Purchase Discount */}
               {discountBreakdown.map((discount, idx) => (
                 <div key={idx} className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
                   <span>🎉 {discount.label}</span>
