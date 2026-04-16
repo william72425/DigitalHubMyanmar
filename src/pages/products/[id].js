@@ -15,20 +15,12 @@ export default function ProductDetail() {
   const [productNote, setProductNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [userDiscounts, setUserDiscounts] = useState({ 
-    promoDiscount: 0, 
-    promoType: 'percent', 
-    stackWithSpecial: false,
-    specificPromoCode: null,
-    referralDiscount: 0
-  });
-  const [showBuyOptions, setShowBuyOptions] = useState(false);
   const [finalPrice, setFinalPrice] = useState(0);
   const [discountBreakdown, setDiscountBreakdown] = useState([]);
   const [isFirstPurchaseEligible, setIsFirstPurchaseEligible] = useState(false);
+  const [showBuyOptions, setShowBuyOptions] = useState(false);
+  const [promoDiscount, setPromoDiscount] = useState(0);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
 
   // Load product first
   useEffect(() => {
@@ -51,35 +43,22 @@ export default function ProductDetail() {
     }
   }, [id]);
 
-  // Auth Check
+  // Auth and user data
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setUser(user);
-        await loadUserData(user.uid);
+        await loadUserDiscounts(user.uid);
       } else {
-        setUser(null);
-        setUserData(null);
-        setAuthChecked(true);
+        setLoading(false);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // Recalculate when product is loaded and user discounts are ready
-  useEffect(() => {
-    if (product && userDiscounts && userData !== undefined && authChecked) {
-      const result = calculateStackedDiscount(product, userDiscounts, { ...userData, hasActiveOrder });
-      setFinalPrice(result.finalPrice);
-      setDiscountBreakdown(result.appliedDiscounts);
-      setIsFirstPurchaseEligible(result.isFirstPurchaseEligible && !hasActiveOrder);
-      setLoading(false);
-    }
-  }, [product, userDiscounts, userData, hasActiveOrder, authChecked]);
-
-  const loadUserData = async (userId) => {
+  const loadUserDiscounts = async (userId) => {
     try {
-      // Check if user has any active orders
+      // Check for active orders
       const ordersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
@@ -89,49 +68,53 @@ export default function ProductDetail() {
       const hasOrder = !ordersSnapshot.empty;
       setHasActiveOrder(hasOrder);
       
+      // Get user data
       const userDoc = await getDoc(doc(db, 'users', userId));
-      let data = {};
-      if (userDoc.exists()) {
-        data = userDoc.data();
-        setUserData(data);
-      }
-      
-      let promoDiscount = 0;
+      let discountPercent = 0;
       let promoType = 'percent';
       let stackWithSpecial = false;
-      let specificPromoCode = null;
+      let maxDiscountAmount = 0;
       
-      // Only apply first purchase discount if user has NO orders at all and has a promo code
-      const isFirstPurchase = !hasOrder && !data.first_purchase_discount_used;
-      
-      if (isFirstPurchase && data.used_promote_code && product) {
-        try {
-          const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}&userId=${userId}`);
-          const promoData = await promoRes.json();
-          if (promoData.option_type === 'first_purchase_discount') {
-            promoDiscount = promoData.settings?.discount_value || 0;
-            promoType = promoData.settings?.discount_type || 'percent';
-            stackWithSpecial = promoData.settings?.stack_with_special || false;
-            specificPromoCode = data.used_promote_code;
+      // Only apply first purchase discount if user has NO orders
+      if (!hasOrder && userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.used_promote_code && !userData.first_purchase_discount_used && product) {
+          try {
+            const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}&productId=${product.id}`);
+            const promoData = await promoRes.json();
+            if (promoData.option_type === 'first_purchase_discount') {
+              discountPercent = promoData.settings?.discount_value || 0;
+              promoType = promoData.settings?.discount_type || 'percent';
+              stackWithSpecial = promoData.settings?.stack_with_special || false;
+              maxDiscountAmount = promoData.settings?.max_discount || 0;
+            }
+          } catch (err) {
+            console.error('Promo check failed:', err);
           }
-        } catch (err) {
-          console.error('Promo check failed:', err);
         }
       }
       
-      const discounts = {
-        promoDiscount,
-        promoType,
-        stackWithSpecial,
-        specificPromoCode,
-        referralDiscount: data.referral_first_purchase_discount || 0
-      };
+      setPromoDiscount(discountPercent);
       
-      setUserDiscounts(discounts);
-      setAuthChecked(true);
+      // Calculate final price
+      if (product) {
+        const userDiscounts = {
+          promoDiscount: discountPercent,
+          promoType,
+          stackWithSpecial,
+          maxDiscountAmount
+        };
+        const userDataObj = { hasActiveOrder: hasOrder };
+        
+        const result = calculateStackedDiscount(product, userDiscounts, userDataObj);
+        setFinalPrice(result.finalPrice);
+        setDiscountBreakdown(result.appliedDiscounts);
+        setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
+      }
+      setLoading(false);
     } catch (error) {
       console.error('Error loading user data:', error);
-      setAuthChecked(true);
+      setLoading(false);
     }
   };
 
@@ -166,7 +149,6 @@ export default function ProductDetail() {
 
   const logoSize = product.logo_size || 70;
   const hasSpecialPrice = product.special_price && product.special_price > 0;
-  const hasStackedDiscount = discountBreakdown.length > 0;
 
   return (
     <>
@@ -219,7 +201,7 @@ export default function ProductDetail() {
                 </div>
               )}
               
-              {/* First Purchase Discount from Promo/Referral */}
+              {/* First Purchase Discount */}
               {discountBreakdown.map((discount, idx) => (
                 <div key={idx} className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
                   <span>🎉 {discount.label}</span>
@@ -234,16 +216,9 @@ export default function ProductDetail() {
               </div>
               
               {/* First Purchase Note */}
-              {isFirstPurchaseEligible && userDiscounts.promoDiscount > 0 && !hasActiveOrder && (
+              {isFirstPurchaseEligible && promoDiscount > 0 && !hasActiveOrder && (
                 <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
-                  🎉 First purchase discount ({userDiscounts.promoDiscount}% OFF) applied!
-                </div>
-              )}
-              
-              {/* Warning if user already has order */}
-              {hasActiveOrder && userDiscounts.promoDiscount > 0 && (
-                <div className="text-xs text-yellow-500 text-center mt-2 bg-yellow-500/10 p-2 rounded-lg">
-                  ⚠️ You already have an active order. First purchase discount is only for new users.
+                  🎉 First purchase discount ({promoDiscount}% OFF) applied!
                 </div>
               )}
             </div>
@@ -271,7 +246,7 @@ export default function ProductDetail() {
                       <td className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/10 to-[#00D4FF]/10">
                         <span className="text-[#FF6B35] font-semibold">✓ {feature.pro || feature.free || 'အပြည့်အစုံ'}</span>
                       </td>
-                    </tr>
+                    <tr>
                   ))}
                 </tbody>
               </table>
