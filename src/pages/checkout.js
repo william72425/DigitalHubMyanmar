@@ -20,12 +20,7 @@ export default function Checkout() {
   const [finalPrice, setFinalPrice] = useState(0);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [promoDiscountPercent, setPromoDiscountPercent] = useState(0);
-  const [userDiscounts, setUserDiscounts] = useState({ 
-    promoDiscount: 0, 
-    promoType: 'percent', 
-    stackWithSpecial: false,
-    maxDiscountAmount: 0
-  });
+  const [isFirstPurchaseEligible, setIsFirstPurchaseEligible] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -64,55 +59,60 @@ export default function Checkout() {
       setHasActiveOrder(hasOrder);
       
       const userDoc = await getDoc(doc(db, 'users', userId));
+      let promoDiscount = 0;
+      let promoType = 'percent';
+      let stackWithSpecial = false;
+      let maxDiscountAmount = 0;
+      let isFirstPurchase = false;
+      
       if (userDoc.exists()) {
         const data = userDoc.data();
         setUserData(data);
-        
-        let promoDiscount = 0;
-        let promoType = 'percent';
-        let stackWithSpecial = false;
-        let maxDiscountAmount = 0;
         
         // Only apply first purchase discount if user has NO active orders
         if (!hasOrder && data.used_promote_code && !data.first_purchase_discount_used && product) {
           try {
             const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}&productId=${product.id}`);
             const promoData = await promoRes.json();
-            if (promoData.option_type === 'first_purchase_discount') {
+            if (promoData && promoData.option_type === 'first_purchase_discount') {
               promoDiscount = promoData.settings?.discount_value || 0;
               promoType = promoData.settings?.discount_type || 'percent';
               stackWithSpecial = promoData.settings?.stack_with_special || false;
               maxDiscountAmount = promoData.settings?.max_discount || 0;
+              isFirstPurchase = true;
             }
           } catch (err) {
             console.error('Promo check failed:', err);
           }
         }
-        
-        setPromoDiscountPercent(promoDiscount);
-        
-        const discounts = {
-          promoDiscount,
-          promoType,
-          stackWithSpecial,
-          maxDiscountAmount
+      }
+      
+      setPromoDiscountPercent(promoDiscount);
+      setIsFirstPurchaseEligible(isFirstPurchase);
+      
+      const discounts = {
+        promoDiscount,
+        promoType,
+        stackWithSpecial,
+        maxDiscountAmount
+      };
+      
+      if (product) {
+        const userDataObj = { 
+          hasActiveOrder: hasOrder,
+          first_purchase_discount_used: userDoc.exists() ? userDoc.data().first_purchase_discount_used : false
         };
-        
-        setUserDiscounts(discounts);
-        
-        if (product) {
-          const userDataObj = { 
-            hasActiveOrder: hasOrder,
-            first_purchase_discount_used: data.first_purchase_discount_used || false
-          };
-          const result = calculateStackedDiscount(product, discounts, userDataObj);
-          setFinalPrice(result.finalPrice);
-          setDiscountBreakdown(result.appliedDiscounts);
-        }
+        const result = calculateStackedDiscount(product, discounts, userDataObj);
+        setFinalPrice(result.finalPrice);
+        setDiscountBreakdown(result.appliedDiscounts);
       }
       setLoading(false);
     } catch (error) {
       console.error('Error loading user data:', error);
+      // Fallback: show regular price
+      if (product) {
+        setFinalPrice(product.hubby_price);
+      }
       setLoading(false);
     }
   };
@@ -205,14 +205,14 @@ export default function Checkout() {
                 <span className="text-[#FF6B35]">{finalPrice.toLocaleString()} MMK</span>
               </div>
               
-              {promoDiscountPercent > 0 && !hasActiveOrder && (
-                <div className="text-xs text-green-500 text-center mt-2">
+              {isFirstPurchaseEligible && promoDiscountPercent > 0 && !hasActiveOrder && (
+                <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
                   🎉 First purchase discount ({promoDiscountPercent}% OFF) applied!
                 </div>
               )}
               
-              {hasActiveOrder && (
-                <div className="text-xs text-yellow-500 text-center mt-2">
+              {hasActiveOrder && promoDiscountPercent > 0 && (
+                <div className="text-xs text-yellow-500 text-center mt-2 bg-yellow-500/10 p-2 rounded-lg">
                   ⚠️ You already have an active order. First purchase discount is only for new users.
                 </div>
               )}
