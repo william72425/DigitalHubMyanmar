@@ -84,12 +84,27 @@ export default function Checkout() {
       setPromoDiscountPercent(discountPercent);
       
       if (product) {
-        const userDiscountsObj = { promoDiscount: discountPercent, promoType, maxDiscountAmount };
+        const userDiscountsObj = { 
+          promoDiscount: discountPercent, 
+          promoType, 
+          maxDiscountAmount 
+        };
         const userDataObj = { 
           hasActiveOrder: hasOrder,
           first_purchase_discount_used: userDoc.exists() ? userDoc.data().first_purchase_discount_used : false
         };
         const result = calculateStackedDiscount(product, userDiscountsObj, userDataObj);
+        
+        // Debug log
+        console.log('Checkout Calculation:', {
+          productName: product.name,
+          hubbyPrice: product.hubby_price,
+          specialPrice: product.special_price,
+          discountPercent,
+          hasActiveOrder,
+          result
+        });
+        
         setFinalPrice(result.finalPrice);
         setAppliedDiscounts(result.appliedDiscounts);
         setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
@@ -160,65 +175,83 @@ export default function Checkout() {
         <div className="container mx-auto px-4 py-24 max-w-4xl">
           <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🛒 Checkout</h1>
           
-          {/* Order Summary - Same as Detail Page */}
-          <div className={`rounded-2xl p-6 mb-6 ${isDarkMode ? 'bg-white/10' : 'bg-white/60 shadow-sm'}`}>
-            <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Order Summary</h2>
+          {/* Bill Card Style Order Summary */}
+          <div className={`rounded-2xl overflow-hidden mb-6 ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} shadow-2xl border ${isDarkMode ? 'border-white/20' : 'border-gray-200'}`}>
+            {/* Bill Header */}
+            <div className={`px-6 py-4 ${isDarkMode ? 'bg-[#FF6B35]/20 border-b border-white/10' : 'bg-orange-50 border-b border-gray-200'}`}>
+              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🧾 Order Summary</h2>
+              <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Digital Hub Myanmar</p>
+            </div>
             
-            <div className="space-y-3">
-              {/* Product Name */}
-              <div className="flex justify-between py-2 border-b border-white/10">
-                <span className="text-gray-400">Product</span>
-                <span className="font-semibold">{product.name}</span>
-              </div>
-              
-              {/* Duration */}
-              <div className="flex justify-between py-2 border-b border-white/10">
-                <span className="text-gray-400">Duration</span>
-                <span>{product.duration}</span>
-              </div>
-              
-              {/* Market Price */}
-              {product.market_price > 0 && (
-                <div className="flex justify-between py-2 border-b border-white/10">
-                  <span className="text-gray-400">ဈေးကွက် ပျမ်းမျှဈေး</span>
-                  <span className="line-through text-gray-400">{product.market_price.toLocaleString()} MMK</span>
+            {/* Bill Body */}
+            <div className="p-6">
+              <div className="space-y-3">
+                {/* Product & Duration Row */}
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Product</span>
+                  <div className="text-right">
+                    <div className="font-semibold">{product.name}</div>
+                    <div className="text-xs text-gray-500">{product.duration}</div>
+                  </div>
                 </div>
-              )}
-              
-              {/* Hubby Store Price */}
-              <div className="flex justify-between py-2 border-b border-white/10">
-                <span className="text-gray-400">Hubby Store ဈေး</span>
-                <span className="text-[#FF6B35] font-bold">{product.hubby_price?.toLocaleString()} MMK</span>
+                
+                {/* Market Price (if exists) */}
+                {product.market_price > 0 && (
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-400">ဈေးကွက် ပျမ်းမျှဈေး</span>
+                    <span className="line-through text-gray-500">{product.market_price.toLocaleString()} MMK</span>
+                  </div>
+                )}
+                
+                {/* Hubby Store Price */}
+                <div className="flex justify-between py-2 border-b border-dashed border-white/10">
+                  <span className="text-gray-400">Hubby Store ဈေး</span>
+                  <span className="font-medium">{product.hubby_price?.toLocaleString()} MMK</span>
+                </div>
+                
+                {/* Discounts Section */}
+                <div className="space-y-2 pt-2">
+                  {/* Admin Special Discount */}
+                  {hasSpecialPrice && specialDiscountAmount > 0 && (
+                    <div className="flex justify-between text-green-400">
+                      <span>✨ Admin Special Discount</span>
+                      <span>-{specialDiscountAmount.toLocaleString()} MMK</span>
+                    </div>
+                  )}
+                  
+                  {/* First Purchase Discount */}
+                  {appliedDiscounts.filter(d => d.type === 'promo').map((discount, idx) => (
+                    <div key={idx} className="flex justify-between text-green-400">
+                      <span>{discount.label}</span>
+                      <span>-{discount.amount.toLocaleString()} MMK</span>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Total Amount */}
+                <div className={`flex justify-between pt-4 mt-2 border-t-2 ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
+                  <span className="text-lg font-bold">Total Amount</span>
+                  <span className={`text-2xl font-bold ${isDarkMode ? 'text-[#FF6B35]' : 'text-orange-600'}`}>
+                    {finalPrice.toLocaleString()} MMK
+                  </span>
+                </div>
+                
+                {/* First Purchase Note */}
+                {isFirstPurchaseEligible && promoDiscountPercent > 0 && !hasActiveOrder && (
+                  <div className="mt-3 p-2 bg-green-500/10 rounded-lg text-center">
+                    <p className="text-xs text-green-500">
+                      🎉 First purchase discount ({promoDiscountPercent}% OFF) applied!
+                    </p>
+                  </div>
+                )}
               </div>
-              
-              {/* Admin Special Discount */}
-              {hasSpecialPrice && (
-                <div className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
-                  <span>✨ Admin Special Discount</span>
-                  <span>-{specialDiscountAmount.toLocaleString()} MMK</span>
-                </div>
-              )}
-              
-              {/* First Purchase Discount */}
-              {appliedDiscounts.filter(d => d.type === 'promo').map((discount, idx) => (
-                <div key={idx} className="flex justify-between py-2 border-b border-green-500/30 text-green-400">
-                  <span>{discount.label}</span>
-                  <span>-{discount.amount.toLocaleString()} MMK</span>
-                </div>
-              ))}
-              
-              {/* Final Price */}
-              <div className="flex justify-between py-3 text-lg font-bold border-t border-white/20 pt-3">
-                <span className="text-gray-300">Special price for you</span>
-                <span className="text-[#FF6B35] text-xl">{finalPrice.toLocaleString()} MMK</span>
-              </div>
-              
-              {/* First Purchase Note */}
-              {isFirstPurchaseEligible && promoDiscountPercent > 0 && !hasActiveOrder && (
-                <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
-                  🎉 First purchase discount ({promoDiscountPercent}% OFF) applied!
-                </div>
-              )}
+            </div>
+            
+            {/* Bill Footer */}
+            <div className={`px-6 py-3 ${isDarkMode ? 'bg-white/5 border-t border-white/10' : 'bg-gray-50 border-t border-gray-200'}`}>
+              <p className="text-center text-xs text-gray-500">
+                Thank you for shopping at Digital Hub Myanmar
+              </p>
             </div>
           </div>
           
@@ -241,11 +274,11 @@ export default function Checkout() {
             disabled={processing}
             className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50"
           >
-            {processing ? 'Processing...' : `Confirm Order - ${finalPrice.toLocaleString()} MMK`}
+            {processing ? 'Processing...' : `✅ Confirm Order - ${finalPrice.toLocaleString()} MMK`}
           </button>
           
           <p className="text-center text-gray-500 text-xs mt-4">
-            By confirming, you agree to our terms and conditions. Orders will be processed within 24 hours.
+            By confirming, you agree to our terms and conditions.
           </p>
         </div>
       </div>
