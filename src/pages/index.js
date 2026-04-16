@@ -14,7 +14,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [userDiscountPercent, setUserDiscountPercent] = useState(0);
   const [loadingDiscounts, setLoadingDiscounts] = useState(true);
-  const [hasActiveOrder, setHasActiveOrder] = useState(false);
+  const [hasCompletedOrder, setHasCompletedOrder] = useState(false);
   const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
 
   // Load products from JSON
@@ -59,7 +59,7 @@ export default function Home() {
     if (cachedData && cachedTime && (now - parseInt(cachedTime)) < 3600000) {
       const data = JSON.parse(cachedData);
       setUserDiscountPercent(data.discountPercent);
-      setHasActiveOrder(data.hasActiveOrder);
+      setHasCompletedOrder(data.hasCompletedOrder);
       setFirstPurchaseEligible(data.firstPurchaseEligible);
       setLoadingDiscounts(false);
       return;
@@ -67,25 +67,35 @@ export default function Home() {
     
     // Fetch fresh data
     try {
-      // Check for active orders (pending, processing, completed)
-      const ordersQuery = query(
+      // Check for COMPLETED orders
+      const completedOrdersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
-        where('status', 'in', ['pending', 'processing', 'completed'])
+        where('status', '==', 'completed')
       );
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const hasOrder = !ordersSnapshot.empty;
-      setHasActiveOrder(hasOrder);
+      const completedOrdersSnapshot = await getDocs(completedOrdersQuery);
+      const hasCompleted = !completedOrdersSnapshot.empty;
+      setHasCompletedOrder(hasCompleted);
+      
+      // Check for active orders (pending, processing)
+      const activeOrdersQuery = query(
+        collection(db, 'orders'),
+        where('user_id', '==', userId),
+        where('status', 'in', ['pending', 'processing'])
+      );
+      const activeOrdersSnapshot = await getDocs(activeOrdersQuery);
+      const hasActiveOrder = !activeOrdersSnapshot.empty;
       
       let discountPercent = 0;
       let isEligible = false;
       
-      // Only apply first purchase discount if user has NO completed orders
-      if (!hasOrder) {
+      // Only apply first purchase discount if:
+      // 1. User has NO completed orders
+      // 2. User has NO active orders
+      if (!hasCompleted && !hasActiveOrder) {
         const userDoc = await getDoc(doc(db, 'users', userId));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          // Check if user hasn't used first purchase discount yet
           if (userData.used_promote_code && !userData.first_purchase_discount_used) {
             try {
               const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}`);
@@ -107,7 +117,7 @@ export default function Home() {
       // Save to cache
       localStorage.setItem('user_discount_data', JSON.stringify({
         discountPercent,
-        hasActiveOrder: hasOrder,
+        hasCompletedOrder: hasCompleted,
         firstPurchaseEligible: isEligible
       }));
       localStorage.setItem('user_discount_time', now.toString());
@@ -148,8 +158,8 @@ export default function Home() {
       };
     }
     
-    // User has active order (already purchased something)
-    if (hasActiveOrder || !firstPurchaseEligible) {
+    // User has completed order or active order
+    if (hasCompletedOrder) {
       if (service.special_price && service.special_price > 0) {
         return { 
           price: service.special_price, 
@@ -167,7 +177,7 @@ export default function Home() {
     }
     
     // First purchase eligible
-    if (userDiscountPercent > 0) {
+    if (firstPurchaseEligible && userDiscountPercent > 0) {
       let finalPrice = service.hubby_price;
       if (service.special_price && service.special_price > 0) {
         finalPrice = service.special_price;
@@ -234,7 +244,7 @@ export default function Home() {
             <p className={`mt-2 text-sm md:text-base ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
               🎁 Hubby Store မှ ကြိုဆိုပါတယ်! အထူးလျှော့စျေးများ ရယူလိုက်ပါ!
             </p>
-            {firstPurchaseEligible && userDiscountPercent > 0 && !hasActiveOrder && (
+            {firstPurchaseEligible && userDiscountPercent > 0 && !hasCompletedOrder && (
               <div className="mt-2 inline-block bg-green-500/20 text-green-400 text-xs px-3 py-1 rounded-full">
                 🎉 You have {userDiscountPercent}% first purchase discount!
               </div>
