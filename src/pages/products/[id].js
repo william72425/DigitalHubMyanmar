@@ -52,11 +52,10 @@ export default function ProductDetail() {
       } else {
         // Not logged in - show regular price
         if (product) {
-          const hasSpecialPrice = product.special_price && product.special_price > 0;
-          setFinalPrice(hasSpecialPrice ? product.special_price : product.hubby_price);
+          setFinalPrice(product.hubby_price);
           setDiscountBreakdown([]);
           setIsFirstPurchaseEligible(false);
-          setHasDiscount(hasSpecialPrice);
+          setHasDiscount(false);
           setPromoDiscountPercent(0);
         }
         setLoading(false);
@@ -128,8 +127,7 @@ export default function ProductDetail() {
       console.error('Error loading user data:', error);
       // Fallback to regular price
       if (product) {
-        const hasSpecialPrice = product.special_price && product.special_price > 0;
-        setFinalPrice(hasSpecialPrice ? product.special_price : product.hubby_price);
+        setFinalPrice(product.hubby_price);
       }
       setLoading(false);
     }
@@ -165,7 +163,6 @@ export default function ProductDetail() {
   }
 
   const logoSize = product.logo_size || 70;
-  const hasSpecialPrice = product.special_price && product.special_price > 0;
 
   return (
     <>
@@ -192,7 +189,7 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Price Section */}
+          {/* Price Section - Admin Special Price Hidden */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
             <div className="space-y-3">
@@ -209,14 +206,6 @@ export default function ProductDetail() {
                 <span className="text-gray-300">Hubby Store ဈေး</span>
                 <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
-              
-              {/* Admin Special Price */}
-              {hasSpecialPrice && (
-                <div className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
-                  <span>✨ Admin Special Price</span>
-                  <span>{product.special_price.toLocaleString()} MMK</span>
-                </div>
-              )}
               
               {/* First Purchase Discount */}
               {discountBreakdown.map((discount, idx) => (
@@ -251,7 +240,7 @@ export default function ProductDetail() {
                     <th className="text-left py-3 px-2 text-gray-400">အင်္ဂါရပ်များ</th>
                     <th className="text-center py-3 px-2 text-gray-400 w-1/3">✨ အခမဲ့</th>
                     <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 text-[#FF6B35] font-bold w-1/3">💎 Premium</th>
-                  </tr>
+                  </td>
                 </thead>
                 <tbody>
                   {features.map((feature, idx) => (
