@@ -1,15 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { auth, db } from '@/utils/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import productsData from '@/data/products.json';
 import Navbar from '@/components/Navbar';
+import { calculateStackedDiscount } from '@/utils/discountCalculator';
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [user, setUser] = useState(null);
+  const [userDiscounts, setUserDiscounts] = useState({
+    promoDiscount: 0,
+    promoType: 'percent',
+    stackWithSpecial: false,
+    referralDiscount: 0,
+    minPurchaseAmount: 0,
+    maxDiscountAmount: 0,
+    specificPromoCode: null
+  });
+  const [userData, setUserData] = useState(null);
+  const [loadingDiscounts, setLoadingDiscounts] = useState(true);
 
+  // Load products from JSON
   useEffect(() => {
     const sorted = [...productsData].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     setServices(sorted);
@@ -17,14 +33,73 @@ export default function Home() {
     setCategories(uniqueCategories);
   }, []);
 
+  // Load theme
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setIsDarkMode(false);
-    } else if (savedTheme === 'dark') {
-      setIsDarkMode(true);
-    }
+    if (savedTheme === 'light') setIsDarkMode(false);
+    else if (savedTheme === 'dark') setIsDarkMode(true);
   }, []);
+
+  // Auth and User Discounts
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        setUser(user);
+        await loadUserDiscounts(user.uid);
+      } else {
+        setUser(null);
+        setUserDiscounts({});
+        setLoadingDiscounts(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const loadUserDiscounts = async (userId) => {
+    setLoadingDiscounts(true);
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setUserData(data);
+        
+        let promoDiscount = 0;
+        let promoType = 'percent';
+        let stackWithSpecial = false;
+        let minPurchaseAmount = 0;
+        let maxDiscountAmount = 0;
+        let specificPromoCode = null;
+        
+        // Check if user has a promo code and hasn't used it yet
+        if (data.used_promote_code && !data.discount_used) {
+          specificPromoCode = data.used_promote_code;
+          const promoRes = await fetch(`/api/promo/check?code=${data.used_promote_code}`);
+          const promoData = await promoRes.json();
+          
+          if (promoData.option_type === 'first_purchase_discount') {
+            promoDiscount = promoData.settings?.discount_value || 0;
+            promoType = promoData.settings?.discount_type || 'percent';
+            stackWithSpecial = promoData.settings?.stack_with_special || false;
+            minPurchaseAmount = promoData.settings?.min_purchase || 0;
+            maxDiscountAmount = promoData.settings?.max_discount || 0;
+          }
+        }
+        
+        setUserDiscounts({
+          promoDiscount,
+          promoType,
+          stackWithSpecial,
+          referralDiscount: data.referral_discount || 0,
+          minPurchaseAmount,
+          maxDiscountAmount,
+          specificPromoCode
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user discounts:', error);
+    }
+    setLoadingDiscounts(false);
+  };
 
   const toggleTheme = () => {
     const newTheme = !isDarkMode;
@@ -36,11 +111,35 @@ export default function Home() {
     ? services
     : services.filter(s => s.category === activeCategory);
 
-  const getDisplayPrice = (service) => {
-    if (service.special_price && service.special_price > 0) {
-      return { price: service.special_price, isSpecial: true };
+  // Get final price with discounts applied (for logged-in users)
+  const getFinalPrice = (service) => {
+    // If no user, show regular price
+    if (!user || loadingDiscounts) {
+      if (service.special_price && service.special_price > 0) {
+        return { price: service.special_price, isSpecial: true, hasStackedDiscount: false };
+      }
+      return { price: service.hubby_price, isSpecial: false, hasStackedDiscount: false };
     }
-    return { price: service.hubby_price, isSpecial: false };
+    
+    // Check minimum purchase requirement
+    if (userDiscounts.minPurchaseAmount > 0 && service.hubby_price < userDiscounts.minPurchaseAmount) {
+      // Not eligible for discount
+      if (service.special_price && service.special_price > 0) {
+        return { price: service.special_price, isSpecial: true, hasStackedDiscount: false };
+      }
+      return { price: service.hubby_price, isSpecial: false, hasStackedDiscount: false };
+    }
+    
+    // Calculate stacked discount
+    const result = calculateStackedDiscount(service, userDiscounts, userData);
+    
+    return {
+      price: result.finalPrice,
+      isSpecial: result.finalPrice < service.hubby_price,
+      hasStackedDiscount: result.appliedDiscounts.length > 0,
+      discountAmount: result.discountAmount,
+      appliedDiscounts: result.appliedDiscounts
+    };
   };
 
   return (
@@ -64,7 +163,6 @@ export default function Home() {
           isDarkMode ? 'bg-[#00D4FF]/10' : 'bg-cyan-200/50'
         }`}></div>
 
-        {/* Navbar */}
         <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
 
         <div className="container mx-auto px-4 py-20 max-w-6xl relative z-10">
@@ -76,6 +174,11 @@ export default function Home() {
             <p className={`mt-2 text-sm md:text-base ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
               🎁 Hubby Store မှ ကြိုဆိုပါတယ်! အထူးလျှော့စျေးများ ရယူလိုက်ပါ!
             </p>
+            {user && userDiscounts.promoDiscount > 0 && (
+              <div className="mt-2 inline-block bg-green-500/20 text-green-400 text-xs px-3 py-1 rounded-full">
+                🎉 You have {userDiscounts.promoDiscount}% first purchase discount!
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-4 mb-6 justify-center flex-wrap">
@@ -93,30 +196,33 @@ export default function Home() {
           {/* Product Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredServices.map((service) => {
-              const displayPrice = getDisplayPrice(service);
-              const isSpecial = displayPrice.isSpecial;
+              const finalPriceData = getFinalPrice(service);
+              const isSpecial = finalPriceData.isSpecial;
               const hasDiscount = service.discount_percent && service.discount_percent > 0;
               const logoSize = service.logo_size || 60;
+              const hasStackedDiscount = finalPriceData.hasStackedDiscount;
               
               return (
                 <Link href={`/products/${service.id}`} key={service.id}>
                   <div className={`
                     backdrop-blur-md rounded-2xl p-4 relative border-2 transition-all duration-300 cursor-pointer h-full
                     ${isDarkMode ? 'bg-white/5' : 'bg-white/60 shadow-sm'}
-                    ${isSpecial 
+                    ${isSpecial || hasStackedDiscount
                       ? 'border-green-500 shadow-lg shadow-green-500/30 animate-pulse-slow' 
                       : isDarkMode ? 'border-white/10 hover:border-[#FF6B35]/50' : 'border-gray-200 hover:border-[#FF6B35]/50'
                     }
                   `}>
+                    {/* Discount Badge */}
                     {hasDiscount && (
                       <div className="absolute -top-2 -right-2 bg-gradient-to-r from-[#FF6B35] to-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
                         🔥 {service.discount_percent}% လျှော့
                       </div>
                     )}
                     
-                    {isSpecial && (
+                    {/* Special Badge */}
+                    {(isSpecial || hasStackedDiscount) && (
                       <div className="absolute -top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 animate-pulse">
-                        ✨ အထူးဈေး
+                        {hasStackedDiscount ? '✨ Stacked Discount' : '✨ အထူးဈေး'}
                       </div>
                     )}
                     
@@ -146,6 +252,7 @@ export default function Home() {
                         <p className="text-xs text-gray-400 mt-0.5">📅 {service.duration}</p>
                         
                         <div className="mt-2 space-y-0.5">
+                          {/* Market Price */}
                           {service.market_price > 0 && (
                             <div className="text-[10px] md:text-xs text-gray-500">
                               <span className="text-gray-400">ဈေးကွက်ဈေး:</span>{' '}
@@ -153,20 +260,31 @@ export default function Home() {
                             </div>
                           )}
                           
-                          {isSpecial ? (
+                          {/* Hubby Price (if special or stacked, show line-through) */}
+                          {(isSpecial || hasStackedDiscount) ? (
                             <div className="text-[10px] md:text-xs text-gray-500">
                               <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
                               <span className="line-through">{service.hubby_price?.toLocaleString()} MMK</span>
                             </div>
                           ) : (
                             <div className="text-[#FF6B35] font-bold text-sm md:text-base">
-                              {displayPrice.price.toLocaleString()} MMK
+                              {finalPriceData.price.toLocaleString()} MMK
                             </div>
                           )}
                           
-                          {isSpecial && (
+                          {/* Final Price with Discount */}
+                          {(isSpecial || hasStackedDiscount) && (
                             <div className="text-green-500 font-bold text-sm md:text-base">
-                              <span className="text-green-600">အထူးလျှော့ဈေး:</span> {displayPrice.price.toLocaleString()} MMK
+                              <span className="text-green-600">
+                                {hasStackedDiscount ? '🎉 Discounted Price:' : 'အထူးလျှော့ဈေး:'}
+                              </span> {finalPriceData.price.toLocaleString()} MMK
+                            </div>
+                          )}
+                          
+                          {/* First Purchase Discount Note */}
+                          {user && userDiscounts.promoDiscount > 0 && !userData?.discount_used && (
+                            <div className="text-[9px] text-blue-400 mt-1">
+                              🎁 First purchase: {userDiscounts.promoDiscount}% OFF included!
                             </div>
                           )}
                         </div>
