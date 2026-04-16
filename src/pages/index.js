@@ -14,8 +14,8 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [userDiscountPercent, setUserDiscountPercent] = useState(0);
   const [loadingDiscounts, setLoadingDiscounts] = useState(true);
-  const [hasCompletedOrder, setHasCompletedOrder] = useState(false);
-  const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
+  const [hasActiveOrder, setHasActiveOrder] = useState(false);
+  const [userDataLoaded, setUserDataLoaded] = useState(false);
 
   // Load products from JSON
   useEffect(() => {
@@ -32,67 +32,40 @@ export default function Home() {
     else if (savedTheme === 'dark') setIsDarkMode(true);
   }, []);
 
-  // Auth and User Discounts with Cache
+  // Auth and User Discounts
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setUser(user);
-        await loadUserDiscountsWithCache(user.uid);
+        await loadUserDiscounts(user.uid);
       } else {
         setUser(null);
         setUserDiscountPercent(0);
-        setFirstPurchaseEligible(false);
+        setHasActiveOrder(false);
         setLoadingDiscounts(false);
+        setUserDataLoaded(true);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  const loadUserDiscountsWithCache = async (userId) => {
+  const loadUserDiscounts = async (userId) => {
     setLoadingDiscounts(true);
-    
-    // Check localStorage cache first (1 hour)
-    const cachedData = localStorage.getItem('user_discount_data');
-    const cachedTime = localStorage.getItem('user_discount_time');
-    const now = Date.now();
-    
-    if (cachedData && cachedTime && (now - parseInt(cachedTime)) < 3600000) {
-      const data = JSON.parse(cachedData);
-      setUserDiscountPercent(data.discountPercent);
-      setHasCompletedOrder(data.hasCompletedOrder);
-      setFirstPurchaseEligible(data.firstPurchaseEligible);
-      setLoadingDiscounts(false);
-      return;
-    }
-    
-    // Fetch fresh data
     try {
-      // Check for COMPLETED orders
-      const completedOrdersQuery = query(
+      // Check for active orders (pending, processing, completed)
+      const ordersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
-        where('status', '==', 'completed')
+        where('status', 'in', ['pending', 'processing', 'completed'])
       );
-      const completedOrdersSnapshot = await getDocs(completedOrdersQuery);
-      const hasCompleted = !completedOrdersSnapshot.empty;
-      setHasCompletedOrder(hasCompleted);
-      
-      // Check for active orders (pending, processing)
-      const activeOrdersQuery = query(
-        collection(db, 'orders'),
-        where('user_id', '==', userId),
-        where('status', 'in', ['pending', 'processing'])
-      );
-      const activeOrdersSnapshot = await getDocs(activeOrdersQuery);
-      const hasActiveOrder = !activeOrdersSnapshot.empty;
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const hasOrder = !ordersSnapshot.empty;
+      setHasActiveOrder(hasOrder);
       
       let discountPercent = 0;
-      let isEligible = false;
       
-      // Only apply first purchase discount if:
-      // 1. User has NO completed orders
-      // 2. User has NO active orders
-      if (!hasCompleted && !hasActiveOrder) {
+      // Only apply first purchase discount if user has NO orders
+      if (!hasOrder) {
         const userDoc = await getDoc(doc(db, 'users', userId));
         if (userDoc.exists()) {
           const userData = userDoc.data();
@@ -102,7 +75,6 @@ export default function Home() {
               const promoData = await promoRes.json();
               if (promoData && promoData.option_type === 'first_purchase_discount') {
                 discountPercent = promoData.settings?.discount_value || 0;
-                isEligible = discountPercent > 0;
               }
             } catch (err) {
               console.error('Promo check failed:', err);
@@ -112,18 +84,10 @@ export default function Home() {
       }
       
       setUserDiscountPercent(discountPercent);
-      setFirstPurchaseEligible(isEligible);
-      
-      // Save to cache
-      localStorage.setItem('user_discount_data', JSON.stringify({
-        discountPercent,
-        hasCompletedOrder: hasCompleted,
-        firstPurchaseEligible: isEligible
-      }));
-      localStorage.setItem('user_discount_time', now.toString());
-      
+      setUserDataLoaded(true);
     } catch (error) {
       console.error('Error loading user discounts:', error);
+      setUserDataLoaded(true);
     }
     setLoadingDiscounts(false);
   };
@@ -138,78 +102,54 @@ export default function Home() {
     ? services
     : services.filter(s => s.category === activeCategory);
 
-  // Get final price and badge info
-  const getProductDisplay = (service) => {
-    // Not logged in or still loading
-    if (!user || loadingDiscounts) {
+  // Get final price with discounts applied
+  const getFinalPrice = (service) => {
+    // If no user or still loading, show regular price
+    if (!user || loadingDiscounts || !userDataLoaded) {
       if (service.special_price && service.special_price > 0) {
-        return { 
-          price: service.special_price, 
-          isSpecial: true, 
-          badgeText: '✨ Special', 
-          showDiscountBadge: false 
-        };
+        return { price: service.special_price, isSpecial: true, hasStackedDiscount: false };
       }
-      return { 
-        price: service.hubby_price, 
-        isSpecial: false, 
-        badgeText: null, 
-        showDiscountBadge: false 
-      };
+      return { price: service.hubby_price, isSpecial: false, hasStackedDiscount: false };
     }
     
-    // User has completed order or active order
-    if (hasCompletedOrder) {
+    // If user has active order, no first purchase discount
+    if (hasActiveOrder) {
       if (service.special_price && service.special_price > 0) {
-        return { 
-          price: service.special_price, 
-          isSpecial: true, 
-          badgeText: '✨ Special', 
-          showDiscountBadge: false 
-        };
+        return { price: service.special_price, isSpecial: true, hasStackedDiscount: false };
       }
-      return { 
-        price: service.hubby_price, 
-        isSpecial: false, 
-        badgeText: null, 
-        showDiscountBadge: false 
-      };
+      return { price: service.hubby_price, isSpecial: false, hasStackedDiscount: false };
     }
     
-    // First purchase eligible
-    if (firstPurchaseEligible && userDiscountPercent > 0) {
+    // Apply first purchase discount
+    if (userDiscountPercent > 0) {
       let finalPrice = service.hubby_price;
+      let hasDiscount = false;
+      
+      // Apply special price first if exists
       if (service.special_price && service.special_price > 0) {
         finalPrice = service.special_price;
       }
+      
+      // Apply first purchase discount
       const discountAmount = Math.round(finalPrice * userDiscountPercent / 100);
       if (discountAmount > 0 && discountAmount < finalPrice) {
         finalPrice = finalPrice - discountAmount;
-        return {
-          price: finalPrice,
-          isSpecial: true,
-          badgeText: `🎉 First Purchase ${userDiscountPercent}% OFF`,
-          showDiscountBadge: true,
-          discountPercent: userDiscountPercent
-        };
+        hasDiscount = true;
       }
-    }
-    
-    // Regular price with special
-    if (service.special_price && service.special_price > 0) {
-      return { 
-        price: service.special_price, 
-        isSpecial: true, 
-        badgeText: '✨ Special', 
-        showDiscountBadge: false 
+      
+      return {
+        price: finalPrice,
+        isSpecial: hasDiscount || (service.special_price && service.special_price > 0),
+        hasStackedDiscount: hasDiscount,
+        discountPercent: userDiscountPercent
       };
     }
-    return { 
-      price: service.hubby_price, 
-      isSpecial: false, 
-      badgeText: null, 
-      showDiscountBadge: false 
-    };
+    
+    // No discount
+    if (service.special_price && service.special_price > 0) {
+      return { price: service.special_price, isSpecial: true, hasStackedDiscount: false };
+    }
+    return { price: service.hubby_price, isSpecial: false, hasStackedDiscount: false };
   };
 
   return (
@@ -244,7 +184,7 @@ export default function Home() {
             <p className={`mt-2 text-sm md:text-base ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
               🎁 Hubby Store မှ ကြိုဆိုပါတယ်! အထူးလျှော့စျေးများ ရယူလိုက်ပါ!
             </p>
-            {firstPurchaseEligible && userDiscountPercent > 0 && !hasCompletedOrder && (
+            {user && userDiscountPercent > 0 && !hasActiveOrder && userDataLoaded && (
               <div className="mt-2 inline-block bg-green-500/20 text-green-400 text-xs px-3 py-1 rounded-full">
                 🎉 You have {userDiscountPercent}% first purchase discount!
               </div>
@@ -266,31 +206,34 @@ export default function Home() {
           {/* Product Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredServices.map((service) => {
-              const display = getProductDisplay(service);
+              const finalPriceData = getFinalPrice(service);
+              const isSpecial = finalPriceData.isSpecial;
+              const hasDiscount = service.discount_percent && service.discount_percent > 0;
               const logoSize = service.logo_size || 60;
-              const originalDiscount = service.discount_percent;
+              const hasStackedDiscount = finalPriceData.hasStackedDiscount;
+              const discountPercent = finalPriceData.discountPercent;
               
               return (
                 <Link href={`/products/${service.id}`} key={service.id}>
                   <div className={`
                     backdrop-blur-md rounded-2xl p-4 relative border-2 transition-all duration-300 cursor-pointer h-full
                     ${isDarkMode ? 'bg-white/5' : 'bg-white/60 shadow-sm'}
-                    ${display.isSpecial
-                      ? 'border-green-500 shadow-lg shadow-green-500/30' 
+                    ${isSpecial || hasStackedDiscount
+                      ? 'border-green-500 shadow-lg shadow-green-500/30 animate-pulse-slow' 
                       : isDarkMode ? 'border-white/10 hover:border-[#FF6B35]/50' : 'border-gray-200 hover:border-[#FF6B35]/50'
                     }
                   `}>
-                    {/* Top Right Badge - Original Discount */}
-                    {originalDiscount > 0 && (
+                    {/* Discount Badge */}
+                    {hasDiscount && (
                       <div className="absolute -top-2 -right-2 bg-gradient-to-r from-[#FF6B35] to-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
-                        🔥 {originalDiscount}% OFF
+                        🔥 {service.discount_percent}% လျှော့
                       </div>
                     )}
                     
-                    {/* Top Left Badge - Special / First Purchase */}
-                    {display.badgeText && (
+                    {/* Special Badge */}
+                    {(isSpecial || hasStackedDiscount) && (
                       <div className="absolute -top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 animate-pulse">
-                        {display.badgeText}
+                        {hasStackedDiscount ? `✨ ${discountPercent}% OFF` : '✨ အထူးဈေး'}
                       </div>
                     )}
                     
@@ -320,6 +263,7 @@ export default function Home() {
                         <p className="text-xs text-gray-400 mt-0.5">📅 {service.duration}</p>
                         
                         <div className="mt-2 space-y-0.5">
+                          {/* Market Price */}
                           {service.market_price > 0 && (
                             <div className="text-[10px] md:text-xs text-gray-500">
                               <span className="text-gray-400">ဈေးကွက်ဈေး:</span>{' '}
@@ -327,19 +271,31 @@ export default function Home() {
                             </div>
                           )}
                           
-                          {display.isSpecial ? (
-                            <>
-                              <div className="text-[10px] md:text-xs text-gray-500">
-                                <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
-                                <span className="line-through">{service.hubby_price?.toLocaleString()} MMK</span>
-                              </div>
-                              <div className="text-green-500 font-bold text-sm md:text-base">
-                                <span className="text-green-600">ယခုဈေး:</span> {display.price.toLocaleString()} MMK
-                              </div>
-                            </>
+                          {/* Hubby Price (if special or stacked, show line-through) */}
+                          {(isSpecial || hasStackedDiscount) ? (
+                            <div className="text-[10px] md:text-xs text-gray-500">
+                              <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
+                              <span className="line-through">{service.hubby_price?.toLocaleString()} MMK</span>
+                            </div>
                           ) : (
                             <div className="text-[#FF6B35] font-bold text-sm md:text-base">
-                              {display.price.toLocaleString()} MMK
+                              {finalPriceData.price.toLocaleString()} MMK
+                            </div>
+                          )}
+                          
+                          {/* Final Price with Discount */}
+                          {(isSpecial || hasStackedDiscount) && (
+                            <div className="text-green-500 font-bold text-sm md:text-base">
+                              <span className="text-green-600">
+                                {hasStackedDiscount ? '🎉 Discounted Price:' : 'အထူးလျှော့ဈေး:'}
+                              </span> {finalPriceData.price.toLocaleString()} MMK
+                            </div>
+                          )}
+                          
+                          {/* First Purchase Discount Note */}
+                          {user && userDiscountPercent > 0 && !hasActiveOrder && userDataLoaded && (
+                            <div className="text-[9px] text-blue-400 mt-1">
+                              🎁 First purchase: {userDiscountPercent}% OFF included!
                             </div>
                           )}
                         </div>
