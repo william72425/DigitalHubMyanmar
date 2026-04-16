@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { auth, db } from '@/utils/firebase';
 import { doc, getDoc, addDoc, collection, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
+import { calculateStackedDiscount } from '@/utils/discountCalculator';
 import productsData from '@/data/products.json';
 
 export default function Checkout() {
@@ -16,13 +17,12 @@ export default function Checkout() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [finalPrice, setFinalPrice] = useState(0);
-  const [discountDetails, setDiscountDetails] = useState({
-    hasSpecialPrice: false,
-    specialDiscountAmount: 0,
-    hasFirstPurchaseDiscount: false,
-    firstPurchaseDiscountAmount: 0,
-    promoPercent: 0
-  });
+  const [appliedDiscounts, setAppliedDiscounts] = useState([]);
+  const [isFirstPurchaseEligible, setIsFirstPurchaseEligible] = useState(false);
+  const [promoDiscountPercent, setPromoDiscountPercent] = useState(0);
+  const [hasActiveOrder, setHasActiveOrder] = useState(false);
+  const [calculationDone, setCalculationDone] = useState(false);
+  const [calculationError, setCalculationError] = useState(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -46,10 +46,13 @@ export default function Checkout() {
     if (!id) return;
     const found = productsData.find(p => p.id === parseInt(id));
     setProduct(found);
+    console.log('✅ Product loaded:', found?.name, 'Price:', found?.hubby_price);
   };
 
   const loadUserData = async (userId) => {
     try {
+      console.log('🔄 Loading user data for:', userId);
+      
       // Check for active orders
       const ordersQuery = query(
         collection(db, 'orders'),
@@ -57,67 +60,86 @@ export default function Checkout() {
         where('status', 'in', ['pending', 'processing', 'completed'])
       );
       const ordersSnapshot = await getDocs(ordersQuery);
-      const hasActiveOrder = !ordersSnapshot.empty;
+      const hasOrder = !ordersSnapshot.empty;
+      setHasActiveOrder(hasOrder);
+      console.log('📦 Has active order:', hasOrder);
       
       const userDoc = await getDoc(doc(db, 'users', userId));
       let discountPercent = 0;
+      let promoType = 'percent';
+      let maxDiscountAmount = 0;
       
-      // Check for first purchase discount eligibility
-      if (!hasActiveOrder && userDoc.exists()) {
-        const userData = userDoc.data();
-        if (userData.used_promote_code && !userData.first_purchase_discount_used && product) {
+      if (userDoc.exists()) {
+        const userDataRaw = userDoc.data();
+        setUserData(userDataRaw);
+        console.log('👤 User data loaded:', { 
+          used_promote_code: userDataRaw.used_promote_code,
+          first_purchase_discount_used: userDataRaw.first_purchase_discount_used 
+        });
+        
+        // Only apply first purchase discount if user has NO active orders
+        if (!hasOrder && userDataRaw.used_promote_code && !userDataRaw.first_purchase_discount_used && product) {
           try {
-            const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}&productId=${product.id}`);
+            console.log('🔍 Checking promo code:', userDataRaw.used_promote_code);
+            const promoRes = await fetch(`/api/promo/check?code=${userDataRaw.used_promote_code}&productId=${product.id}`);
             const promoData = await promoRes.json();
+            console.log('📡 Promo API response:', promoData);
+            
             if (promoData && promoData.option_type === 'first_purchase_discount') {
               discountPercent = promoData.settings?.discount_value || 0;
+              promoType = promoData.settings?.discount_type || 'percent';
+              maxDiscountAmount = promoData.settings?.max_discount || 0;
+              console.log('🎉 First purchase discount found:', discountPercent, '%');
+            } else {
+              console.log('⚠️ Promo code not valid for first purchase discount');
             }
           } catch (err) {
-            console.error('Promo check failed:', err);
+            console.error('❌ Promo check failed:', err);
           }
+        } else {
+          console.log('ℹ️ User not eligible for first purchase discount');
         }
       }
       
-      setUserData(userDoc.data());
+      setPromoDiscountPercent(discountPercent);
       
-      // Calculate final price
       if (product) {
-        let price = product.hubby_price;
-        let specialDiscountAmount = 0;
-        let firstPurchaseDiscountAmount = 0;
-        let hasSpecialPrice = false;
-        let hasFirstPurchaseDiscount = false;
+        const userDiscountsObj = { 
+          promoDiscount: discountPercent, 
+          promoType, 
+          maxDiscountAmount 
+        };
+        const userDataObj = { 
+          hasActiveOrder: hasOrder,
+          first_purchase_discount_used: userDoc.exists() ? userDoc.data().first_purchase_discount_used : false
+        };
         
-        // Step 1: Apply Admin Special Price
-        if (product.special_price && product.special_price > 0) {
-          specialDiscountAmount = product.hubby_price - product.special_price;
-          price = product.special_price;
-          hasSpecialPrice = true;
-        }
+        console.log('🧮 Calculating stacked discount with:', { userDiscountsObj, userDataObj });
         
-        // Step 2: Apply First Purchase Discount
-        if (discountPercent > 0 && !hasActiveOrder && !userDoc.data()?.first_purchase_discount_used) {
-          const discountAmount = Math.round(price * discountPercent / 100);
-          if (discountAmount > 0 && discountAmount < price) {
-            firstPurchaseDiscountAmount = discountAmount;
-            price = price - discountAmount;
-            hasFirstPurchaseDiscount = true;
-          }
-        }
+        const result = calculateStackedDiscount(product, userDiscountsObj, userDataObj);
         
-        setFinalPrice(price);
-        setDiscountDetails({
-          hasSpecialPrice,
-          specialDiscountAmount,
-          hasFirstPurchaseDiscount,
-          firstPurchaseDiscountAmount,
-          promoPercent: discountPercent
+        console.log('✅ Calculation result:', {
+          originalPrice: result.originalPrice,
+          finalPrice: result.finalPrice,
+          discountAmount: result.discountAmount,
+          appliedDiscounts: result.appliedDiscounts,
+          isFirstPurchaseEligible: result.isFirstPurchaseEligible
         });
+        
+        setFinalPrice(result.finalPrice);
+        setAppliedDiscounts(result.appliedDiscounts);
+        setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
+        setCalculationError(null);
+      } else {
+        console.warn('⚠️ Product not loaded yet');
       }
+      setCalculationDone(true);
       setLoading(false);
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('❌ Error loading user data:', error);
+      setCalculationError(error.message);
       if (product) setFinalPrice(product.hubby_price);
+      setCalculationDone(true);
       setLoading(false);
     }
   };
@@ -133,21 +155,21 @@ export default function Checkout() {
         duration: product.duration,
         original_price: product.hubby_price,
         final_price: finalPrice,
-        special_discount: discountDetails.specialDiscountAmount,
-        first_purchase_discount: discountDetails.firstPurchaseDiscountAmount,
+        discount_breakdown: appliedDiscounts,
         promo_code_used: userData?.used_promote_code || null,
         status: 'pending',
         payment_method: 'manual',
         created_at: new Date().toISOString()
       });
       
-      if (userData?.used_promote_code && !userData?.first_purchase_discount_used && discountDetails.hasFirstPurchaseDiscount) {
+      if (userData?.used_promote_code && !userData?.first_purchase_discount_used && isFirstPurchaseEligible) {
         await updateDoc(doc(db, 'users', user.uid), { first_purchase_discount_used: true });
       }
       
       alert('Order created! Send payment proof to Telegram: @william815');
       router.push('/orders');
     } catch (error) {
+      console.error('Order creation error:', error);
       alert('Failed to create order');
     }
     setProcessing(false);
@@ -159,13 +181,16 @@ export default function Checkout() {
     localStorage.setItem('theme', newTheme ? 'dark' : 'light');
   };
 
-  if (loading || !product) {
+  if (loading || !product || !calculationDone) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
+
+  const hasSpecialPrice = product.special_price && product.special_price > 0;
+  const specialDiscountAmount = hasSpecialPrice ? product.hubby_price - product.special_price : 0;
 
   return (
     <>
@@ -175,6 +200,12 @@ export default function Checkout() {
         
         <div className="container mx-auto px-4 py-24 max-w-4xl">
           <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🛒 Checkout</h1>
+          
+          {calculationError && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm">
+              ⚠️ Calculation Error: {calculationError}
+            </div>
+          )}
           
           {/* Bill Card Style Order Summary */}
           <div className={`rounded-2xl overflow-hidden mb-6 ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} shadow-2xl border ${isDarkMode ? 'border-white/20' : 'border-gray-200'}`}>
@@ -206,19 +237,19 @@ export default function Checkout() {
                 </div>
                 
                 <div className="space-y-2 pt-2">
-                  {discountDetails.hasSpecialPrice && discountDetails.specialDiscountAmount > 0 && (
+                  {hasSpecialPrice && specialDiscountAmount > 0 && (
                     <div className="flex justify-between text-green-400">
                       <span>✨ Admin Special Discount</span>
-                      <span>-{discountDetails.specialDiscountAmount.toLocaleString()} MMK</span>
+                      <span>-{specialDiscountAmount.toLocaleString()} MMK</span>
                     </div>
                   )}
                   
-                  {discountDetails.hasFirstPurchaseDiscount && discountDetails.firstPurchaseDiscountAmount > 0 && (
-                    <div className="flex justify-between text-green-400">
-                      <span>🎉 First Purchase ({discountDetails.promoPercent}% OFF)</span>
-                      <span>-{discountDetails.firstPurchaseDiscountAmount.toLocaleString()} MMK</span>
+                  {appliedDiscounts.filter(d => d.type === 'promo').map((discount, idx) => (
+                    <div key={idx} className="flex justify-between text-green-400">
+                      <span>{discount.label}</span>
+                      <span>-{discount.amount.toLocaleString()} MMK</span>
                     </div>
-                  )}
+                  ))}
                 </div>
                 
                 <div className={`flex justify-between pt-4 mt-2 border-t-2 ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
@@ -228,10 +259,10 @@ export default function Checkout() {
                   </span>
                 </div>
                 
-                {discountDetails.hasFirstPurchaseDiscount && (
+                {isFirstPurchaseEligible && promoDiscountPercent > 0 && !hasActiveOrder && (
                   <div className="mt-3 p-2 bg-green-500/10 rounded-lg text-center">
                     <p className="text-xs text-green-500">
-                      🎉 First purchase discount ({discountDetails.promoPercent}% OFF) applied!
+                      🎉 First purchase discount ({promoDiscountPercent}% OFF) applied!
                     </p>
                   </div>
                 )}
