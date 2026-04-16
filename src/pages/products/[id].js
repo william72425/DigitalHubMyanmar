@@ -97,26 +97,23 @@ export default function ProductDetail() {
       setPromoDiscount(discountPercent);
       
       // Calculate final price
-      if (product) {
-        const userDiscounts = {
-          promoDiscount: discountPercent,
-          promoType,
-          stackWithSpecial,
-          maxDiscountAmount
-        };
-        const userDataObj = { hasActiveOrder: hasOrder };
-        
-        const result = calculateStackedDiscount(product, userDiscounts, userDataObj);
-        setFinalPrice(result.finalPrice);
-        setDiscountBreakdown(result.appliedDiscounts);
-        setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      setLoading(false);
-    }
+if (product) {
+  const userDiscountsObj = {
+    promoDiscount: discountPercent,
+    promoType,
+    stackWithSpecial,
+    maxDiscountAmount
   };
+  const userDataObj = { 
+    hasActiveOrder: hasOrder,
+    first_purchase_discount_used: false  // Make sure this is false for new users
+  };
+  
+  const result = calculateStackedDiscount(product, userDiscountsObj, userDataObj);
+  setFinalPrice(result.finalPrice);
+  setDiscountBreakdown(result.appliedDiscounts);
+  setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
+}
 
   const handleExternalBuy = (platform, contactId) => {
     const message = `ဟုတ်ကဲ့ပါ။ ${product.name} (${product.duration}) ကို ${finalPrice.toLocaleString()} MMK ဖြင့် ဝယ်ယူလိုပါသည်။`;
