@@ -18,9 +18,9 @@ export default function ProductDetail() {
   const [discountBreakdown, setDiscountBreakdown] = useState([]);
   const [isFirstPurchaseEligible, setIsFirstPurchaseEligible] = useState(false);
   const [showBuyOptions, setShowBuyOptions] = useState(false);
-  const [hasDiscount, setHasDiscount] = useState(false);
   const [promoDiscountPercent, setPromoDiscountPercent] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [hasCompletedOrder, setHasCompletedOrder] = useState(false);
 
   // Load product first
   useEffect(() => {
@@ -55,7 +55,6 @@ export default function ProductDetail() {
           setFinalPrice(product.hubby_price);
           setDiscountBreakdown([]);
           setIsFirstPurchaseEligible(false);
-          setHasDiscount(false);
           setPromoDiscountPercent(0);
         }
         setLoading(false);
@@ -66,14 +65,24 @@ export default function ProductDetail() {
 
   const loadUserDiscounts = async (userId) => {
     try {
-      // Check for active orders
-      const ordersQuery = query(
+      // Check for COMPLETED orders (not just any orders)
+      const completedOrdersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
-        where('status', 'in', ['pending', 'processing', 'completed'])
+        where('status', '==', 'completed')
       );
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const hasOrder = !ordersSnapshot.empty;
+      const completedOrdersSnapshot = await getDocs(completedOrdersQuery);
+      const hasCompleted = !completedOrdersSnapshot.empty;
+      setHasCompletedOrder(hasCompleted);
+      
+      // Check for pending/processing orders (active but not completed)
+      const activeOrdersQuery = query(
+        collection(db, 'orders'),
+        where('user_id', '==', userId),
+        where('status', 'in', ['pending', 'processing'])
+      );
+      const activeOrdersSnapshot = await getDocs(activeOrdersQuery);
+      const hasActiveOrder = !activeOrdersSnapshot.empty;
       
       // Get user data
       const userDoc = await getDoc(doc(db, 'users', userId));
@@ -82,8 +91,13 @@ export default function ProductDetail() {
       let stackWithSpecial = false;
       let maxDiscountAmount = 0;
       
-      // Only apply first purchase discount if user has NO orders
-      if (!hasOrder && userDoc.exists()) {
+      // Only apply first purchase discount if:
+      // 1. User has NO completed orders
+      // 2. User has NO active orders (pending/processing)
+      // 3. User hasn't used discount before
+      const canUseDiscount = !hasCompleted && !hasActiveOrder;
+      
+      if (canUseDiscount && userDoc.exists()) {
         const userData = userDoc.data();
         if (userData.used_promote_code && !userData.first_purchase_discount_used && product) {
           try {
@@ -112,20 +126,18 @@ export default function ProductDetail() {
           maxDiscountAmount
         };
         const userDataObj = { 
-          hasActiveOrder: hasOrder,
+          hasActiveOrder: hasActiveOrder || hasCompleted,
           first_purchase_discount_used: userDoc.exists() ? userDoc.data().first_purchase_discount_used : false
         };
         
         const result = calculateStackedDiscount(product, userDiscountsObj, userDataObj);
         setFinalPrice(result.finalPrice);
         setDiscountBreakdown(result.appliedDiscounts);
-        setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
-        setHasDiscount(result.hasDiscount);
+        setIsFirstPurchaseEligible(result.isFirstPurchaseEligible && !hasCompleted && !hasActiveOrder);
       }
       setLoading(false);
     } catch (error) {
       console.error('Error loading user data:', error);
-      // Fallback to regular price
       if (product) {
         setFinalPrice(product.hubby_price);
       }
@@ -193,7 +205,6 @@ export default function ProductDetail() {
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
             <div className="space-y-3">
-              {/* Market Price */}
               {product.market_price > 0 && (
                 <div className="flex justify-between items-center pb-2 border-b border-white/10">
                   <span className="text-gray-300">ဈေးကွက် ပျမ်းမျှဈေး</span>
@@ -201,13 +212,11 @@ export default function ProductDetail() {
                 </div>
               )}
               
-              {/* Hubby Store Price */}
               <div className="flex justify-between items-center pb-2 border-b border-white/10">
                 <span className="text-gray-300">Hubby Store ဈေး</span>
                 <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
               </div>
               
-              {/* First Purchase Discount */}
               {discountBreakdown.map((discount, idx) => (
                 <div key={idx} className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400">
                   <span>🎉 {discount.label}</span>
@@ -215,16 +224,20 @@ export default function ProductDetail() {
                 </div>
               ))}
               
-              {/* Final Price */}
               <div className="flex justify-between items-center pt-3 mt-2 border-t border-white/20">
                 <span className="text-lg font-bold">စုစုပေါင်း</span>
                 <span className="text-[#FF6B35] font-bold text-xl">{finalPrice.toLocaleString()} MMK</span>
               </div>
               
-              {/* First Purchase Note */}
-              {isFirstPurchaseEligible && promoDiscountPercent > 0 && (
+              {isFirstPurchaseEligible && promoDiscountPercent > 0 && !hasCompletedOrder && (
                 <div className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg">
                   🎉 First purchase discount ({promoDiscountPercent}% OFF) applied!
+                </div>
+              )}
+              
+              {hasCompletedOrder && (
+                <div className="text-xs text-yellow-500 text-center mt-2 bg-yellow-500/10 p-2 rounded-lg">
+                  ⚠️ You have already completed an order. First purchase discount is no longer available.
                 </div>
               )}
             </div>
