@@ -50,7 +50,6 @@ export default function ProductDetail() {
         setIsLoggedIn(true);
         await loadUserDiscounts(user.uid);
       } else {
-        // Not logged in - show regular price
         if (product) {
           setFinalPrice(product.hubby_price);
           setDiscountBreakdown([]);
@@ -65,7 +64,7 @@ export default function ProductDetail() {
 
   const loadUserDiscounts = async (userId) => {
     try {
-      // Check for COMPLETED orders (not just any orders)
+      // Check for COMPLETED orders
       const completedOrdersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
@@ -75,7 +74,7 @@ export default function ProductDetail() {
       const hasCompleted = !completedOrdersSnapshot.empty;
       setHasCompletedOrder(hasCompleted);
       
-      // Check for pending/processing orders (active but not completed)
+      // Check for pending/processing orders
       const activeOrdersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
@@ -84,7 +83,6 @@ export default function ProductDetail() {
       const activeOrdersSnapshot = await getDocs(activeOrdersQuery);
       const hasActiveOrder = !activeOrdersSnapshot.empty;
       
-      // Get user data
       const userDoc = await getDoc(doc(db, 'users', userId));
       let discountPercent = 0;
       let promoType = 'percent';
@@ -93,13 +91,12 @@ export default function ProductDetail() {
       
       // Only apply first purchase discount if:
       // 1. User has NO completed orders
-      // 2. User has NO active orders (pending/processing)
-      // 3. User hasn't used discount before
+      // 2. User has NO active orders
       const canUseDiscount = !hasCompleted && !hasActiveOrder;
       
-      if (canUseDiscount && userDoc.exists()) {
+      if (canUseDiscount && userDoc.exists() && product) {
         const userData = userDoc.data();
-        if (userData.used_promote_code && !userData.first_purchase_discount_used && product) {
+        if (userData.used_promote_code && !userData.first_purchase_discount_used) {
           try {
             const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}&productId=${product.id}`);
             const promoData = await promoRes.json();
@@ -117,7 +114,6 @@ export default function ProductDetail() {
       
       setPromoDiscountPercent(discountPercent);
       
-      // Calculate final price
       if (product) {
         const userDiscountsObj = {
           promoDiscount: discountPercent,
@@ -126,7 +122,8 @@ export default function ProductDetail() {
           maxDiscountAmount
         };
         const userDataObj = { 
-          hasActiveOrder: hasActiveOrder || hasCompleted,
+          hasActiveOrder: hasActiveOrder,
+          hasCompletedOrder: hasCompleted,
           first_purchase_discount_used: userDoc.exists() ? userDoc.data().first_purchase_discount_used : false
         };
         
@@ -184,7 +181,6 @@ export default function ProductDetail() {
           
           <button onClick={() => router.back()} className="text-gray-400 hover:text-[#FF6B35] mb-6">← နောက်သို့</button>
 
-          {/* Product Header */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <div className="flex items-center gap-5">
               {product.logo_url ? (
@@ -201,7 +197,6 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Price Section */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
             <div className="space-y-3">
@@ -243,7 +238,6 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Features Section */}
           {features.length > 0 && (
             <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto">
               <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
@@ -272,7 +266,6 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* NOTE BOX */}
           {productNote && productNote.content && productNote.content.trim() !== '' && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6">
               <h3 className="text-yellow-500 font-bold mb-2">{productNote.title || '📌 မှတ်ချက်'}</h3>
@@ -280,7 +273,6 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Buy Options */}
           {!showBuyOptions ? (
             <button 
               onClick={() => setShowBuyOptions(true)} 
