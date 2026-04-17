@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import { getTheme, setTheme } from '@/utils/siteSettings';
 
 export default function Admin() {
   const [password, setPassword] = useState('');
@@ -40,14 +39,23 @@ export default function Admin() {
   }, []);
 
   const loadTheme = async () => {
-    const theme = await getTheme();
-    setCurrentTheme(theme);
+    try {
+      const res = await fetch('/api/admin/get-settings');
+      const data = await res.json();
+      setCurrentTheme(data.theme || 'normal');
+    } catch (error) {
+      setCurrentTheme('normal');
+    }
   };
 
   const toggleThemeMode = async () => {
     const newTheme = currentTheme === 'normal' ? 'epic' : 'normal';
-    const success = await setTheme(newTheme);
-    if (success) {
+    const res = await fetch('/api/admin/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: newTheme })
+    });
+    if (res.ok) {
       setCurrentTheme(newTheme);
       setMessage(`✅ Theme changed to ${newTheme.toUpperCase()}! Refresh homepage to see changes.`);
     } else {
@@ -127,6 +135,42 @@ export default function Admin() {
     });
   };
 
+  // NEW: Upload 16:9 or 3:4 poster image
+  const uploadPosterToGitHub = async (file, productId, type) => {
+    setUploading(true);
+    setMessage(`📤 Uploading ${type} poster...`);
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result;
+        
+        const res = await fetch('/api/admin/upload-poster', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64, productId, type })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok && data.imageUrl) {
+          setMessage(`✅ ${type} poster uploaded! Click "Save All Changes" to deploy.`);
+          resolve(data.imageUrl);
+        } else {
+          setMessage('❌ Upload failed');
+          reject(data.error);
+        }
+        setUploading(false);
+      };
+      reader.onerror = () => {
+        setMessage('❌ File read error');
+        setUploading(false);
+        reject();
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const updateProduct = (id, field, value) => {
     setPendingChanges(true);
     const newProducts = products.map(p => {
@@ -169,6 +213,9 @@ export default function Admin() {
       discount_percent: null,
       special_price: null,
       logo_url: null,
+      poster_16x9: null,
+      category_3x4: null,
+      is_featured: false,
       logo_size: 70,
       duration: '1 month',
       sort_order: products.length
@@ -387,7 +434,6 @@ export default function Admin() {
           <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
             <h1 className="text-2xl font-bold text-white">🛸 Admin Panel</h1>
             <div className="flex gap-3">
-              {/* THEME SWITCHER BUTTON */}
               <button 
                 onClick={toggleThemeMode}
                 className={`px-4 py-2 rounded-lg font-semibold ${
@@ -442,6 +488,7 @@ export default function Admin() {
                     <div className="flex flex-wrap gap-3 items-start">
                       <div className="text-gray-400 text-2xl cursor-grab">⠿</div>
                       
+                      {/* Logo Upload Section */}
                       <div className="flex flex-col items-center gap-1">
                         {product.logo_url ? (
                           <img src={product.logo_url} className="rounded-lg object-contain bg-white/5" style={{ width: logoSize + 'px', height: logoSize + 'px' }} alt={product.name} />
@@ -472,6 +519,68 @@ export default function Admin() {
                         </div>
                       </div>
                       
+                      {/* NEW: 16:9 Poster Upload for Top Carousel */}
+                      <div className="flex flex-col items-center gap-1">
+                        {product.poster_16x9 ? (
+                          <img src={product.poster_16x9} className="rounded-lg object-cover" style={{ width: '80px', height: '45px' }} alt="16:9 poster" />
+                        ) : (
+                          <div className="bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 text-xs" style={{ width: '80px', height: '45px' }}>
+                            16:9
+                          </div>
+                        )}
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="text-[9px] text-gray-400 w-20" onChange={async (e) => {
+                          if (e.target.files[0]) {
+                            const url = await uploadPosterToGitHub(e.target.files[0], product.id, '16x9');
+                            if (url) {
+                              setPendingChanges(true);
+                              const newProducts = products.map(p => p.id === product.id ? { ...p, poster_16x9: url } : p);
+                              setProducts(newProducts);
+                            }
+                            e.target.value = '';
+                          }
+                        }} />
+                        <span className="text-[9px] text-gray-500">16:9 Poster</span>
+                      </div>
+                      
+                      {/* NEW: 3:4 Category Image Upload */}
+                      <div className="flex flex-col items-center gap-1">
+                        {product.category_3x4 ? (
+                          <img src={product.category_3x4} className="rounded-lg object-cover" style={{ width: '60px', height: '80px' }} alt="3:4 category" />
+                        ) : (
+                          <div className="bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 text-xs" style={{ width: '60px', height: '80px' }}>
+                            3:4
+                          </div>
+                        )}
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="text-[9px] text-gray-400 w-20" onChange={async (e) => {
+                          if (e.target.files[0]) {
+                            const url = await uploadPosterToGitHub(e.target.files[0], product.id, '3x4');
+                            if (url) {
+                              setPendingChanges(true);
+                              const newProducts = products.map(p => p.id === product.id ? { ...p, category_3x4: url } : p);
+                              setProducts(newProducts);
+                            }
+                            e.target.value = '';
+                          }
+                        }} />
+                        <span className="text-[9px] text-gray-500">3:4 Category</span>
+                      </div>
+                      
+                      {/* NEW: Featured Checkbox for Top Carousel */}
+                      <div className="flex flex-col items-center gap-1">
+                        <label className="text-[10px] text-gray-400">Top Carousel</label>
+                        <input 
+                          type="checkbox" 
+                          checked={product.is_featured || false}
+                          onChange={(e) => {
+                            setPendingChanges(true);
+                            const newProducts = products.map(p => p.id === product.id ? { ...p, is_featured: e.target.checked } : p);
+                            setProducts(newProducts);
+                          }}
+                          className="w-5 h-5 cursor-pointer"
+                        />
+                      </div>
+                      
+                      {/* Product Fields */}
                       <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-2">
                         <input type="text" value={product.name || ''} onChange={(e) => updateProduct(product.id, 'name', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm col-span-2" placeholder="Name" />
                         <select value={product.category || 'Others'} onChange={(e) => updateProduct(product.id, 'category', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm">
