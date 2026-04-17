@@ -13,9 +13,9 @@
     "discount_percent": "25",
     "special_price": 6000,
     "logo_size": 45,
-    "poster_16x9": "/posters/1776151147608-16x9-1776448213229.jpg",
-    "category_3x4": "/posters/1776151147608-3x4-1776448218499.jpg",
-    "is_featured": true
+    "is_featured": true,
+    "poster_16x9": "/posters/1776151147608-16x9-1776448688332.jpg",
+    "category_3x4": "/posters/1776151147608-3x4-1776448691953.jpg"
   },
   {
     "id": 1,
@@ -53,10 +53,7 @@
     ],
     "special_price": null,
     "discount_percent": "",
-    "logo_size": 45,
-    "poster_16x9": "/posters/2-16x9-1776448239558.jpg",
-    "category_3x4": "/posters/2-3x4-1776448244928.jpg",
-    "is_featured": true
+    "logo_size": 45
   },
   {
     "id": 1776220100911,
@@ -82,10 +79,7 @@
     "logo_url": "/logos/1776220499012-1776220534303.png",
     "logo_size": 45,
     "duration": "1 month",
-    "sort_order": 4,
-    "poster_16x9": "/posters/1776220499012-16x9-1776448254857.jpg",
-    "category_3x4": "/posters/1776220499012-3x4-1776448259421.jpg",
-    "is_featured": true
+    "sort_order": 4
   },
   {
     "id": 1776220603230,
