@@ -5,7 +5,6 @@ import { auth, db } from '@/utils/firebase';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import productsData from '@/data/products.json';
 import Navbar from '@/components/Navbar';
-import { getTheme } from '@/utils/siteSettings';
 import EpicHeroCarousel from '@/components/EpicHeroCarousel';
 import CategoryCarousel from '@/components/CategoryCarousel';
 
@@ -21,7 +20,6 @@ export default function Home() {
   const [userDataLoaded, setUserDataLoaded] = useState(false);
   const [theme, setTheme] = useState('normal');
 
-  // Load products from JSON
   useEffect(() => {
     const sorted = [...productsData].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     setServices(sorted);
@@ -29,23 +27,25 @@ export default function Home() {
     setCategories(uniqueCategories);
   }, []);
 
-  // Load theme
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') setIsDarkMode(false);
     else if (savedTheme === 'dark') setIsDarkMode(true);
   }, []);
 
-  // Load site theme from Firebase
   useEffect(() => {
     const loadTheme = async () => {
-      const currentTheme = await getTheme();
-      setTheme(currentTheme);
+      try {
+        const res = await fetch('/api/admin/get-settings');
+        const data = await res.json();
+        setTheme(data.theme || 'normal');
+      } catch (error) {
+        setTheme('normal');
+      }
     };
     loadTheme();
   }, []);
 
-  // Auth and User Discounts
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
@@ -189,7 +189,6 @@ export default function Home() {
             </>
           )}
           
-          {/* Original Hero Text - Always show */}
           <div className="text-center py-6 md:py-8">
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent">
               Digital Hub Myanmar
@@ -204,7 +203,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* Category Buttons */}
           <div className="flex gap-2 overflow-x-auto pb-4 mb-6 justify-center flex-wrap">
             {categories.map((cat) => (
               <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition-all ${
@@ -217,7 +215,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Product Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredServices.map((service) => {
               const finalPriceData = getFinalPrice(service);
