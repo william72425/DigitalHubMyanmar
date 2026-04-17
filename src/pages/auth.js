@@ -15,6 +15,7 @@ export default function Auth() {
   const [promoteCodeValid, setPromoteCodeValid] = useState(null);
   const [promoteCodeDiscount, setPromoteCodeDiscount] = useState(0);
   const [promoteCodeType, setPromoteCodeType] = useState(null);
+  const [isCheckingCode, setIsCheckingCode] = useState(false); // ADDED: Track validation status
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -41,6 +42,9 @@ export default function Auth() {
       return;
     }
     
+    setIsCheckingCode(true); // START loading
+    setPromoteCodeValid(null); // Reset to neutral while checking
+    
     try {
       // Check in promo_codes collection (Admin created)
       const promoQuery = query(collection(db, 'promo_codes'), where('code', '==', code.toUpperCase()));
@@ -53,17 +57,19 @@ export default function Auth() {
         setPromoteCodeValid(true);
         setPromoteCodeDiscount(discountValue);
         setPromoteCodeType('partner');
+        setIsCheckingCode(false);
         return;
       }
       
-      // Check in users collection (User generated)
+      // Check in users collection (User referral code)
       const userQuery = query(collection(db, 'users'), where('promote_code', '==', code.toUpperCase()));
       const userSnapshot = await getDocs(userQuery);
       
       if (!userSnapshot.empty) {
         setPromoteCodeValid(true);
-        setPromoteCodeDiscount(10);
+        setPromoteCodeDiscount(15); // 15% discount for referral
         setPromoteCodeType('user');
+        setIsCheckingCode(false);
         return;
       }
       
@@ -71,8 +77,10 @@ export default function Auth() {
       setPromoteCodeDiscount(0);
       setPromoteCodeType(null);
     } catch (error) {
+      console.error('Error checking promo code:', error);
       setPromoteCodeValid(false);
     }
+    setIsCheckingCode(false);
   };
 
   const handleLogin = async (e) => {
@@ -91,6 +99,13 @@ export default function Auth() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    
+    // CRITICAL FIX: If still checking the code, prevent submission
+    if (isCheckingCode) {
+      setError('Please wait, validating promo code...');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     setMessage('');
@@ -103,6 +118,7 @@ export default function Auth() {
       let referredBy = null;
       let discountPercent = 0;
       
+      // Use the already validated state, don't re-fetch
       if (promoteCodeValid && promoteCode) {
         usedPromoteCode = promoteCode.toUpperCase();
         discountPercent = promoteCodeDiscount;
@@ -164,6 +180,7 @@ export default function Auth() {
     setLoading(false);
   };
 
+  // --- UI Rendering (Remains the same, just added disabled state based on isCheckingCode) ---
   return (
     <>
       <Head><title>Login | Digital Hub Myanmar</title></Head>
@@ -196,12 +213,22 @@ export default function Auth() {
               
               <div className="mb-4">
                 <label className="block text-gray-300 text-sm mb-2">Promote Code (Optional)</label>
-                <input type="text" value={promoteCode} onChange={(e) => { setPromoteCode(e.target.value); checkPromoteCode(e.target.value); }} className="w-full p-3 rounded-xl bg-white/10 text-white border border-white/20 focus:border-[#FF6B35] outline-none" placeholder="Enter promote code if you have" />
-                {promoteCodeValid === true && <p className="text-green-400 text-xs mt-1">✅ Valid! You'll get {promoteCodeDiscount}% discount on first purchase!</p>}
-                {promoteCodeValid === false && <p className="text-red-400 text-xs mt-1">❌ Invalid promote code</p>}
+                <input 
+                  type="text" 
+                  value={promoteCode} 
+                  onChange={(e) => { 
+                    setPromoteCode(e.target.value); 
+                    checkPromoteCode(e.target.value); 
+                  }} 
+                  className="w-full p-3 rounded-xl bg-white/10 text-white border border-white/20 focus:border-[#FF6B35] outline-none" 
+                  placeholder="Enter promote code if you have" 
+                />
+                {isCheckingCode && <p className="text-yellow-400 text-xs mt-1">⏳ Checking code...</p>}
+                {!isCheckingCode && promoteCodeValid === true && <p className="text-green-400 text-xs mt-1">✅ Valid! You'll get {promoteCodeDiscount}% discount on first purchase!</p>}
+                {!isCheckingCode && promoteCodeValid === false && <p className="text-red-400 text-xs mt-1">❌ Invalid promote code</p>}
               </div>
               
-              <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-xl font-semibold disabled:opacity-50">{loading ? 'Creating account...' : 'Create Account'}</button>
+              <button type="submit" disabled={loading || isCheckingCode} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-xl font-semibold disabled:opacity-50">{loading ? 'Creating account...' : 'Create Account'}</button>
             </motion.form>
           )}
           <p className="text-center text-gray-500 text-xs mt-6">🔐 Browser will ask to save password</p>
