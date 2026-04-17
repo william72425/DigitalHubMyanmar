@@ -26,36 +26,51 @@ export default function EpicHeroCarousel() {
   const product = featuredProducts[currentIndex];
   const posterImage = product.poster_16x9 || product.logo_url;
   const finalPrice = product.special_price || product.hubby_price;
-  const discountPercent = product.discount_percent;
-  const hasDiscount = discountPercent && discountPercent > 0;
-  const hasSpecialPrice = product.special_price && product.special_price > 0;
   const originalPrice = product.hubby_price;
+  const discountPercent = product.discount_percent;
   const discountAmount = originalPrice - finalPrice;
   const discountPercentTotal = Math.round((discountAmount / originalPrice) * 100);
 
   return (
     <div className="relative w-full mb-8 group">
+      {/* Hero Section Label */}
+      <div className="mb-3 px-2">
+        <span className="bg-purple-600 text-white text-xs px-3 py-1 rounded-full">
+          🔥 Featured Discounts
+        </span>
+      </div>
+
       <Link href={`/products/${product.id}`}>
         <div className="relative cursor-pointer rounded-2xl overflow-hidden">
           {posterImage ? (
-            <img src={posterImage} alt={product.name} className="w-full aspect-video object-cover object-center" />
+            <img 
+              src={posterImage} 
+              alt={product.name}
+              className="w-full aspect-video object-cover object-center"
+            />
           ) : (
             <div className="w-full aspect-video bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center">
               <span className="text-white text-2xl font-bold">{product.name}</span>
             </div>
           )}
+          
+          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+          
+          {/* Price & Discount Overlay - Epic Games Style */}
           <div className="absolute bottom-4 left-4 right-4">
             <div className="flex justify-between items-end">
               <div>
-                {hasDiscount && <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full">🔥 {discountPercent}% OFF</span>}
-                {hasSpecialPrice && !hasDiscount && <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">✨ Special Price</span>}
+                {discountPercent && (
+                  <span className="bg-cyan-500 text-black font-bold text-sm px-2 py-1 rounded-full">
+                    -{discountPercent}%
+                  </span>
+                )}
                 <div className="mt-2">
-                  {hasDiscount || hasSpecialPrice ? (
+                  {discountPercent ? (
                     <>
                       <p className="text-gray-300 text-sm line-through">{originalPrice.toLocaleString()} MMK</p>
                       <p className="text-white text-2xl font-bold">{finalPrice.toLocaleString()} MMK</p>
-                      {discountAmount > 0 && <p className="text-green-400 text-xs">Save {discountAmount.toLocaleString()} MMK ({discountPercentTotal}%)</p>}
                     </>
                   ) : (
                     <p className="text-white text-2xl font-bold">{finalPrice.toLocaleString()} MMK</p>
@@ -70,16 +85,38 @@ export default function EpicHeroCarousel() {
           </div>
         </div>
       </Link>
+
+      {/* Navigation Buttons */}
       {featuredProducts.length > 1 && (
         <>
-          <button onClick={prevSlide} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition">◀</button>
-          <button onClick={nextSlide} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition">▶</button>
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {featuredProducts.map((_, idx) => (
-              <button key={idx} onClick={() => setCurrentIndex(idx)} className={`w-2 h-2 rounded-full transition ${idx === currentIndex ? 'bg-white scale-125' : 'bg-white/50'}`} />
-            ))}
-          </div>
+          <button 
+            onClick={prevSlide} 
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition"
+          >
+            ◀
+          </button>
+          <button 
+            onClick={nextSlide} 
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition"
+          >
+            ▶
+          </button>
         </>
+      )}
+
+      {/* Indicators */}
+      {featuredProducts.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+          {featuredProducts.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`w-2 h-2 rounded-full transition ${
+                idx === currentIndex ? 'bg-white scale-125' : 'bg-white/50'
+              }`}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
