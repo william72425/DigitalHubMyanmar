@@ -36,7 +36,7 @@ export default function CategoryCarousel() {
   const category = categories[currentIndex];
 
   return (
-    <div className="relative w-full mb-8 group">
+    <div className="relative w-full mb-12 group">
       <div className="flex justify-between items-center mb-3 px-2">
         <h2 className="text-white text-xl font-bold">📁 Shop by Category</h2>
         {categories.length > 1 && (
@@ -46,27 +46,47 @@ export default function CategoryCarousel() {
           </div>
         )}
       </div>
+      
+      {/* Category Card - 3:4 Image Only, No Products Inside */}
       <Link href={`/?category=${encodeURIComponent(category.name)}`}>
-        <div className="relative cursor-pointer rounded-2xl overflow-hidden">
+        <div className="relative cursor-pointer rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] duration-300">
           {category.image ? (
-            <img src={category.image} alt={category.name} className="w-full aspect-[3/4] object-cover" />
+            <img 
+              src={category.image} 
+              alt={category.name}
+              className="w-full aspect-[3/4] object-cover"
+            />
           ) : (
             <div className="w-full aspect-[3/4] bg-gradient-to-br from-[#FF6B35]/50 to-[#00D4FF]/50 flex items-center justify-center">
               <span className="text-white text-6xl">📁</span>
             </div>
           )}
+          
+          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
+          
+          {/* Category Info */}
           <div className="absolute bottom-4 left-4 right-4">
             <h3 className="text-white text-2xl font-bold">{category.name}</h3>
             <p className="text-gray-300 text-sm">{category.productCount} products</p>
-            <p className="text-[#FF6B35] text-lg font-bold mt-1">From {category.minPrice.toLocaleString()} MMK</p>
+            <p className="text-[#FF6B35] text-lg font-bold mt-1">
+              From {category.minPrice.toLocaleString()} MMK
+            </p>
           </div>
         </div>
       </Link>
+
+      {/* Indicators */}
       {categories.length > 1 && (
         <div className="flex justify-center gap-2 mt-3">
           {categories.map((_, idx) => (
-            <button key={idx} onClick={() => setCurrentIndex(idx)} className={`h-1 rounded-full transition-all ${idx === currentIndex ? 'w-6 bg-[#FF6B35]' : 'w-3 bg-white/30'}`} />
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`h-1 rounded-full transition-all ${
+                idx === currentIndex ? 'w-6 bg-[#FF6B35]' : 'w-3 bg-white/30'
+              }`}
+            />
           ))}
         </div>
       )}
