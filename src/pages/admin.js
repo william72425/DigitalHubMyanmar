@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { getTheme, setTheme } from '@/utils/siteSettings';
 
 export default function Admin() {
   const [password, setPassword] = useState('');
@@ -9,6 +10,7 @@ export default function Admin() {
   const [message, setMessage] = useState('');
   const [draggedItem, setDraggedItem] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('normal');
   
   const [features, setFeatures] = useState([]);
   const [notes, setNotes] = useState([]);
@@ -33,8 +35,26 @@ export default function Admin() {
       setIsAuthenticated(true);
       fetchProducts();
       fetchFeatures();
+      loadTheme();
     }
   }, []);
+
+  const loadTheme = async () => {
+    const theme = await getTheme();
+    setCurrentTheme(theme);
+  };
+
+  const toggleThemeMode = async () => {
+    const newTheme = currentTheme === 'normal' ? 'epic' : 'normal';
+    const success = await setTheme(newTheme);
+    if (success) {
+      setCurrentTheme(newTheme);
+      setMessage(`✅ Theme changed to ${newTheme.toUpperCase()}! Refresh homepage to see changes.`);
+    } else {
+      setMessage('❌ Failed to change theme');
+    }
+    setTimeout(() => setMessage(''), 3000);
+  };
 
   const fetchProducts = async () => {
     const res = await fetch('/api/admin/products');
@@ -206,7 +226,6 @@ export default function Admin() {
     setShowFeatureModal(false);
     setMessage('✅ Feature changed! Click "Save All Changes" to deploy.');
     setTimeout(() => setMessage(''), 3000);
-    // ❌ NO auto save to GitHub
   };
 
   const deleteFeature = (id) => {
@@ -266,7 +285,6 @@ export default function Admin() {
     setShowNoteModal(false);
     setMessage(noteContent.trim() === '' ? '✅ Note removed! Click "Save All Changes" to deploy.' : '✅ Note saved! Click "Save All Changes" to deploy.');
     setTimeout(() => setMessage(''), 3000);
-    // ❌ NO auto save to GitHub
   };
 
   const handleDragStart = (e, index) => {
@@ -331,6 +349,7 @@ export default function Admin() {
       setIsAuthenticated(true);
       fetchProducts();
       fetchFeatures();
+      loadTheme();
     } else {
       setMessage('❌ Wrong password');
     }
@@ -368,6 +387,17 @@ export default function Admin() {
           <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
             <h1 className="text-2xl font-bold text-white">🛸 Admin Panel</h1>
             <div className="flex gap-3">
+              {/* THEME SWITCHER BUTTON */}
+              <button 
+                onClick={toggleThemeMode}
+                className={`px-4 py-2 rounded-lg font-semibold ${
+                  currentTheme === 'epic' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-600 text-white'
+                }`}
+              >
+                🎨 Theme: {currentTheme === 'epic' ? 'Epic Games Style' : 'Normal Style'}
+              </button>
               <button onClick={addProduct} className="bg-green-600 text-white px-4 py-2 rounded-lg">+ Add Product</button>
               <button 
                 onClick={handleSaveAll} 
@@ -498,7 +528,7 @@ export default function Admin() {
                         <th className="text-left py-2 px-2 text-gray-400 text-sm">Free</th>
                         <th className="text-left py-2 px-2 text-gray-400 text-sm">Premium/Pro</th>
                         <th className="text-center py-2 px-2 text-gray-400 text-sm">Actions</th>
-                      </tr>
+                       </tr>
                     </thead>
                     <tbody>
                       {productFeatures.map((feature) => (
