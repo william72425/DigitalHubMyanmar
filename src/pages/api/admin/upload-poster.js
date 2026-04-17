@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   const token = process.env.GITHUB_TOKEN;
   const repo = 'william72425/DigitalHubMyanmar';
-  const branch = 'main';
+  const branch = 'epic-theme-system';
   
   if (!token) {
     return res.status(500).json({ error: 'GITHUB_TOKEN not set' });
