@@ -6,7 +6,7 @@ import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firesto
 import productsData from '@/data/products.json';
 import Navbar from '@/components/Navbar';
 import EpicHeroCarousel from '@/components/EpicHeroCarousel';
-import CategoryCarousel from '@/components/CategoryCarousel';
+import CategoryRow from '@/components/CategoryRow';
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
@@ -181,13 +181,25 @@ export default function Home() {
 
         <div className="container mx-auto px-4 py-20 max-w-6xl relative z-10">
           
-          {/* EPIC THEME CAROUSELS - Only show when theme is epic */}
-          {theme === 'epic' && (
-            <>
-              <EpicHeroCarousel />
-              <CategoryCarousel />
-            </>
-          )}
+         {/* EPIC THEME - Hero Carousel + Category Rows */}
+{theme === 'epic' && (
+  <>
+    <EpicHeroCarousel />
+    
+    {/* Category Rows - Each category as horizontal swipe row */}
+    {categories.filter(cat => cat !== 'All').map((category) => {
+      const categoryProducts = services.filter(p => p.category === category);
+      if (categoryProducts.length === 0) return null;
+      return (
+        <CategoryRow 
+          key={category} 
+          category={category} 
+          products={categoryProducts} 
+        />
+      );
+    })}
+  </>
+)}
           
           <div className="text-center py-6 md:py-8">
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent">
