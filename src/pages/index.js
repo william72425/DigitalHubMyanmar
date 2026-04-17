@@ -5,6 +5,9 @@ import { auth, db } from '@/utils/firebase';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import productsData from '@/data/products.json';
 import Navbar from '@/components/Navbar';
+import { getTheme } from '@/utils/siteSettings';
+import EpicHeroCarousel from '@/components/EpicHeroCarousel';
+import CategoryCarousel from '@/components/CategoryCarousel';
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
@@ -16,6 +19,7 @@ export default function Home() {
   const [loadingDiscounts, setLoadingDiscounts] = useState(true);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [userDataLoaded, setUserDataLoaded] = useState(false);
+  const [theme, setTheme] = useState('normal');
 
   // Load products from JSON
   useEffect(() => {
@@ -30,6 +34,15 @@ export default function Home() {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') setIsDarkMode(false);
     else if (savedTheme === 'dark') setIsDarkMode(true);
+  }, []);
+
+  // Load site theme from Firebase
+  useEffect(() => {
+    const loadTheme = async () => {
+      const currentTheme = await getTheme();
+      setTheme(currentTheme);
+    };
+    loadTheme();
   }, []);
 
   // Auth and User Discounts
@@ -52,7 +65,6 @@ export default function Home() {
   const loadUserDiscounts = async (userId) => {
     setLoadingDiscounts(true);
     try {
-      // Check for active orders (pending, processing, completed)
       const ordersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
@@ -64,7 +76,6 @@ export default function Home() {
       
       let discountPercent = 0;
       
-      // Only apply first purchase discount if user has NO orders
       if (!hasOrder) {
         const userDoc = await getDoc(doc(db, 'users', userId));
         if (userDoc.exists()) {
@@ -102,9 +113,7 @@ export default function Home() {
     ? services
     : services.filter(s => s.category === activeCategory);
 
-  // Get final price with discounts applied
   const getFinalPrice = (service) => {
-    // If no user or still loading, show regular price
     if (!user || loadingDiscounts || !userDataLoaded) {
       if (service.special_price && service.special_price > 0) {
         return { price: service.special_price, isSpecial: true, hasStackedDiscount: false };
@@ -112,7 +121,6 @@ export default function Home() {
       return { price: service.hubby_price, isSpecial: false, hasStackedDiscount: false };
     }
     
-    // If user has active order, no first purchase discount
     if (hasActiveOrder) {
       if (service.special_price && service.special_price > 0) {
         return { price: service.special_price, isSpecial: true, hasStackedDiscount: false };
@@ -120,17 +128,14 @@ export default function Home() {
       return { price: service.hubby_price, isSpecial: false, hasStackedDiscount: false };
     }
     
-    // Apply first purchase discount
     if (userDiscountPercent > 0) {
       let finalPrice = service.hubby_price;
       let hasDiscount = false;
       
-      // Apply special price first if exists
       if (service.special_price && service.special_price > 0) {
         finalPrice = service.special_price;
       }
       
-      // Apply first purchase discount
       const discountAmount = Math.round(finalPrice * userDiscountPercent / 100);
       if (discountAmount > 0 && discountAmount < finalPrice) {
         finalPrice = finalPrice - discountAmount;
@@ -145,7 +150,6 @@ export default function Home() {
       };
     }
     
-    // No discount
     if (service.special_price && service.special_price > 0) {
       return { price: service.special_price, isSpecial: true, hasStackedDiscount: false };
     }
@@ -177,6 +181,15 @@ export default function Home() {
 
         <div className="container mx-auto px-4 py-20 max-w-6xl relative z-10">
           
+          {/* EPIC THEME CAROUSELS - Only show when theme is epic */}
+          {theme === 'epic' && (
+            <>
+              <EpicHeroCarousel />
+              <CategoryCarousel />
+            </>
+          )}
+          
+          {/* Original Hero Text - Always show */}
           <div className="text-center py-6 md:py-8">
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent">
               Digital Hub Myanmar
@@ -191,6 +204,7 @@ export default function Home() {
             )}
           </div>
 
+          {/* Category Buttons */}
           <div className="flex gap-2 overflow-x-auto pb-4 mb-6 justify-center flex-wrap">
             {categories.map((cat) => (
               <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition-all ${
@@ -223,14 +237,12 @@ export default function Home() {
                       : isDarkMode ? 'border-white/10 hover:border-[#FF6B35]/50' : 'border-gray-200 hover:border-[#FF6B35]/50'
                     }
                   `}>
-                    {/* Discount Badge */}
                     {hasDiscount && (
                       <div className="absolute -top-2 -right-2 bg-gradient-to-r from-[#FF6B35] to-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
                         🔥 {service.discount_percent}% လျှော့
                       </div>
                     )}
                     
-                    {/* Special Badge */}
                     {(isSpecial || hasStackedDiscount) && (
                       <div className="absolute -top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 animate-pulse">
                         {hasStackedDiscount ? `✨ ${discountPercent}% OFF` : '✨ အထူးဈေး'}
@@ -263,7 +275,6 @@ export default function Home() {
                         <p className="text-xs text-gray-400 mt-0.5">📅 {service.duration}</p>
                         
                         <div className="mt-2 space-y-0.5">
-                          {/* Market Price */}
                           {service.market_price > 0 && (
                             <div className="text-[10px] md:text-xs text-gray-500">
                               <span className="text-gray-400">ဈေးကွက်ဈေး:</span>{' '}
@@ -271,7 +282,6 @@ export default function Home() {
                             </div>
                           )}
                           
-                          {/* Hubby Price (if special or stacked, show line-through) */}
                           {(isSpecial || hasStackedDiscount) ? (
                             <div className="text-[10px] md:text-xs text-gray-500">
                               <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
@@ -283,7 +293,6 @@ export default function Home() {
                             </div>
                           )}
                           
-                          {/* Final Price with Discount */}
                           {(isSpecial || hasStackedDiscount) && (
                             <div className="text-green-500 font-bold text-sm md:text-base">
                               <span className="text-green-600">
@@ -292,7 +301,6 @@ export default function Home() {
                             </div>
                           )}
                           
-                          {/* First Purchase Discount Note */}
                           {user && userDiscountPercent > 0 && !hasActiveOrder && userDataLoaded && (
                             <div className="text-[9px] text-blue-400 mt-1">
                               🎁 First purchase: {userDiscountPercent}% OFF included!
