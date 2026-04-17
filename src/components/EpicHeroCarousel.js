@@ -7,96 +7,80 @@ export default function EpicHeroCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    // Get products with discount or special price for featured
-    const featured = productsData
-      .filter(p => p.discount_percent || p.special_price)
-      .slice(0, 5);
+    const featured = productsData.filter(p => p.is_featured === true).slice(0, 10);
     setFeaturedProducts(featured);
   }, []);
 
   const nextSlide = () => {
+    if (featuredProducts.length === 0) return;
     setCurrentIndex((prev) => (prev + 1) % featuredProducts.length);
   };
 
   const prevSlide = () => {
+    if (featuredProducts.length === 0) return;
     setCurrentIndex((prev) => (prev - 1 + featuredProducts.length) % featuredProducts.length);
   };
 
   if (featuredProducts.length === 0) return null;
 
   const product = featuredProducts[currentIndex];
+  const posterImage = product.poster_16x9 || product.logo_url;
   const finalPrice = product.special_price || product.hubby_price;
   const discountPercent = product.discount_percent;
+  const hasDiscount = discountPercent && discountPercent > 0;
+  const hasSpecialPrice = product.special_price && product.special_price > 0;
+  const originalPrice = product.hubby_price;
+  const discountAmount = originalPrice - finalPrice;
+  const discountPercentTotal = Math.round((discountAmount / originalPrice) * 100);
 
   return (
     <div className="relative w-full mb-8 group">
       <Link href={`/products/${product.id}`}>
         <div className="relative cursor-pointer rounded-2xl overflow-hidden">
-          {/* 16:9 Poster Image */}
-          {product.logo_url ? (
-            <img 
-              src={product.logo_url} 
-              alt={product.name}
-              className="w-full aspect-video object-cover object-center"
-            />
+          {posterImage ? (
+            <img src={posterImage} alt={product.name} className="w-full aspect-video object-cover object-center" />
           ) : (
             <div className="w-full aspect-video bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center">
               <span className="text-white text-2xl font-bold">{product.name}</span>
             </div>
           )}
-          
-          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-          
-          {/* Price & Discount Overlay */}
-          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-            <div>
-              {discountPercent && (
-                <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full">
-                  🔥 {discountPercent}% OFF
-                </span>
-              )}
-              <div className="mt-2">
-                <p className="text-white text-2xl font-bold">{finalPrice.toLocaleString()} MMK</p>
-                {product.market_price > finalPrice && (
-                  <p className="text-gray-300 text-sm line-through">{product.market_price.toLocaleString()} MMK</p>
-                )}
+          <div className="absolute bottom-4 left-4 right-4">
+            <div className="flex justify-between items-end">
+              <div>
+                {hasDiscount && <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full">🔥 {discountPercent}% OFF</span>}
+                {hasSpecialPrice && !hasDiscount && <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">✨ Special Price</span>}
+                <div className="mt-2">
+                  {hasDiscount || hasSpecialPrice ? (
+                    <>
+                      <p className="text-gray-300 text-sm line-through">{originalPrice.toLocaleString()} MMK</p>
+                      <p className="text-white text-2xl font-bold">{finalPrice.toLocaleString()} MMK</p>
+                      {discountAmount > 0 && <p className="text-green-400 text-xs">Save {discountAmount.toLocaleString()} MMK ({discountPercentTotal}%)</p>}
+                    </>
+                  ) : (
+                    <p className="text-white text-2xl font-bold">{finalPrice.toLocaleString()} MMK</p>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="text-right">
-              <p className="text-white font-semibold text-lg">{product.name}</p>
-              <p className="text-gray-300 text-sm">{product.duration}</p>
+              <div className="text-right">
+                <p className="text-white font-semibold text-lg">{product.name}</p>
+                <p className="text-gray-300 text-sm">{product.duration}</p>
+              </div>
             </div>
           </div>
         </div>
       </Link>
-
-      {/* Navigation Buttons */}
-      <button 
-        onClick={prevSlide} 
-        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition"
-      >
-        ◀
-      </button>
-      <button 
-        onClick={nextSlide} 
-        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition"
-      >
-        ▶
-      </button>
-
-      {/* Indicators */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-        {featuredProducts.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentIndex(idx)}
-            className={`w-2 h-2 rounded-full transition ${
-              idx === currentIndex ? 'bg-white scale-125' : 'bg-white/50'
-            }`}
-          />
-        ))}
-      </div>
+      {featuredProducts.length > 1 && (
+        <>
+          <button onClick={prevSlide} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition">◀</button>
+          <button onClick={nextSlide} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition">▶</button>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {featuredProducts.map((_, idx) => (
+              <button key={idx} onClick={() => setCurrentIndex(idx)} className={`w-2 h-2 rounded-full transition ${idx === currentIndex ? 'bg-white scale-125' : 'bg-white/50'}`} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
