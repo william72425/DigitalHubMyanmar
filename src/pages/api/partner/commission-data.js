@@ -1,5 +1,5 @@
 import { db } from '@/utils/firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -22,40 +22,49 @@ export default async function handler(req, res) {
     }
 
     const promoData = promoSnapshot.docs[0].data();
-    const commissionPercent = promoData.partner_commission_percent || 0;
+    const commissionPercent = Number(promoData.partner_commission_percent) || 0;
 
     // Get all users who used this promo code
     const usersQuery = query(collection(db, 'users'), where('used_promote_code', '==', promoCode));
     const usersSnapshot = await getDocs(usersQuery);
-    const userIds = usersSnapshot.docs.map(doc => doc.id);
+    
+    const userMap = {};
+    usersSnapshot.docs.forEach(doc => {
+      userMap[doc.id] = doc.data().username || 'Unknown User';
+    });
+    
+    const userIds = Object.keys(userMap);
 
     if (userIds.length === 0) {
       return res.status(200).json({
         promoCode,
         commissionPercent,
         users: [],
+        totalAmount: 0,
         totalCommission: 0,
         pendingCommission: 0,
         paidCommission: 0,
-        highestCommission: 0
+        highestCommission: 0,
+        paymentHistory: []
       });
     }
 
-    // Get all completed orders for these users
-    let filteredOrders = [];
-    for (const userId of userIds) {
-      const ordersQuery = query(
-        collection(db, 'orders'),
-        where('user_id', '==', userId),
-        where('status', '==', 'completed')
-      );
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const orders = ordersSnapshot.docs.map(doc => ({
-        ...doc.data(),
-        created_at: doc.data().created_at?.toDate() || new Date()
-      }));
-      filteredOrders = [...filteredOrders, ...orders];
-    }
+    // Fetch all completed orders for these users more efficiently
+    // Note: Firestore doesn't support 'IN' with more than 30 items easily, 
+    // so we'll fetch all completed orders and filter in memory if the list is manageable,
+    // or fetch per user if small, or fetch all orders if appropriate.
+    // For this app, fetching all completed orders and filtering is usually safer.
+    const ordersSnapshot = await getDocs(collection(db, 'orders'));
+    let filteredOrders = ordersSnapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        let createdAtDate = new Date();
+        if (data.created_at) {
+          createdAtDate = typeof data.created_at.toDate === 'function' ? data.created_at.toDate() : new Date(data.created_at);
+        }
+        return { id: doc.id, ...data, created_at: createdAtDate };
+      })
+      .filter(o => o.status === 'completed' && userIds.includes(o.user_id));
 
     // Apply period filter
     if (period !== 'all') {
@@ -75,7 +84,7 @@ export default async function handler(req, res) {
         filteredOrders = filteredOrders.filter(o => o.created_at >= start && o.created_at <= end);
       }
 
-      if (period !== 'custom') {
+      if (period !== 'custom' && period !== 'all') {
         filteredOrders = filteredOrders.filter(o => o.created_at >= start);
       }
     }
@@ -88,7 +97,7 @@ export default async function handler(req, res) {
     const userCommissions = {};
 
     filteredOrders.forEach(order => {
-      const amount = order.final_price || 0;
+      const amount = Number(order.final_price) || 0;
       const commission = Math.floor(amount * commissionPercent / 100);
       
       totalAmount += amount;
@@ -97,7 +106,7 @@ export default async function handler(req, res) {
 
       if (!userCommissions[order.user_id]) {
         userCommissions[order.user_id] = {
-          username: order.username || 'Unknown',
+          username: userMap[order.user_id] || order.username || 'Unknown',
           totalPurchase: 0,
           totalCommission: 0,
           orders: []
@@ -107,7 +116,7 @@ export default async function handler(req, res) {
       userCommissions[order.user_id].totalPurchase += amount;
       userCommissions[order.user_id].totalCommission += commission;
       userCommissions[order.user_id].orders.push({
-        productName: order.product_name,
+        productName: order.product_name || 'Product',
         amount: amount,
         commission: commission,
         date: order.created_at
@@ -115,15 +124,13 @@ export default async function handler(req, res) {
     });
 
     // Get commission payment records
-    const paymentsQuery = query(
-      collection(db, 'partner_commission_payments'),
-      where('promo_code', '==', promoCode)
-    );
-    const paymentsSnapshot = await getDocs(paymentsQuery);
-    const payments = paymentsSnapshot.docs.map(doc => doc.data());
+    const paymentsSnapshot = await getDocs(collection(db, 'partner_commission_payments'));
+    const payments = paymentsSnapshot.docs
+      .map(doc => doc.data())
+      .filter(p => p.promo_code === promoCode);
     
-    const paidCommission = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const pendingCommission = totalCommission - paidCommission;
+    const paidCommission = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const pendingCommission = Math.max(0, totalCommission - paidCommission);
 
     return res.status(200).json({
       promoCode,
@@ -139,6 +146,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Error fetching commission data:', error);
-    return res.status(500).json({ error: 'Failed to fetch commission data' });
+    return res.status(500).json({ error: 'Failed to fetch commission data: ' + error.message });
   }
 }
