@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { db } from '@/utils/firebase';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import AdminNavbar from '@/components/AdminNavbar';
 
 export default function AdminUsers() {
@@ -35,21 +35,38 @@ export default function AdminUsers() {
     try {
       // Fetch all users
       const usersSnapshot = await getDocs(collection(db, 'users'));
-      const usersList = usersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const usersList = usersSnapshot.docs.map((doc) => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      }));
       
       // Fetch all completed orders for purchase amount calculation
-      const ordersQuery = query(collection(db, 'orders'), where('status', '==', 'completed'));
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const ordersList = ordersSnapshot.docs.map((doc) => ({ 
-        id: doc.id, 
-        ...doc.data(),
-        created_at: doc.data().created_at?.toDate() || new Date()
-      }));
+      const ordersSnapshot = await getDocs(collection(db, 'orders'));
+      const ordersList = ordersSnapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          let createdAtDate = new Date();
+          
+          if (data.created_at) {
+            if (typeof data.created_at.toDate === 'function') {
+              createdAtDate = data.created_at.toDate();
+            } else {
+              createdAtDate = new Date(data.created_at);
+            }
+          }
+
+          return { 
+            id: doc.id, 
+            ...data,
+            created_at: createdAtDate
+          };
+        })
+        .filter(o => o.status === 'completed');
       
       setUsers(usersList);
       setOrders(ordersList);
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching admin data:", error);
     }
     setLoading(false);
   };
@@ -80,7 +97,7 @@ export default function AdminUsers() {
     const filteredOrders = getFilteredOrders();
     return filteredOrders
       .filter(o => o.user_id === userId)
-      .reduce((sum, o) => sum + (o.final_price || 0), 0);
+      .reduce((sum, o) => sum + (Number(o.final_price) || 0), 0);
   };
 
   const toggleTheme = () => {
@@ -113,7 +130,7 @@ export default function AdminUsers() {
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>👥 Users</h1>
+            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>👥 Users ({users.length})</h1>
             
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3">
@@ -162,7 +179,7 @@ export default function AdminUsers() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => {
+                {users.length > 0 ? users.map((user) => {
                   const totalPurchase = calculateUserTotal(user.id);
                   return (
                     <tr key={user.id} className={`border-b ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-gray-100 hover:bg-gray-50'}`}>
@@ -181,11 +198,15 @@ export default function AdminUsers() {
                         {totalPurchase > 0 ? `${totalPurchase.toLocaleString()} MMK` : '-'}
                       </td>
                       <td className={`py-3 px-2 text-center text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                        {user.created_at ? (typeof user.created_at.toDate === 'function' ? user.created_at.toDate().toLocaleDateString() : new Date(user.created_at).toLocaleDateString()) : '-'}
                       </td>
                     </tr>
                   );
-                })}
+                }) : (
+                  <tr>
+                    <td colSpan="6" className="py-8 text-center text-gray-500">No users found.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

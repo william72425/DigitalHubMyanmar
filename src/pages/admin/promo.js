@@ -117,6 +117,13 @@ export default function AdminPromo() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCode, setEditingCode] = useState(null);
+  
+  // Partner Settings State
+  const [isPartner, setIsPartner] = useState(false);
+  const [partnerName, setPartnerName] = useState('');
+  const [partnerPassword, setPartnerPassword] = useState('');
+  const [commissionPercent, setCommissionPercent] = useState(10);
+
   const [formData, setFormData] = useState({
     code: '', option_type: 'first_purchase_discount', usage_limit: 100, used_count: 0, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {}
   });
@@ -134,30 +141,128 @@ export default function AdminPromo() {
   const fetchPromoCodes = async () => { setLoading(true); try { const snapshot = await getDocs(collection(db, 'promo_codes')); setPromoCodes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); } catch (error) { console.error(error); } setLoading(false); };
   const handleSettingChange = (key, value) => { setFormData(prev => ({ ...prev, settings: { ...prev.settings, [key]: value } })); };
   
+  const resetForm = () => {
+    setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, used_count: 0, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} });
+    setIsPartner(false);
+    setPartnerName('');
+    setPartnerPassword('');
+    setCommissionPercent(10);
+    setEditingCode(null);
+  };
+
   const createPromoCode = async () => {
     if (!formData.code.trim()) { alert('Please enter a promo code'); return; }
     try {
-      await addDoc(collection(db, 'promo_codes'), {
-        code: formData.code.toUpperCase(), option_type: formData.option_type, usage_limit: formData.usage_limit, used_count: 0,
-        valid_from: formData.valid_from, valid_until: formData.valid_until, is_active: true, settings: formData.settings,
+      const promoData = {
+        code: formData.code.toUpperCase(), 
+        option_type: formData.option_type, 
+        usage_limit: formData.usage_limit, 
+        used_count: 0,
+        valid_from: formData.valid_from, 
+        valid_until: formData.valid_until, 
+        is_active: true, 
+        settings: formData.settings,
         created_at: new Date().toISOString()
-      });
-      alert('Promo code created!'); setShowAddModal(false); setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, used_count: 0, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} }); fetchPromoCodes();
-    } catch (error) { alert('Failed to create promo code'); }
+      };
+
+      if (isPartner) {
+        if (!partnerName.trim() || !partnerPassword.trim()) {
+          alert('Partner name and password are required for partner codes');
+          return;
+        }
+        
+        // Use backend API to hash password and save
+        const res = await fetch('/api/admin/update-promo-partner', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            promoId: 'NEW', // Indicator for new code
+            promoData: promoData,
+            partnerName: partnerName,
+            password: partnerPassword,
+            commissionPercent: commissionPercent
+          })
+        });
+
+        if (!res.ok) throw new Error('Failed to create partner promo code');
+      } else {
+        await addDoc(collection(db, 'promo_codes'), promoData);
+      }
+
+      alert('Promo code created!'); 
+      setShowAddModal(false); 
+      resetForm();
+      fetchPromoCodes();
+    } catch (error) { 
+      console.error(error);
+      alert('Failed to create promo code'); 
+    }
   };
 
-  const editPromoCode = (promoCode) => { setEditingCode(promoCode); setFormData({ code: promoCode.code, option_type: promoCode.option_type, usage_limit: promoCode.usage_limit, valid_from: promoCode.valid_from, valid_until: promoCode.valid_until || '', is_active: promoCode.is_active, settings: promoCode.settings || {} }); setShowAddModal(true); };
+  const editPromoCode = (promoCode) => { 
+    setEditingCode(promoCode); 
+    setFormData({ 
+      code: promoCode.code, 
+      option_type: promoCode.option_type, 
+      usage_limit: promoCode.usage_limit, 
+      valid_from: promoCode.valid_from, 
+      valid_until: promoCode.valid_until || '', 
+      is_active: promoCode.is_active, 
+      settings: promoCode.settings || {} 
+    });
+    setIsPartner(promoCode.is_partner_code || false);
+    setPartnerName(promoCode.partner_name || '');
+    setPartnerPassword(''); // Don't show hashed password
+    setCommissionPercent(promoCode.partner_commission_percent || 10);
+    setShowAddModal(true); 
+  };
   
   const updatePromoCode = async () => {
     if (!formData.code.trim()) { alert('Please enter a promo code'); return; }
     try {
-      await updateDoc(doc(db, 'promo_codes', editingCode.id), {
-        code: formData.code.toUpperCase(), option_type: formData.option_type, usage_limit: formData.usage_limit,
-        valid_from: formData.valid_from, valid_until: formData.valid_until, is_active: formData.is_active,
-        settings: formData.settings, updated_at: new Date().toISOString()
-      });
-      alert('Promo code updated!'); setShowAddModal(false); setEditingCode(null); setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, used_count: 0, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} }); fetchPromoCodes();
-    } catch (error) { alert('Failed to update promo code'); }
+      const promoData = {
+        code: formData.code.toUpperCase(), 
+        option_type: formData.option_type, 
+        usage_limit: formData.usage_limit,
+        valid_from: formData.valid_from, 
+        valid_until: formData.valid_until, 
+        is_active: formData.is_active,
+        settings: formData.settings, 
+        updated_at: new Date().toISOString()
+      };
+
+      if (isPartner) {
+        // Use backend API to update with password hashing
+        const res = await fetch('/api/admin/update-promo-partner', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            promoId: editingCode.id,
+            partnerName: partnerName,
+            password: partnerPassword, // Only updated if not empty
+            commissionPercent: commissionPercent
+          })
+        });
+
+        if (!res.ok) throw new Error('Failed to update partner settings');
+        
+        // Also update the base promo data
+        await updateDoc(doc(db, 'promo_codes', editingCode.id), promoData);
+      } else {
+        await updateDoc(doc(db, 'promo_codes', editingCode.id), {
+          ...promoData,
+          is_partner_code: false // Reset if unchecked
+        });
+      }
+
+      alert('Promo code updated!'); 
+      setShowAddModal(false); 
+      resetForm();
+      fetchPromoCodes();
+    } catch (error) { 
+      console.error(error);
+      alert('Failed to update promo code'); 
+    }
   };
 
   const deletePromoCode = async (id) => { if (confirm('Delete this promo code?')) { await deleteDoc(doc(db, 'promo_codes', id)); fetchPromoCodes(); } };
@@ -172,17 +277,16 @@ export default function AdminPromo() {
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex justify-between items-center mb-6">
             <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Codes</h1>
-            <button onClick={() => { setEditingCode(null); setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, used_count: 0, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} }); setShowAddModal(true); }} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">+ Add Promo Code</button>
+            <button onClick={() => { resetForm(); setShowAddModal(true); }} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">+ Add Promo Code</button>
           </div>
           <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
             <table className="w-full text-sm">
               <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
                 <tr>
                   <th className="text-left py-2 px-2">Code</th>
-                  <th className="text-left py-2 px-2">Option</th>
+                  <th className="text-left py-2 px-2">Type</th>
+                  <th className="text-left py-2 px-2">Partner</th>
                   <th className="text-left py-2 px-2">Used/Limit</th>
-                  <th className="text-left py-2 px-2">Valid From</th>
-                  <th className="text-left py-2 px-2">Valid Until</th>
                   <th className="text-left py-2 px-2">Status</th>
                   <th className="text-left py-2 px-2">Actions</th>
                 </tr>
@@ -192,9 +296,8 @@ export default function AdminPromo() {
                   <tr key={code.id} className="border-b border-white/10">
                     <td className="py-2 px-2 font-mono">{code.code}</td>
                     <td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td>
+                    <td className="py-2 px-2">{code.is_partner_code ? `🤝 ${code.partner_name}` : '-'}</td>
                     <td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td>
-                    <td className="py-2 px-2">{code.valid_from || '-'}</td>
-                    <td className="py-2 px-2">{code.valid_until || '-'}</td>
                     <td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td>
                     <td className="py-2 px-2">
                       <button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button>
@@ -216,17 +319,54 @@ export default function AdminPromo() {
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 text-2xl">&times;</button>
             </div>
             <div className="space-y-4">
-              <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Promo Code</label><input type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
-              <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Option Type</label><select value={formData.option_type} onChange={(e) => { setFormData({...formData, option_type: e.target.value, settings: {}}); }} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
-                <option value="first_purchase_discount">🎯 First Purchase Discount</option><option value="giveaway">🎁 Giveaway Entry</option><option value="tiered_rewards">📊 Tiered Rewards</option><option value="stackable_discount">📚 Stackable Discount</option>
-              </select></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Promo Code</label><input type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
+                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Option Type</label><select value={formData.option_type} onChange={(e) => { setFormData({...formData, option_type: e.target.value, settings: {}}); }} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+                  <option value="first_purchase_discount">🎯 First Purchase Discount</option><option value="giveaway">🎁 Giveaway Entry</option><option value="tiered_rewards">📊 Tiered Rewards</option><option value="stackable_discount">📚 Stackable Discount</option>
+                </select></div>
+              </div>
+
+              {/* Partner Settings Section */}
+              <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                <label className="flex items-center gap-2 cursor-pointer mb-3">
+                  <input type="checkbox" checked={isPartner} onChange={(e) => setIsPartner(e.target.checked)} className="w-4 h-4" />
+                  <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🤝 Is Partner Promo Code?</span>
+                </label>
+                
+                {isPartner && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Partner Name</label>
+                      <input type="text" value={partnerName} onChange={(e) => setPartnerName(e.target.value)} className={`w-full p-2 rounded-lg border text-sm ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-white text-gray-800 border-gray-300'}`} placeholder="e.g., John Doe" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Login Password {editingCode && '(Leave blank to keep)'}</label>
+                      <input type="password" value={partnerPassword} onChange={(e) => setPartnerPassword(e.target.value)} className={`w-full p-2 rounded-lg border text-sm ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-white text-gray-800 border-gray-300'}`} placeholder="Password for dashboard" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Commission %</label>
+                      <input type="number" value={commissionPercent} onChange={(e) => setCommissionPercent(parseInt(e.target.value))} className={`w-full p-2 rounded-lg border text-sm ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-white text-gray-800 border-gray-300'}`} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <OptionFields optionType={formData.option_type} settings={formData.settings} onChange={handleSettingChange} />
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usage Limit</label><input type="number" value={formData.usage_limit} onChange={(e) => setFormData({...formData, usage_limit: parseInt(e.target.value)})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
                 <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid From</label><input type="date" value={formData.valid_from} onChange={(e) => setFormData({...formData, valid_from: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
                 <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid Until</label><input type="date" value={formData.valid_until} onChange={(e) => setFormData({...formData, valid_until: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
               </div>
-              <button onClick={editingCode ? updatePromoCode : createPromoCode} className="w-full bg-green-600 text-white p-2 rounded-lg font-semibold">{editingCode ? 'Update Promo Code' : 'Create Promo Code'}</button>
+              
+              <div className="flex items-center gap-2 mb-4">
+                <input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} className="w-4 h-4" />
+                <label className={isDarkMode ? 'text-white' : 'text-gray-800'}>Active</label>
+              </div>
+
+              <button onClick={editingCode ? updatePromoCode : createPromoCode} className="w-full bg-[#FF6B35] text-white p-3 rounded-xl font-bold text-lg hover:bg-orange-600 transition shadow-lg shadow-orange-500/30">
+                {editingCode ? 'Update Promo Code' : 'Create Promo Code'}
+              </button>
             </div>
           </div>
         </div>
