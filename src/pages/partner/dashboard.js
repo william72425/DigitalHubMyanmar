@@ -300,6 +300,49 @@ export default function PartnerDashboard() {
             </motion.div>
           </div>
 
+          {/* Payout History Section */}
+          {data?.paymentHistory && data.paymentHistory.length > 0 && (
+            <motion.div variants={itemVariants} className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-[2.5rem] overflow-hidden shadow-2xl">
+              <div className="p-8 border-b border-purple-500/20 flex justify-between items-center">
+                <h3 className="text-xl font-black text-white">💳 Payout History</h3>
+                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+              </div>
+              <div className="p-8">
+                <div className="space-y-4">
+                  {data.paymentHistory.map((payment, i) => (
+                    <motion.div 
+                      key={i}
+                      whileHover={{ x: 5 }}
+                      className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-purple-500/30 transition-all"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300 font-bold">
+                          💰
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-white">{payment.paymentMethod?.replace('_', ' ').toUpperCase()}</p>
+                          <p className="text-xs text-slate-400">
+                            {payment.paid_at ? new Date(payment.paid_at).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-black text-purple-300">{payment.amount?.toLocaleString()} MMK</p>
+                        {payment.notes && <p className="text-[10px] text-slate-400 mt-1">{payment.notes}</p>}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* Detailed Transaction List */}
           <motion.div variants={itemVariants} className="bg-[#0f172a] border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
             <div className="p-8 border-b border-white/5 flex justify-between items-center">
