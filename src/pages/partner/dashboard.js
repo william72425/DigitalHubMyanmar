@@ -302,39 +302,49 @@ export default function PartnerDashboard() {
 
           {/* Payout History Section */}
           {data?.paymentHistory && data.paymentHistory.length > 0 && (
-            <motion.div variants={itemVariants} className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-[2.5rem] overflow-hidden shadow-2xl">
-              <div className="p-8 border-b border-purple-500/20 flex justify-between items-center">
-                <h3 className="text-xl font-black text-white">💳 Payout History</h3>
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+            <motion.div variants={itemVariants} className="relative bg-gradient-to-br from-green-500/5 via-emerald-500/5 to-green-600/5 border-2 border-green-500/40 rounded-[2.5rem] overflow-hidden shadow-2xl" style={{
+              boxShadow: '0 0 40px rgba(34, 197, 94, 0.3), inset 0 0 40px rgba(34, 197, 94, 0.1)'
+            }}>
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 via-green-500/5 to-green-500/0 pointer-events-none"></div>
+              <div className="p-8 border-b border-green-500/30 flex justify-between items-center relative z-10">
+                <h3 className="text-xl font-black bg-gradient-to-r from-green-300 to-emerald-300 bg-clip-text text-transparent">💳 Payout History</h3>
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" style={{
+                  boxShadow: '0 0 15px rgba(74, 222, 128, 0.8)'
+                }}></div>
               </div>
-              <div className="p-8">
+              <div className="p-8 relative z-10">
                 <div className="space-y-4">
                   {data.paymentHistory.map((payment, i) => (
                     <motion.div 
                       key={i}
-                      whileHover={{ x: 5 }}
-                      className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-purple-500/30 transition-all"
+                      whileHover={{ x: 8, scale: 1.02 }}
+                      className="flex items-center justify-between p-5 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-2xl border-2 border-green-500/30 hover:border-green-400/60 transition-all relative group"
+                      style={{
+                        boxShadow: '0 0 20px rgba(34, 197, 94, 0.2)'
+                      }}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300 font-bold">
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 via-green-500/5 to-green-500/0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 flex items-center justify-center text-green-300 font-bold text-lg border border-green-400/50" style={{
+                          boxShadow: '0 0 15px rgba(74, 222, 128, 0.5)'
+                        }}>
                           💰
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-white">{payment.paymentMethod?.replace('_', ' ').toUpperCase()}</p>
-                          <p className="text-xs text-slate-400">
-                            {payment.paid_at ? new Date(payment.paid_at).toLocaleDateString('en-US', { 
-                              year: 'numeric', 
-                              month: 'short', 
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            }) : 'N/A'}
+                          <p className="text-sm font-black text-green-300 uppercase tracking-wider">{payment.paymentMethod?.replace('_', ' ')}</p>
+                          <p className="text-xs text-green-400/80 font-mono mt-1">
+                            {payment.paid_at || 'N/A'}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-black text-purple-300">{payment.amount?.toLocaleString()} MMK</p>
-                        {payment.notes && <p className="text-[10px] text-slate-400 mt-1">{payment.notes}</p>}
+                      <div className="text-right relative z-10">
+                        <p className="text-2xl font-black bg-gradient-to-r from-green-300 to-emerald-300 bg-clip-text text-transparent" style={{
+                          textShadow: '0 0 20px rgba(74, 222, 128, 0.4)'
+                        }}>
+                          {payment.amount?.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-green-400/70 font-bold mt-1">MMK</p>
+                        {payment.notes && <p className="text-[10px] text-green-400/60 mt-2 italic">{payment.notes}</p>}
                       </div>
                     </motion.div>
                   ))}

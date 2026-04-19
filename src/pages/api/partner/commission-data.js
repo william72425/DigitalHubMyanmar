@@ -1,6 +1,31 @@
 import { db } from '@/utils/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
+// Helper function to format date in Myanmar timezone (UTC+6:30)
+function formatMyanmarDate(date) {
+  if (!date) return 'N/A';
+  
+  let dateObj = date;
+  if (typeof date.toDate === 'function') {
+    dateObj = date.toDate();
+  } else if (typeof date === 'string') {
+    dateObj = new Date(date);
+  }
+  
+  // Myanmar timezone is UTC+6:30
+  const myanmarTime = new Date(dateObj.getTime() + (6.5 * 60 * 60 * 1000) - (dateObj.getTimezoneOffset() * 60 * 1000));
+  
+  return myanmarTime.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -49,11 +74,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Fetch all completed orders for these users more efficiently
-    // Note: Firestore doesn't support 'IN' with more than 30 items easily, 
-    // so we'll fetch all completed orders and filter in memory if the list is manageable,
-    // or fetch per user if small, or fetch all orders if appropriate.
-    // For this app, fetching all completed orders and filtering is usually safer.
+    // Fetch all completed orders for these users
     const ordersSnapshot = await getDocs(collection(db, 'orders'));
     let filteredOrders = ordersSnapshot.docs
       .map(doc => {
@@ -123,13 +144,30 @@ export default async function handler(req, res) {
       });
     });
 
-    // Get commission payment records
+    // Get commission payment records with proper date formatting
     const paymentsSnapshot = await getDocs(collection(db, 'partner_commission_payments'));
     const payments = paymentsSnapshot.docs
-      .map(doc => doc.data())
-      .filter(p => p.promo_code === promoCode);
+      .map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          paid_at: formatMyanmarDate(data.paid_at),
+          created_at: formatMyanmarDate(data.created_at)
+        };
+      })
+      .filter(p => p.promo_code === promoCode)
+      .sort((a, b) => {
+        // Sort by date descending (newest first)
+        const dateA = new Date(a.paid_at);
+        const dateB = new Date(b.paid_at);
+        return dateB - dateA;
+      });
     
-    const paidCommission = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const paidCommission = paymentsSnapshot.docs
+      .map(doc => doc.data())
+      .filter(p => p.promo_code === promoCode)
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    
     const pendingCommission = Math.max(0, totalCommission - paidCommission);
 
     return res.status(200).json({
