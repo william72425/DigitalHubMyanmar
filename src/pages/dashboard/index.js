@@ -568,9 +568,18 @@ export default function UserDashboard() {
                               variants={itemVariants}
                               whileHover={{ scale: 1.01 }}
                             >
-                              <td className="py-3 px-2 text-gray-400">
-                                {entry.created_at?.toDate?.()?.toLocaleString('en-MM-DD HH:mm') || 'N/A'}
-                              </td>
+	                              <td className="py-3 px-2 text-gray-400">
+	                                {entry.created_at?.toDate?.() ? 
+                                    new Intl.DateTimeFormat('en-GB', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true,
+                                      timeZone: 'Asia/Yangon'
+                                    }).format(entry.created_at.toDate()) : 'N/A'}
+	                              </td>
                               <td className="py-3 px-2">{entry.label}</td>
                               <td className={`py-3 px-2 text-center font-semibold ${entry.type === 'earn' ? 'text-green-400' : 'text-red-400'}`}>
                                 {entry.type === 'earn' ? '+' : '-'}{Math.abs(entry.points)}

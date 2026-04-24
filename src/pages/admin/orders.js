@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { db } from '@/utils/firebase';
 import { collection, getDocs, updateDoc, doc, query, where, getDoc } from 'firebase/firestore';
 import AdminNavbar from '@/components/AdminNavbar';
+import { awardPurchasePoints } from '@/utils/pointsSystem';
 
 export default function AdminOrders() {
   const router = useRouter();
@@ -68,12 +69,22 @@ export default function AdminOrders() {
           console.log('✅ Discount RESTORED for user:', orderData.user_id);
         }
         
-        // If completed: mark discount as used permanently
+        // If completed: mark discount as used permanently and award points
         if (newStatus === 'completed') {
           await updateDoc(doc(db, 'users', orderData.user_id), {
             first_purchase_discount_used: true
           });
           console.log('✅ Discount MARKED AS USED for user:', orderData.user_id);
+          
+          // Award purchase points
+          try {
+            const totalAmount = orderData.total_amount || 0;
+            const inviterId = orderData.inviter_id || null;
+            await awardPurchasePoints(orderData.user_id, totalAmount, inviterId);
+            console.log('✅ Points awarded for order:', orderId);
+          } catch (pointsError) {
+            console.error('Error awarding points:', pointsError);
+          }
         }
       }
       
@@ -128,7 +139,37 @@ export default function AdminOrders() {
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex justify-between items-center mb-6">
             <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📦 Order Management</h1>
-            <button onClick={fetchOrders} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">🔄 Refresh</button>
+            <div className="flex gap-2">
+              <button 
+                onClick={async () => {
+                  if(confirm('Are you sure you want to sync points for all completed orders? This will only award points for orders that haven\'t received them yet.')) {
+                    try {
+                      const res = await fetch('/api/admin/sync-completed-points', { method: 'POST' });
+                      const data = await res.json();
+                      alert(`Sync Complete! Awarded: ${data.awarded}, Processed: ${data.processed}`);
+                      fetchOrders();
+                    } catch (e) { alert('Sync failed: ' + e.message); }
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+              >
+                ✨ Sync Points
+              </button>
+              <button onClick={fetchOrders} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">🔄 Refresh</button>
+              <button 
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/admin/diagnose-points');
+                    const data = await res.json();
+                    console.log('Diagnostic Data:', data);
+                    alert('Diagnostic data logged to console. Settings: ' + JSON.stringify(data.settings));
+                  } catch (e) { alert('Diagnostic failed'); }
+                }}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+              >
+                🔍 Diagnose
+              </button>
+            </div>
           </div>
           
           <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>

@@ -118,3 +118,69 @@ export const getTasks = async () => {
     return [];
   }
 };
+
+/**
+ * Award points for a purchase to the user and their inviter
+ * @param {string} userId - The ID of the user who made the purchase
+ * @param {number} totalAmount - Total amount of the purchase in MMK
+ * @param {string} inviterId - The ID of the user who invited the purchaser (optional)
+ */
+export const awardPurchasePoints = async (userId, totalAmountInput, inviterId) => {
+  try {
+    // Ensure totalAmount is a number
+    const totalAmount = Number(totalAmountInput) || 0;
+    
+    // 1. Fetch points settings
+    const settingsRef = doc(db, 'settings', 'pointsConfig');
+    const settingsSnap = await getDoc(settingsRef);
+    
+    let settings = {
+      ownPurchaseRatio: 0.01, // Default: 1%
+      inviteePurchaseRatio: 0.02, // Default: 2%
+      minPurchaseAmount: 1000
+    };
+
+    if (settingsSnap.exists()) {
+      settings = { ...settings, ...settingsSnap.data() };
+    }
+
+    console.log(`Processing points for user ${userId}, amount ${totalAmount}, inviter ${inviterId}`);
+    if (totalAmount < (settings.minPurchaseAmount || 0)) {
+      console.log(`Purchase amount ${totalAmount} is below minimum ${settings.minPurchaseAmount}`);
+      return;
+    }
+
+    // 2. Award points to the buyer
+    const ownPoints = Math.floor(totalAmount * (settings.ownPurchaseRatio || 0));
+    if (ownPoints > 0) {
+      await logPointsTransaction(
+        userId, 
+        ownPoints, 
+        'Purchase Reward', 
+        'earn', 
+        { amount: totalAmount, type: 'own_purchase' }
+      );
+      console.log(`Awarded ${ownPoints} points to user ${userId}`);
+    }
+
+    // 3. Award points to the inviter if applicable
+    if (inviterId) {
+      const referralPoints = Math.floor(totalAmount * (settings.inviteePurchaseRatio || 0));
+      if (referralPoints > 0) {
+        await logPointsTransaction(
+          inviterId, 
+          referralPoints, 
+          'Referral Purchase Reward', 
+          'earn', 
+          { amount: totalAmount, type: 'referral_purchase', purchaserId: userId }
+        );
+        console.log(`Awarded ${referralPoints} points to inviter ${inviterId}`);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in awardPurchasePoints:', error);
+    throw error;
+  }
+};
