@@ -34,7 +34,9 @@ export default function ProductDetail() {
         try {
           const res = await fetch('/api/admin/features');
           const freshData = await res.json();
+          // Fix field mapping: admin uses feature_name, free, pro
           setFeatures(freshData.features?.filter(f => f.product_id === productId) || []);
+          // Fix field mapping: admin uses content, not note
           setProductNote(freshData.product_notes?.find(n => n.product_id === productId) || null);
         } catch (error) {
           console.error('Failed to load features:', error);
@@ -159,8 +161,6 @@ export default function ProductDetail() {
     );
   }
 
-  const logoSize = product.logo_size || 70;
-
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -229,13 +229,12 @@ export default function ProductDetail() {
                   <h1 className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
                     {product.name}
                   </h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="px-2 py-0.5 rounded-full bg-[#FF6B35]/20 text-[#FF6B35] text-[10px] font-bold uppercase tracking-wider">
-                      Premium
-                    </span>
-                    <span className="text-gray-400 text-xs font-medium">
-                      📅 {product.duration}
-                    </span>
+                  <div className="flex items-center gap-2 mt-2">
+                    {/* Duration Box - Replaced Premium Label */}
+                    <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Duration</span>
+                      <span className="text-xs font-black text-[#FF6B35]">{product.duration}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -320,12 +319,12 @@ export default function ProductDetail() {
                     <tbody className="text-xs">
                       {features.map((feature, idx) => (
                         <tr key={idx} className="border-t border-white/5 hover:bg-white/5 transition-colors">
-                          <td className="p-3 text-gray-300 font-medium">{feature.name}</td>
+                          <td className="p-3 text-gray-300 font-medium">{feature.feature_name}</td>
                           <td className="p-3 text-center text-red-400/60">
-                            {feature.free_value === '✓' ? '✅' : feature.free_value === '✗' ? '❌' : feature.free_value}
+                            {feature.free === '✓' ? '✅' : feature.free === '✗' ? '❌' : (feature.free || '-')}
                           </td>
                           <td className="p-3 text-center font-bold text-[#00D4FF] bg-gradient-to-r from-[#FF6B35]/5 to-[#00D4FF]/5">
-                            {feature.premium_value === '✓' ? '✅' : feature.premium_value === '✗' ? '❌' : feature.premium_value}
+                            {feature.pro === '✓' ? '✅' : feature.pro === '✗' ? '❌' : (feature.pro || '-')}
                           </td>
                         </tr>
                       ))}
@@ -335,16 +334,19 @@ export default function ProductDetail() {
               </motion.div>
             )}
 
-            {/* Product Note */}
-            {productNote && (
+            {/* Product Note - Show only if exists */}
+            {productNote && productNote.content && (
               <motion.div 
                 className="bg-blue-500/10 backdrop-blur-xl rounded-2xl p-4 border border-blue-500/20"
                 variants={itemVariants}
               >
-                <p className="text-blue-300 text-xs leading-relaxed flex gap-3">
+                <div className="flex gap-3">
                   <span className="text-lg">ℹ️</span>
-                  <span>{productNote.note}</span>
-                </p>
+                  <div>
+                    {productNote.title && <p className="text-blue-400 text-[10px] font-bold uppercase tracking-widest mb-1">{productNote.title}</p>}
+                    <p className="text-blue-300 text-xs leading-relaxed">{productNote.content}</p>
+                  </div>
+                </div>
               </motion.div>
             )}
 
