@@ -78,13 +78,31 @@ export const logPointsTransaction = async (userId, points, label, type, metadata
  */
 export const getUserPointsHistory = async (userId) => {
   try {
-    const historyQuery = query(
-      collection(db, 'points_history'),
-      where('user_id', '==', userId),
-      orderBy('created_at', 'desc')
-    );
-    const snapshot = await getDocs(historyQuery);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Try with ordering first
+    try {
+      const historyQuery = query(
+        collection(db, 'points_history'),
+        where('user_id', '==', userId),
+        orderBy('created_at', 'desc')
+      );
+      const snapshot = await getDocs(historyQuery);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (orderError) {
+      console.warn('Ordered points history failed, falling back to unordered:', orderError);
+      // Fallback if index is missing or created_at is null
+      const fallbackQuery = query(
+        collection(db, 'points_history'),
+        where('user_id', '==', userId)
+      );
+      const snapshot = await getDocs(fallbackQuery);
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort manually in JS
+      return items.sort((a, b) => {
+        const dateA = a.created_at?.toDate?.() || new Date(0);
+        const dateB = b.created_at?.toDate?.() || new Date(0);
+        return dateB - dateA;
+      });
+    }
   } catch (error) {
     console.error('Error fetching points history:', error);
     return [];

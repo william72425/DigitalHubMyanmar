@@ -76,13 +76,14 @@ export default function AdminOrders() {
           });
           console.log('✅ Discount MARKED AS USED for user:', orderData.user_id);
           
-          // Award purchase points
-          try {
-            const totalAmount = orderData.total_amount || 0;
-            const inviterId = orderData.inviter_id || null;
-            await awardPurchasePoints(orderData.user_id, totalAmount, inviterId);
-            console.log('✅ Points awarded for order:', orderId);
-          } catch (pointsError) {
+	      // Award purchase points
+	          try {
+	            // Use final_price (after discounts) for points calculation
+	            const totalAmount = orderData.final_price || orderData.total_amount || 0;
+	            const inviterId = orderData.inviter_id || null;
+	            await awardPurchasePoints(orderData.user_id, totalAmount, inviterId);
+	            console.log('✅ Points awarded for order:', orderId, 'Amount:', totalAmount);
+	          } catch (pointsError) {
             console.error('Error awarding points:', pointsError);
           }
         }

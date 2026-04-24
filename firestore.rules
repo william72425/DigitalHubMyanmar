@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    function isAdmin() {
+      // Assuming you have a way to identify admins, 
+      // e.g., a field in the user document or a specific UID
+      // For now, we'll restrict sensitive updates to backend/admin panel
+      return false; 
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      // Users can update their own profile but NOT points_balance or highest_points_claimed
+      allow update: if isOwner(userId) 
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['points_balance', 'highest_points_claimed', 'total_used_points']);
+      allow create: if isSignedIn();
+    }
+
+    // Points History - Read only for users, no one can create/update from frontend
+    match /points_history/{docId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow write: if false; // Only allow via Admin Panel / Server-side
+    }
+
+    // Orders
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update: if false; // Only admin can update order status
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if false; // Admin only
+    }
+
+    // Other collections
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

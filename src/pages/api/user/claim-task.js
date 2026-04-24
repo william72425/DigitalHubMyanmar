@@ -5,6 +5,7 @@ import {
   addDoc, 
   collection,
   serverTimestamp,
+  updateDoc,
   increment,
   query,
   where,
@@ -85,7 +86,7 @@ export default async function handler(req, res) {
       updateData.highest_points_claimed = newBalance;
     }
 
-    await addDoc(doc(db, 'users', userId), updateData);
+    await updateDoc(doc(db, 'users', userId), updateData);
 
     // Record task claim
     await addDoc(collection(db, 'user_task_claims'), {
