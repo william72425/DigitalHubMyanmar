@@ -118,10 +118,10 @@ export default function AdminOrders() {
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'pending': return <span className="bg-yellow-600/30 text-yellow-400 px-2 py-1 rounded-full text-xs">⏳ Pending</span>;
-      case 'processing': return <span className="bg-blue-600/30 text-blue-400 px-2 py-1 rounded-full text-xs">🔄 Processing</span>;
-      case 'completed': return <span className="bg-green-600/30 text-green-400 px-2 py-1 rounded-full text-xs">✅ Completed</span>;
-      case 'cancelled': return <span className="bg-red-600/30 text-red-400 px-2 py-1 rounded-full text-xs">❌ Cancelled</span>;
+      case 'pending': return <span className="bg-yellow-600/30 text-yellow-400 px-2 py-1 rounded-full text-xs font-bold">⏳ Pending</span>;
+      case 'processing': return <span className="bg-blue-600/30 text-blue-400 px-2 py-1 rounded-full text-xs font-bold">🔄 Processing</span>;
+      case 'completed': return <span className="bg-green-600/30 text-green-400 px-2 py-1 rounded-full text-xs font-bold">✅ Completed</span>;
+      case 'cancelled': return <span className="bg-red-600/30 text-red-400 px-2 py-1 rounded-full text-xs font-bold">❌ Cancelled</span>;
       default: return <span className="bg-gray-600/30 text-gray-400 px-2 py-1 rounded-full text-xs">{status}</span>;
     }
   };
@@ -183,7 +183,7 @@ export default function AdminOrders() {
                 <tbody>
                   {orders.map((order) => (
                     <tr key={order.id} className="border-b border-white/10 hover:bg-white/5">
-                      <td className="py-3 px-2 font-mono text-xs">{order.id.slice(-8)}</td>
+                      <td className="py-3 px-2 font-mono text-xs text-[#FF6B35] font-bold">#{order.display_id || order.id.slice(-8)}</td>
                       <td className="py-3 px-2">{order.username || order.user_id?.slice(-8)}</td>
                       <td className="py-3 px-2">{order.product_name}</td>
                       <td className="py-3 px-2 text-[#FF6B35] font-semibold">{order.final_price?.toLocaleString()} MMK</td>
@@ -215,7 +215,10 @@ export default function AdminOrders() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className={`rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-white/20`}>
             <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📋 Order Details</h2>
+              <div>
+                <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📋 Order Details</h2>
+                <p className="text-[10px] font-mono text-[#FF6B35] uppercase tracking-widest mt-1">#{selectedOrder.display_id || selectedOrder.id.slice(-8)}</p>
+              </div>
               <button onClick={() => setShowDetailModal(false)} className="text-gray-400 text-2xl hover:text-white transition">&times;</button>
             </div>
             

@@ -27,7 +27,7 @@ export default function Checkout() {
   const [userNote, setUserNote] = useState('');
   const [screenshot, setScreenshot] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const [orderId] = useState(`DH-${Math.random().toString(36).substr(2, 6).toUpperCase()}`);
 
   // Load everything in one go
   useEffect(() => {
@@ -115,12 +115,10 @@ export default function Checkout() {
     
     setProcessing(true);
     try {
-      // In a real app, you would upload to Firebase Storage or S3
-      // For this sandbox, we'll store the base64 preview for demonstration 
-      // but in production, you should use a proper storage URL.
       const screenshotUrl = screenshotPreview; 
 
       await addDoc(collection(db, 'orders'), {
+        display_id: orderId, // Store the unified ID
         user_id: user.uid,
         username: userData?.username,
         product_id: product.id,
@@ -203,7 +201,7 @@ export default function Checkout() {
             <h1 className="text-3xl font-black tracking-tight">🛒 Checkout</h1>
             <div className="text-right">
               <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold block">Order ID</span>
-              <span className="text-xs font-mono text-[#FF6B35]">#DH-{Math.random().toString(36).substr(2, 6).toUpperCase()}</span>
+              <span className="text-xs font-mono text-[#FF6B35]">#{orderId}</span>
             </div>
           </motion.div>
           
