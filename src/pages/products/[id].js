@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { auth, db } from '@/utils/firebase';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import productsData from '@/data/products.json';
-import featuresData from '@/data/features.json';
 import { calculateStackedDiscount } from '@/utils/discountCalculator';
 
 export default function ProductDetail() {
@@ -67,7 +66,6 @@ export default function ProductDetail() {
 
   const loadUserDiscounts = async (userId) => {
     try {
-      // Check for active orders
       const ordersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
@@ -162,18 +160,13 @@ export default function ProductDetail() {
   }
 
   const logoSize = product.logo_size || 70;
-  const hasSpecialPrice = product.special_price && product.special_price > 0;
-  const specialDiscountAmount = hasSpecialPrice ? product.hubby_price - product.special_price : 0;
 
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 },
     },
   };
 
@@ -182,307 +175,234 @@ export default function ProductDetail() {
     visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut",
-      },
-    },
-  };
-
-  const priceVariants = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut",
-      },
+      transition: { duration: 0.5, ease: "easeOut" },
     },
   };
 
   return (
     <>
       <Head><title>{product.name} | Digital Hub Myanmar</title></Head>
-      <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617] text-white">
-        <div className="container mx-auto px-4 py-6 max-w-4xl">
+      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30">
+        {/* Background glow effects */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#FF6B35]/10 blur-[120px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#00D4FF]/10 blur-[120px] rounded-full" />
+        </div>
+
+        <div className="container mx-auto px-4 py-6 max-w-2xl relative z-10">
           
           <motion.button 
             onClick={() => router.back()} 
-            className="text-gray-400 hover:text-[#FF6B35] mb-6 inline-flex items-center gap-2"
+            className="text-gray-400 hover:text-[#FF6B35] mb-6 inline-flex items-center gap-2 group transition-colors"
             whileHover={{ x: -5 }}
-            transition={{ type: "spring", stiffness: 300 }}
           >
-            ← နောက်သို့
+            <span className="text-xl group-hover:scale-110 transition-transform">←</span> 
+            <span className="text-sm font-medium">နောက်သို့</span>
           </motion.button>
 
           <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
+            className="space-y-4"
           >
-            {/* Product Header */}
+            {/* Product Header Card */}
             <motion.div 
-              className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 border border-white/10"
+              className="bg-white/5 backdrop-blur-xl rounded-3xl p-5 border border-white/10 shadow-2xl"
               variants={itemVariants}
-              whileHover={{ borderColor: "rgba(255, 107, 53, 0.3)" }}
             >
-              <div className="flex items-center gap-5">
+              <div className="flex items-center gap-4">
                 <motion.div
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  transition={{ type: "spring", stiffness: 300 }}
+                  whileHover={{ scale: 1.05, rotate: 2 }}
+                  className="relative"
                 >
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#FF6B35] to-[#00D4FF] opacity-20 blur-lg rounded-2xl" />
                   {product.logo_url ? (
-                    <img src={product.logo_url} className="rounded-xl object-contain" style={{ width: logoSize + 'px', height: logoSize + 'px' }} alt={product.name} />
+                    <img src={product.logo_url} className="rounded-2xl object-contain relative z-10 bg-[#0a0f2a] p-2" style={{ width: '80px', height: '80px' }} alt={product.name} />
                   ) : (
-                    <div className="rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-2xl" style={{ width: logoSize + 'px', height: logoSize + 'px' }}>
+                    <div className="rounded-2xl bg-gradient-to-br from-[#FF6B35] to-[#00D4FF] flex items-center justify-center text-white font-bold text-3xl relative z-10" style={{ width: '80px', height: '80px' }}>
                       {product.name?.charAt(0) || '?'}
                     </div>
                   )}
                 </motion.div>
                 <div>
-                  <motion.h1 
-                    className="text-2xl md:text-3xl font-bold"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2, duration: 0.6 }}
-                  >
+                  <h1 className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
                     {product.name}
-                  </motion.h1>
-                  <motion.p 
-                    className="text-gray-400 text-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3, duration: 0.6 }}
-                  >
-                    📅 {product.duration}
-                  </motion.p>
+                  </h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="px-2 py-0.5 rounded-full bg-[#FF6B35]/20 text-[#FF6B35] text-[10px] font-bold uppercase tracking-wider">
+                      Premium
+                    </span>
+                    <span className="text-gray-400 text-xs font-medium">
+                      📅 {product.duration}
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.div>
 
-            {/* Price Section */}
+            {/* Price Detail Card */}
             <motion.div 
-              className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 border border-white/10"
+              className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl overflow-hidden relative"
               variants={itemVariants}
             >
-              <h2 className="text-xl font-bold mb-4">💰 ဈေးနှုန်းအသေးစိတ်</h2>
-              <motion.div className="space-y-3" variants={containerVariants} initial="hidden" animate="visible">
-                {/* Market Price */}
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <span className="text-6xl">💰</span>
+              </div>
+              
+              <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
+                <span className="text-[#FF6B35]">|</span> ဈေးနှုန်းအသေးစိတ်
+              </h2>
+              
+              <div className="space-y-4">
                 {product.market_price > 0 && (
-                  <motion.div 
-                    className="flex justify-between items-center pb-2 border-b border-white/10"
-                    variants={itemVariants}
-                  >
-                    <span className="text-gray-300">ဈေးကွက် ပျမ်းမျှဈေး</span>
-                    <span className="line-through text-gray-400">{product.market_price.toLocaleString()} MMK</span>
-                  </motion.div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">ဈေးကွက် ပျမ်းမျှဈေး</span>
+                    <span className="line-through text-gray-500 font-medium">{product.market_price.toLocaleString()} MMK</span>
+                  </div>
                 )}
                 
-                {/* Hubby Store Price */}
-                <motion.div 
-                  className="flex justify-between items-center pb-2 border-b border-white/10"
-                  variants={itemVariants}
-                >
+                <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-300">Hubby Store ဈေး</span>
-                  <span className="text-[#FF6B35] font-bold text-lg">{product.hubby_price?.toLocaleString()} MMK</span>
-                </motion.div>
+                  <span className="text-orange-400 font-bold">{product.hubby_price.toLocaleString()} MMK</span>
+                </div>
                 
-                {/* Admin Special Discount */}
-                {hasSpecialPrice && (
-                  <motion.div 
-                    className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400"
-                    variants={itemVariants}
-                    animate={{ scale: [1, 1.02, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <span>✨ Admin Special Discount</span>
-                    <span>-{specialDiscountAmount.toLocaleString()} MMK</span>
-                  </motion.div>
-                )}
-                
-                {/* First Purchase Discount */}
-                {appliedDiscounts.filter(d => d.type === 'promo').map((discount, idx) => (
-                  <motion.div 
-                    key={idx} 
-                    className="flex justify-between items-center pb-2 border-b border-green-500/30 text-green-400"
-                    variants={itemVariants}
-                    animate={{ scale: [1, 1.02, 1] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: idx * 0.2 }}
-                  >
-                    <span>{discount.label}</span>
-                    <span>-{discount.amount.toLocaleString()} MMK</span>
-                  </motion.div>
-                ))}
-                
-                {/* Final Price */}
-                <motion.div 
-                  className="flex justify-between items-center pt-3 mt-2 border-t border-white/20"
-                  variants={priceVariants}
-                >
-                  <span className="text-lg font-bold">Special price for you</span>
-                  <motion.span 
-                    className="text-[#FF6B35] font-bold text-xl"
-                    animate={{ scale: [1, 1.05, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  >
-                    {finalPrice.toLocaleString()} MMK
-                  </motion.span>
-                </motion.div>
-                
-                {/* First Purchase Note */}
-                {isFirstPurchaseEligible && promoDiscountPercent > 0 && !hasActiveOrder && (
-                  <motion.div 
-                    className="text-xs text-green-500 text-center mt-2 bg-green-500/10 p-2 rounded-lg"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5, duration: 0.6 }}
-                  >
-                    🎉 First purchase discount ({promoDiscountPercent}% OFF) applied!
-                  </motion.div>
-                )}
-                
-                {/* Warning if user has active order */}
-                {hasActiveOrder && promoDiscountPercent > 0 && (
-                  <motion.div 
-                    className="text-xs text-yellow-500 text-center mt-2 bg-yellow-500/10 p-2 rounded-lg"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5, duration: 0.6 }}
-                  >
-                    ⚠️ You already have an active order. First purchase discount is only for new users.
-                  </motion.div>
-                )}
-              </motion.div>
+                <AnimatePresence>
+                  {appliedDiscounts.map((discount, idx) => (
+                    <motion.div 
+                      key={idx}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex justify-between items-center text-sm py-2 px-3 bg-green-500/10 rounded-xl border border-green-500/20"
+                    >
+                      <span className="text-green-400 flex items-center gap-2 font-medium">
+                        <span className="text-xs">✨</span> {discount.label}
+                      </span>
+                      <span className="text-green-400 font-bold">-{discount.amount.toLocaleString()} MMK</span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+
+                <div className="pt-4 mt-2 border-t border-white/10 flex justify-between items-end">
+                  <span className="text-gray-300 font-bold">သင့်အတွက် အထူးဈေး</span>
+                  <div className="text-right">
+                    <motion.div 
+                      className="text-3xl font-black text-[#FF6B35] tracking-tighter"
+                      animate={{ scale: [1, 1.02, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      {finalPrice.toLocaleString()} <span className="text-sm">MMK</span>
+                    </motion.div>
+                  </div>
+                </div>
+              </div>
             </motion.div>
 
-            {/* Features Section */}
+            {/* Features Card */}
             {features.length > 0 && (
               <motion.div 
-                className="bg-white/5 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto border border-white/10"
+                className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl"
                 variants={itemVariants}
               >
-                <h2 className="text-xl font-bold mb-4">✨ အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်</h2>
-                <motion.table 
-                  className="w-full border-collapse"
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  <thead>
-                    <tr className="border-b border-white/20">
-                      <th className="text-left py-3 px-2 text-gray-400">အင်္ဂါရပ်များ</th>
-                      <th className="text-center py-3 px-2 text-gray-400 w-1/3">✨ အခမဲ့</th>
-                      <th className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/20 to-[#00D4FF]/20 text-[#FF6B35] font-bold w-1/3">💎 Premium</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {features.map((feature, idx) => (
-                      <motion.tr 
-                        key={feature.id} 
-                        className={`border-b border-white/10 ${idx % 2 === 0 ? 'bg-white/5' : ''}`}
-                        variants={itemVariants}
-                        whileHover={{ backgroundColor: "rgba(255, 107, 53, 0.1)" }}
-                      >
-                        <td className="py-3 px-2 text-sm">{feature.feature_name}</td>
-                        <td className="text-center py-3 px-2">
-                          {feature.free ? <span className="text-green-400">✓ {feature.free}</span> : <span className="text-gray-500">—</span>}
-                        </td>
-                        <td className="text-center py-3 px-2 bg-gradient-to-r from-[#FF6B35]/10 to-[#00D4FF]/10">
-                          <span className="text-[#FF6B35] font-semibold">✓ {feature.pro || feature.free || 'အပြည့်အစုံ'}</span>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </motion.table>
+                <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
+                  <span className="text-[#00D4FF]">|</span> အင်္ဂါရပ်များ နှိုင်းယှဉ်ချက်
+                </h2>
+                
+                <div className="overflow-hidden rounded-2xl border border-white/5 bg-black/20">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-white/5 text-[10px] uppercase tracking-widest text-gray-400">
+                        <th className="p-3 font-bold">အင်္ဂါရပ်များ</th>
+                        <th className="p-3 text-center">✨ အခမဲ့</th>
+                        <th className="p-3 text-center bg-gradient-to-br from-[#FF6B35]/20 to-[#00D4FF]/20 text-white font-black">💎 Premium</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs">
+                      {features.map((feature, idx) => (
+                        <tr key={idx} className="border-t border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="p-3 text-gray-300 font-medium">{feature.name}</td>
+                          <td className="p-3 text-center text-red-400/60">
+                            {feature.free_value === '✓' ? '✅' : feature.free_value === '✗' ? '❌' : feature.free_value}
+                          </td>
+                          <td className="p-3 text-center font-bold text-[#00D4FF] bg-gradient-to-r from-[#FF6B35]/5 to-[#00D4FF]/5">
+                            {feature.premium_value === '✓' ? '✅' : feature.premium_value === '✗' ? '❌' : feature.premium_value}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </motion.div>
             )}
 
-            {/* NOTE BOX */}
-            {productNote && productNote.content && productNote.content.trim() !== '' && (
+            {/* Product Note */}
+            {productNote && (
               <motion.div 
-                className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 mb-6"
+                className="bg-blue-500/10 backdrop-blur-xl rounded-2xl p-4 border border-blue-500/20"
                 variants={itemVariants}
-                whileHover={{ borderColor: "rgba(234, 179, 8, 0.6)" }}
               >
-                <h3 className="text-yellow-500 font-bold mb-2">{productNote.title || '📌 မှတ်ချက်'}</h3>
-                <p className="text-gray-300 text-sm whitespace-pre-wrap">{productNote.content}</p>
+                <p className="text-blue-300 text-xs leading-relaxed flex gap-3">
+                  <span className="text-lg">ℹ️</span>
+                  <span>{productNote.note}</span>
+                </p>
               </motion.div>
             )}
 
-            {/* Buy Options */}
-            {!showBuyOptions ? (
-              <motion.button 
-                onClick={() => setShowBuyOptions(true)} 
-                className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 cursor-pointer shadow-lg"
-                variants={itemVariants}
-                whileHover={{ scale: 1.02, boxShadow: "0 20px 40px rgba(255, 107, 53, 0.4)" }}
-                whileTap={{ scale: 0.98 }}
-              >
-                🛒 အခုပဲ {finalPrice.toLocaleString()} MMK ဖြင့် ဝယ်ယူမည်
-              </motion.button>
-            ) : (
-              <motion.div 
-                className="space-y-3"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                <motion.div className="grid grid-cols-3 gap-3" variants={containerVariants} initial="hidden" animate="visible">
-                  <motion.button 
-                    onClick={() => handleExternalBuy('telegram', 'william815')} 
-                    className="bg-[#26A5E4] text-white p-3 rounded-xl font-semibold"
-                    variants={itemVariants}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    📱 Telegram
-                  </motion.button>
-                  <motion.button 
-                    onClick={() => handleExternalBuy('messenger', 'william72425')} 
-                    className="bg-[#0084FF] text-white p-3 rounded-xl font-semibold"
-                    variants={itemVariants}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    💬 Messenger
-                  </motion.button>
-                  <motion.button 
-                    onClick={() => handleExternalBuy('viber', '09798268154')} 
-                    className="bg-[#7360F2] text-white p-3 rounded-xl font-semibold"
-                    variants={itemVariants}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    📞 Viber
-                  </motion.button>
-                </motion.div>
-                <motion.button 
-                  onClick={handleDirectBuy} 
-                  className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white p-3 rounded-xl font-semibold"
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  🛍️ Buy Directly on Website
-                </motion.button>
-                <motion.button 
-                  onClick={() => setShowBuyOptions(false)} 
-                  className="w-full text-gray-400 text-sm py-2"
-                  variants={itemVariants}
-                  whileHover={{ color: "#FF6B35" }}
-                >
-                  ◀ နောက်သို့
-                </motion.button>
-              </motion.div>
-            )}
-
+            {/* Buy Buttons */}
             <motion.div 
-              className="mt-6 p-3 bg-blue-500/10 rounded-lg text-center"
+              className="grid grid-cols-1 gap-3 pt-4"
               variants={itemVariants}
             >
-              <p className="text-gray-400 text-xs">💡 Note: နောက်ပိုင်းမှာ အခု web page ထဲကနေ တိုက်ရိုက်ဝယ်နိုင်အောင် ကြိုးစားသွားပါဦးမည်။</p>
+              <motion.button 
+                onClick={handleDirectBuy}
+                className="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF8C35] text-white py-4 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(255,107,53,0.3)] hover:shadow-[0_15px_40px_rgba(255,107,53,0.4)] transition-all flex items-center justify-center gap-3 group"
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span>🛒 အခုပဲ ဝယ်ယူမည်</span>
+                <span className="group-hover:translate-x-1 transition-transform">→</span>
+              </motion.button>
+
+              <button 
+                onClick={() => setShowBuyOptions(!showBuyOptions)}
+                className="w-full bg-white/5 border border-white/10 text-white py-4 rounded-2xl font-bold text-sm hover:bg-white/10 transition-all"
+              >
+                {showBuyOptions ? '🔼 ပိတ်ရန်' : '💬 အခြားနည်းလမ်းဖြင့် ဝယ်ယူရန်'}
+              </button>
+
+              <AnimatePresence>
+                {showBuyOptions && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden space-y-2"
+                  >
+                    <div className="grid grid-cols-3 gap-2">
+                      <button onClick={() => handleExternalBuy('telegram', 'william815')} className="flex flex-col items-center gap-2 p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20 hover:bg-blue-500/20 transition-all">
+                        <span className="text-2xl">✈️</span>
+                        <span className="text-[10px] font-bold">Telegram</span>
+                      </button>
+                      <button onClick={() => handleExternalBuy('messenger', 'william815')} className="flex flex-col items-center gap-2 p-3 bg-purple-500/10 rounded-2xl border border-purple-500/20 hover:bg-purple-500/20 transition-all">
+                        <span className="text-2xl">💬</span>
+                        <span className="text-[10px] font-bold">Messenger</span>
+                      </button>
+                      <button onClick={() => handleExternalBuy('viber', '09798268154')} className="flex flex-col items-center gap-2 p-3 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 hover:bg-indigo-500/20 transition-all">
+                        <span className="text-2xl">🟣</span>
+                        <span className="text-[10px] font-bold">Viber</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
+
+            <motion.p 
+              className="text-center text-gray-500 text-[10px] pt-4"
+              variants={itemVariants}
+            >
+              Payment proof should be sent to Telegram: <span className="font-bold text-gray-400">@william815</span>
+            </motion.p>
           </motion.div>
         </div>
       </div>

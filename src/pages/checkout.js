@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { auth, db } from '@/utils/firebase';
 import { doc, getDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
@@ -27,7 +27,6 @@ export default function Checkout() {
     const loadData = async () => {
       if (!id) return;
       
-      // Get user
       const currentUser = auth.currentUser;
       if (!currentUser) {
         router.push('/auth');
@@ -35,7 +34,6 @@ export default function Checkout() {
       }
       setUser(currentUser);
       
-      // Load product from JSON
       const found = productsData.find(p => p.id === parseInt(id));
       if (!found) {
         setLoading(false);
@@ -43,25 +41,21 @@ export default function Checkout() {
       }
       setProduct(found);
       
-      // Load user data from Firestore
       const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
       if (userDoc.exists()) {
         setUserData(userDoc.data());
       }
       
-      // Calculate price directly
       let price = found.hubby_price;
       let specialDisc = 0;
       let firstDisc = 0;
       let promoDiscountPercent = 0;
       
-      // Check for admin special price
       if (found.special_price && found.special_price > 0) {
         specialDisc = found.hubby_price - found.special_price;
         price = found.special_price;
       }
       
-      // Check for first purchase discount
       const userInfo = userDoc.data();
       if (userInfo && userInfo.used_promote_code && !userInfo.first_purchase_discount_used) {
         try {
@@ -113,7 +107,6 @@ export default function Checkout() {
         await updateDoc(doc(db, 'users', user.uid), { first_purchase_discount_used: true });
       }
       
-      alert('Order created! Send payment proof to Telegram: @william815');
       router.push('/orders');
     } catch (error) {
       alert('Failed to create order');
@@ -146,287 +139,202 @@ export default function Checkout() {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
+      transition: { staggerChildren: 0.1, delayChildren: 0.1 },
     },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 15 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut",
-      },
-    },
-  };
-
-  const stepVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut",
-      },
+      transition: { duration: 0.5, ease: "easeOut" },
     },
   };
 
   return (
     <>
       <Head><title>Checkout | Digital Hub Myanmar</title></Head>
-      <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
+      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30">
         <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
         
-        <div className="container mx-auto px-4 py-24 max-w-4xl">
-          <motion.h1 
-            className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}
+        <div className="container mx-auto px-4 py-24 max-w-2xl relative z-10">
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            className="flex items-center justify-between mb-8"
           >
-            🛒 Checkout
-          </motion.h1>
+            <h1 className="text-3xl font-black tracking-tight">🛒 Checkout</h1>
+            <div className="text-right">
+              <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold block">Order ID</span>
+              <span className="text-xs font-mono text-[#FF6B35]">#DH-{Math.random().toString(36).substr(2, 6).toUpperCase()}</span>
+            </div>
+          </motion.div>
           
           {/* Progress Steps */}
           <motion.div 
-            className="flex justify-between mb-8"
+            className="flex justify-between mb-10 relative"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
           >
+            <div className="absolute top-5 left-0 w-full h-[2px] bg-white/5 z-0" />
             {[1, 2, 3].map((step) => (
-              <motion.div 
-                key={step}
-                className="flex flex-col items-center flex-1"
-                variants={itemVariants}
-              >
+              <div key={step} className="flex flex-col items-center flex-1 relative z-10">
                 <motion.div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all ${
                     currentStep >= step
-                      ? 'bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white'
-                      : isDarkMode ? 'bg-white/10 text-gray-400' : 'bg-gray-200 text-gray-500'
+                      ? 'bg-[#FF6B35] border-[#FF6B35] text-white shadow-[0_0_20px_rgba(255,107,53,0.4)]'
+                      : 'bg-[#0a0f2a] border-white/10 text-gray-500'
                   }`}
                   animate={currentStep === step ? { scale: [1, 1.1, 1] } : {}}
-                  transition={{ duration: 1.5, repeat: Infinity }}
+                  transition={{ duration: 2, repeat: Infinity }}
                 >
-                  {step}
+                  {step === 1 ? '📋' : step === 2 ? '💳' : '✅'}
                 </motion.div>
-                <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${currentStep >= step ? 'text-white' : 'text-gray-500'}`}>
                   {step === 1 ? 'Review' : step === 2 ? 'Payment' : 'Confirm'}
                 </span>
-                {step < 3 && (
-                  <motion.div
-                    className={`h-1 flex-1 mx-2 mt-2 ${
-                      currentStep > step
-                        ? 'bg-gradient-to-r from-[#FF6B35] to-[#00D4FF]'
-                        : isDarkMode ? 'bg-white/10' : 'bg-gray-200'
-                    }`}
-                    layoutId={`step-${step}`}
-                  ></motion.div>
-                )}
-              </motion.div>
+              </div>
             ))}
           </motion.div>
           
-          {/* Order Summary */}
           <motion.div 
-            className={`rounded-2xl p-6 mb-6 border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white/60 shadow-sm border-gray-200'}`}
-            variants={itemVariants}
+            className="space-y-4"
+            variants={containerVariants}
             initial="hidden"
             animate="visible"
           >
-            <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-              📦 Order Summary
-            </h2>
+            {/* Order Summary Card */}
             <motion.div 
-              className="space-y-3"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
+              className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl"
+              variants={itemVariants}
             >
-              <motion.div className="flex justify-between py-2 border-b border-white/10" variants={itemVariants}>
-                <span className="text-gray-400">Product</span>
-                <span className="font-semibold">{product.name}</span>
-              </motion.div>
-              <motion.div className="flex justify-between py-2 border-b border-white/10" variants={itemVariants}>
-                <span className="text-gray-400">Duration</span>
-                <span>{product.duration}</span>
-              </motion.div>
+              <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
+                <span className="text-[#FF6B35]">|</span> အော်ဒါအနှစ်ချုပ်
+              </h2>
               
-              {product.market_price > 0 && (
-                <motion.div className="flex justify-between py-2 border-b border-white/10" variants={itemVariants}>
-                  <span className="text-gray-400">ဈေးကွက် ပျမ်းမျှဈေး</span>
-                  <span className="line-through text-gray-400">{product.market_price.toLocaleString()} MMK</span>
-                </motion.div>
-              )}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400">Product</span>
+                  <span className="font-bold text-white">{product.name}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400">Duration</span>
+                  <span className="text-gray-300 font-medium">{product.duration}</span>
+                </div>
+                
+                <div className="h-px bg-white/5 my-2" />
+                
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400">Hubby Store ဈေး</span>
+                  <span className="text-gray-300 font-bold">{product.hubby_price?.toLocaleString()} MMK</span>
+                </div>
+                
+                {specialDiscount > 0 && (
+                  <div className="flex justify-between items-center text-xs py-2 px-3 bg-green-500/10 rounded-xl border border-green-500/20 text-green-400 font-bold">
+                    <span>✨ Admin Special Discount</span>
+                    <span>-{specialDiscount.toLocaleString()} MMK</span>
+                  </div>
+                )}
+                
+                {firstPurchaseDiscount > 0 && (
+                  <div className="flex justify-between items-center text-xs py-2 px-3 bg-green-500/10 rounded-xl border border-green-500/20 text-green-400 font-bold">
+                    <span>🎁 First Purchase Discount ({promoPercent}%)</span>
+                    <span>-{firstPurchaseDiscount.toLocaleString()} MMK</span>
+                  </div>
+                )}
+                
+                <div className="pt-4 flex justify-between items-end">
+                  <span className="text-gray-300 font-black uppercase tracking-widest text-xs">Total Amount</span>
+                  <div className="text-right">
+                    <motion.div 
+                      className="text-3xl font-black text-[#FF6B35] tracking-tighter"
+                      animate={{ scale: [1, 1.02, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      {displayPrice.toLocaleString()} <span className="text-sm">MMK</span>
+                    </motion.div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+            
+            {/* Payment Instructions Card */}
+            <motion.div 
+              className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl"
+              variants={itemVariants}
+            >
+              <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
+                <span className="text-[#00D4FF]">|</span> ငွေပေးချေရန် လမ်းညွှန်ချက်
+              </h2>
               
-              <motion.div className="flex justify-between py-2 border-b border-white/10" variants={itemVariants}>
-                <span className="text-gray-400">Hubby Store ဈေး</span>
-                <span className="text-[#FF6B35] font-bold">{product.hubby_price?.toLocaleString()} MMK</span>
-              </motion.div>
-              
-              {specialDiscount > 0 && (
-                <motion.div 
-                  className="flex justify-between py-2 border-b border-green-500/30 text-green-400"
-                  variants={itemVariants}
-                  animate={{ scale: [1, 1.02, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <span>✨ Admin Special Discount</span>
-                  <span>-{specialDiscount.toLocaleString()} MMK</span>
-                </motion.div>
-              )}
-              
-              {firstPurchaseDiscount > 0 && (
-                <motion.div 
-                  className="flex justify-between py-2 border-b border-green-500/30 text-green-400"
-                  variants={itemVariants}
-                  animate={{ scale: [1, 1.02, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, delay: 0.2 }}
-                >
-                  <span>🎉 First Purchase ({promoPercent}% OFF)</span>
-                  <span>-{firstPurchaseDiscount.toLocaleString()} MMK</span>
-                </motion.div>
-              )}
-              
-              <motion.div 
-                className="flex justify-between py-3 text-lg font-bold border-t border-white/20 pt-3"
-                variants={itemVariants}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 hover:border-[#FF6B35]/30 transition-all group">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">🏦 KBZ Bank</span>
+                      <span className="text-[10px] text-[#FF6B35] font-black">SCAN TO PAY</span>
+                    </div>
+                    <p className="text-lg font-black text-white group-hover:text-[#FF6B35] transition-colors">0987654321</p>
+                    <p className="text-xs text-gray-500 font-bold">Name: William</p>
+                  </div>
+                  
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 hover:border-[#00D4FF]/30 transition-all group">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">📱 WavePay</span>
+                    </div>
+                    <p className="text-lg font-black text-white group-hover:text-[#00D4FF] transition-colors">09798268154</p>
+                    <p className="text-xs text-gray-500 font-bold">Name: Digital Hub Myanmar</p>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20">
+                  <ul className="space-y-2">
+                    <li className="flex gap-3 text-xs text-blue-300 leading-relaxed">
+                      <span className="font-bold text-blue-400">1.</span>
+                      <span>အထက်ပါ နည်းလမ်းတစ်ခုခုဖြင့် ငွေလွှဲပေးပါ။</span>
+                    </li>
+                    <li className="flex gap-3 text-xs text-blue-300 leading-relaxed">
+                      <span className="font-bold text-blue-400">2.</span>
+                      <span>ငွေလွှဲပြီးကြောင်း Screenshot ရိုက်ထားပါ။</span>
+                    </li>
+                    <li className="flex gap-3 text-xs text-blue-300 leading-relaxed">
+                      <span className="font-bold text-blue-400">3.</span>
+                      <span>အောက်ပါ "Confirm Order" ကို နှိပ်ပြီး Screenshot ကို Telegram သို့ ပို့ပေးပါ။</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </motion.div>
+            
+            {/* Confirm Button */}
+            <motion.div variants={itemVariants} className="pt-4">
+              <motion.button
+                onClick={createOrder}
+                disabled={processing}
+                className="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF8C35] text-white py-5 rounded-2xl font-black text-xl shadow-[0_10px_30px_rgba(255,107,53,0.3)] hover:shadow-[0_15px_40px_rgba(255,107,53,0.4)] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <span className="text-gray-300">Special price for you</span>
-                <motion.span 
-                  className="text-[#FF6B35] text-xl"
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  {displayPrice.toLocaleString()} MMK
-                </motion.span>
-              </motion.div>
+                {processing ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Processing...</span>
+                  </div>
+                ) : (
+                  <>
+                    <span>✅ Confirm Order</span>
+                    <span className="text-sm opacity-80">| {displayPrice.toLocaleString()} MMK</span>
+                  </>
+                )}
+              </motion.button>
+              
+              <p className="text-center text-gray-500 text-[10px] mt-6 leading-relaxed">
+                Order တင်ပြီးပါက ငွေလွှဲ Screenshot ကို Telegram: <span className="font-bold text-[#FF6B35]">@william815</span> သို့ ပို့ပေးရန် မမေ့ပါနှင့်။
+              </p>
             </motion.div>
           </motion.div>
-          
-          {/* Payment Instructions */}
-          <motion.div 
-            className={`rounded-2xl p-6 mb-6 border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white/60 shadow-sm border-gray-200'}`}
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-              💳 Payment Instructions
-            </h2>
-            <motion.div 
-              className="space-y-3 text-gray-400 text-sm"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              <motion.div variants={stepVariants} className="flex items-start gap-3">
-                <span className="text-[#FF6B35] font-bold min-w-fit">1.</span>
-                <span>Transfer the total amount to:</span>
-              </motion.div>
-              <motion.div variants={stepVariants} className="pl-8 space-y-2">
-                <motion.p 
-                  className="flex items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10"
-                  whileHover={{ backgroundColor: "rgba(255, 107, 53, 0.1)", borderColor: "rgba(255, 107, 53, 0.3)" }}
-                >
-                  🏦 KBZ Bank: 0987654321 (William)
-                </motion.p>
-                <motion.p 
-                  className="flex items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10"
-                  whileHover={{ backgroundColor: "rgba(255, 107, 53, 0.1)", borderColor: "rgba(255, 107, 53, 0.3)" }}
-                >
-                  📱 WavePay: 09798268154
-                </motion.p>
-              </motion.div>
-              <motion.div variants={stepVariants} className="flex items-start gap-3">
-                <span className="text-[#FF6B35] font-bold min-w-fit">2.</span>
-                <span>Take a screenshot of the payment</span>
-              </motion.div>
-              <motion.div variants={stepVariants} className="flex items-start gap-3">
-                <span className="text-[#FF6B35] font-bold min-w-fit">3.</span>
-                <span>Click "Confirm Order" below</span>
-              </motion.div>
-              <motion.div variants={stepVariants} className="flex items-start gap-3">
-                <span className="text-[#FF6B35] font-bold min-w-fit">4.</span>
-                <span>Send the screenshot to Telegram: <span className="text-[#FF6B35] font-semibold">@william815</span></span>
-              </motion.div>
-            </motion.div>
-          </motion.div>
-          
-          {/* Confirm Button */}
-          <motion.button
-            onClick={() => {
-              setCurrentStep(2);
-              setTimeout(() => setCurrentStep(3), 500);
-            }}
-            disabled={processing}
-            className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50 mb-4"
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            {processing ? (
-              <motion.span
-                animate={{ opacity: [1, 0.5, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                Processing...
-              </motion.span>
-            ) : (
-              `✅ Confirm Order - ${displayPrice.toLocaleString()} MMK`
-            )}
-          </motion.button>
-
-          {/* Actual Create Order Button (hidden, triggered by confirm) */}
-          <motion.button
-            onClick={createOrder}
-            disabled={processing}
-            className="w-full hidden bg-gradient-to-r from-green-600 to-green-500 text-white p-4 rounded-xl font-bold text-lg"
-            id="hidden-create-order"
-          >
-            Create Order
-          </motion.button>
-
-          {/* Update the confirm button to actually create order */}
-          <motion.button
-            onClick={createOrder}
-            disabled={processing}
-            className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-4 rounded-xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50"
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            {processing ? (
-              <motion.span
-                animate={{ opacity: [1, 0.5, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                Processing...
-              </motion.span>
-            ) : (
-              `✅ Confirm Order - ${displayPrice.toLocaleString()} MMK`
-            )}
-          </motion.button>
-          
-          <motion.p 
-            className="text-center text-gray-500 text-xs mt-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8, duration: 0.6 }}
-          >
-            By confirming, you agree to our terms and conditions.
-          </motion.p>
         </div>
       </div>
     </>
