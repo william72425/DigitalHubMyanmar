@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,6 +10,7 @@ import productsData from '@/data/products.json';
 export default function Checkout() {
   const router = useRouter();
   const { id } = router.query;
+  const fileInputRef = useRef(null);
   const [user, setUser] = useState(null);
   const [product, setProduct] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -21,6 +22,12 @@ export default function Checkout() {
   const [firstPurchaseDiscount, setFirstPurchaseDiscount] = useState(0);
   const [promoPercent, setPromoPercent] = useState(0);
   const [currentStep, setCurrentStep] = useState(1);
+  
+  // New features: Note and Screenshot
+  const [userNote, setUserNote] = useState('');
+  const [screenshot, setScreenshot] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   // Load everything in one go
   useEffect(() => {
@@ -84,9 +91,35 @@ export default function Checkout() {
     loadData();
   }, [id, router]);
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size too large (max 5MB)');
+        return;
+      }
+      setScreenshot(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setScreenshotPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const createOrder = async () => {
+    if (!screenshot) {
+      alert('ကျေးဇူးပြု၍ ငွေလွှဲ Screenshot တင်ပေးပါခင်ဗျာ။');
+      return;
+    }
+    
     setProcessing(true);
     try {
+      // In a real app, you would upload to Firebase Storage or S3
+      // For this sandbox, we'll store the base64 preview for demonstration 
+      // but in production, you should use a proper storage URL.
+      const screenshotUrl = screenshotPreview; 
+
       await addDoc(collection(db, 'orders'), {
         user_id: user.uid,
         username: userData?.username,
@@ -100,6 +133,8 @@ export default function Checkout() {
         promo_code_used: userData?.used_promote_code || null,
         status: 'pending',
         payment_method: 'manual',
+        user_note: userNote,
+        payment_screenshot: screenshotUrl,
         created_at: new Date().toISOString()
       });
       
@@ -109,6 +144,7 @@ export default function Checkout() {
       
       router.push('/orders');
     } catch (error) {
+      console.error('Error creating order:', error);
       alert('Failed to create order');
     }
     setProcessing(false);
@@ -288,22 +324,54 @@ export default function Checkout() {
                     <p className="text-xs text-gray-500 font-bold">Name: Digital Hub Myanmar</p>
                   </div>
                 </div>
-                
-                <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20">
-                  <ul className="space-y-2">
-                    <li className="flex gap-3 text-xs text-blue-300 leading-relaxed">
-                      <span className="font-bold text-blue-400">1.</span>
-                      <span>အထက်ပါ နည်းလမ်းတစ်ခုခုဖြင့် ငွေလွှဲပေးပါ။</span>
-                    </li>
-                    <li className="flex gap-3 text-xs text-blue-300 leading-relaxed">
-                      <span className="font-bold text-blue-400">2.</span>
-                      <span>ငွေလွှဲပြီးကြောင်း Screenshot ရိုက်ထားပါ။</span>
-                    </li>
-                    <li className="flex gap-3 text-xs text-blue-300 leading-relaxed">
-                      <span className="font-bold text-blue-400">3.</span>
-                      <span>အောက်ပါ "Confirm Order" ကို နှိပ်ပြီး Screenshot ကို Telegram သို့ ပို့ပေးပါ။</span>
-                    </li>
-                  </ul>
+
+                {/* New Feature: Screenshot Upload */}
+                <div className="pt-4">
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    📸 Upload Payment Screenshot
+                  </label>
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`cursor-pointer border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center transition-all ${
+                      screenshotPreview 
+                        ? 'border-green-500/50 bg-green-500/5' 
+                        : 'border-white/10 bg-white/5 hover:border-[#FF6B35]/50'
+                    }`}
+                  >
+                    <input 
+                      type="file" 
+                      hidden 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange}
+                      accept="image/*"
+                    />
+                    {screenshotPreview ? (
+                      <div className="relative w-full aspect-video">
+                        <img src={screenshotPreview} className="w-full h-full object-contain rounded-lg" alt="Preview" />
+                        <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full text-xs">✅</div>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-3xl mb-2">📤</span>
+                        <span className="text-xs text-gray-400 font-medium">Click to upload screenshot</span>
+                        <span className="text-[10px] text-gray-500 mt-1">Max 5MB (JPG, PNG)</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* New Feature: Note to Admin */}
+                <div className="pt-2">
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    📝 Note to Admin (Optional)
+                  </label>
+                  <textarea 
+                    value={userNote}
+                    onChange={(e) => setUserNote(e.target.value)}
+                    placeholder="Account Email သို့မဟုတ် အခြားမှတ်ချက်များ ရေးပေးပါ..."
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-[#FF6B35]/50 focus:outline-none transition-all"
+                    rows="3"
+                  ></textarea>
                 </div>
               </div>
             </motion.div>
@@ -313,9 +381,13 @@ export default function Checkout() {
               <motion.button
                 onClick={createOrder}
                 disabled={processing}
-                className="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF8C35] text-white py-5 rounded-2xl font-black text-xl shadow-[0_10px_30px_rgba(255,107,53,0.3)] hover:shadow-[0_15px_40px_rgba(255,107,53,0.4)] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+                className={`w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 ${
+                  screenshot 
+                    ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF8C35] text-white shadow-[0_10px_30px_rgba(255,107,53,0.3)]' 
+                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                }`}
+                whileHover={screenshot ? { scale: 1.02, y: -2 } : {}}
+                whileTap={screenshot ? { scale: 0.98 } : {}}
               >
                 {processing ? (
                   <div className="flex items-center gap-2">
@@ -330,8 +402,14 @@ export default function Checkout() {
                 )}
               </motion.button>
               
+              {!screenshot && (
+                <p className="text-center text-red-400 text-[10px] mt-2 font-bold animate-pulse">
+                  * ကျေးဇူးပြု၍ ငွေလွှဲ Screenshot အရင်တင်ပေးပါ
+                </p>
+              )}
+              
               <p className="text-center text-gray-500 text-[10px] mt-6 leading-relaxed">
-                Order တင်ပြီးပါက ငွေလွှဲ Screenshot ကို Telegram: <span className="font-bold text-[#FF6B35]">@william815</span> သို့ ပို့ပေးရန် မမေ့ပါနှင့်။
+                Order တင်ပြီးပါက ကျွန်ုပ်တို့ဘက်မှ အမြန်ဆုံး စစ်ဆေးပေးသွားမည် ဖြစ်ပါသည်။
               </p>
             </motion.div>
           </motion.div>

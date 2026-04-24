@@ -14,6 +14,10 @@ export default function AdminOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [updating, setUpdating] = useState(false);
+  
+  // Cancellation Reason
+  const [cancelReason, setCancelReason] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -47,43 +51,40 @@ export default function AdminOrders() {
     setLoading(false);
   };
 
-  const updateOrderStatus = async (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId, newStatus, reason = '') => {
     setUpdating(true);
     try {
-      // Update order status
-      await updateDoc(doc(db, 'orders', orderId), {
+      const updateData = {
         status: newStatus,
         updated_at: new Date().toISOString()
-      });
+      };
       
-      // Get order data
+      if (reason) {
+        updateData.cancellation_reason = reason;
+      }
+
+      await updateDoc(doc(db, 'orders', orderId), updateData);
+      
       const orderDoc = await getDoc(doc(db, 'orders', orderId));
       const orderData = orderDoc.data();
       
       if (orderData && orderData.user_id) {
-        // If cancelled: ALWAYS restore first purchase discount
         if (newStatus === 'cancelled') {
           await updateDoc(doc(db, 'users', orderData.user_id), {
             first_purchase_discount_used: false
           });
-          console.log('✅ Discount RESTORED for user:', orderData.user_id);
         }
         
-        // If completed: mark discount as used permanently and award points
         if (newStatus === 'completed') {
           await updateDoc(doc(db, 'users', orderData.user_id), {
             first_purchase_discount_used: true
           });
-          console.log('✅ Discount MARKED AS USED for user:', orderData.user_id);
           
-	      // Award purchase points
-	          try {
-	            // Use final_price (after discounts) for points calculation
-	            const totalAmount = orderData.final_price || orderData.total_amount || 0;
-	            const inviterId = orderData.inviter_id || null;
-	            await awardPurchasePoints(orderData.user_id, totalAmount, inviterId);
-	            console.log('✅ Points awarded for order:', orderId, 'Amount:', totalAmount);
-	          } catch (pointsError) {
+          try {
+            const totalAmount = orderData.final_price || orderData.total_amount || 0;
+            const inviterId = orderData.inviter_id || null;
+            await awardPurchasePoints(orderData.user_id, totalAmount, inviterId);
+          } catch (pointsError) {
             console.error('Error awarding points:', pointsError);
           }
         }
@@ -91,8 +92,10 @@ export default function AdminOrders() {
       
       await fetchOrders();
       if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, status: newStatus });
+        setSelectedOrder({ ...selectedOrder, status: newStatus, cancellation_reason: reason });
       }
+      setShowCancelModal(false);
+      setCancelReason('');
       alert(`Order status updated to: ${newStatus}`);
     } catch (error) {
       console.error('Error updating order:', error);
@@ -143,7 +146,7 @@ export default function AdminOrders() {
             <div className="flex gap-2">
               <button 
                 onClick={async () => {
-                  if(confirm('Are you sure you want to sync points for all completed orders? This will only award points for orders that haven\'t received them yet.')) {
+                  if(confirm('Are you sure you want to sync points for all completed orders?')) {
                     try {
                       const res = await fetch('/api/admin/sync-completed-points', { method: 'POST' });
                       const data = await res.json();
@@ -157,19 +160,6 @@ export default function AdminOrders() {
                 ✨ Sync Points
               </button>
               <button onClick={fetchOrders} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">🔄 Refresh</button>
-              <button 
-                onClick={async () => {
-                  try {
-                    const res = await fetch('/api/admin/diagnose-points');
-                    const data = await res.json();
-                    console.log('Diagnostic Data:', data);
-                    alert('Diagnostic data logged to console. Settings: ' + JSON.stringify(data.settings));
-                  } catch (e) { alert('Diagnostic failed'); }
-                }}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
-              >
-                🔍 Diagnose
-              </button>
             </div>
           </div>
           
@@ -184,6 +174,7 @@ export default function AdminOrders() {
                   <th className="text-left py-3 px-2">Customer</th>
                   <th className="text-left py-3 px-2">Product</th>
                   <th className="text-left py-3 px-2">Amount</th>
+                  <th className="text-left py-3 px-2">Proof</th>
                   <th className="text-left py-3 px-2">Status</th>
                   <th className="text-left py-3 px-2">Date</th>
                   <th className="text-left py-3 px-2">Actions</th>
@@ -196,10 +187,17 @@ export default function AdminOrders() {
                       <td className="py-3 px-2">{order.username || order.user_id?.slice(-8)}</td>
                       <td className="py-3 px-2">{order.product_name}</td>
                       <td className="py-3 px-2 text-[#FF6B35] font-semibold">{order.final_price?.toLocaleString()} MMK</td>
+                      <td className="py-3 px-2">
+                        {order.payment_screenshot ? (
+                          <span className="text-green-400 text-xs font-bold">✅ Uploaded</span>
+                        ) : (
+                          <span className="text-gray-500 text-xs">No Proof</span>
+                        )}
+                      </td>
                       <td className="py-3 px-2">{getStatusBadge(order.status)}</td>
                       <td className="py-3 px-2 text-xs">{new Date(order.created_at).toLocaleString()}</td>
                       <td className="py-3 px-2">
-                        <button onClick={() => viewOrderDetail(order)} className="text-blue-400 hover:text-blue-300 text-sm">
+                        <button onClick={() => viewOrderDetail(order)} className="text-blue-400 hover:text-blue-300 text-sm font-bold">
                           View Details
                         </button>
                       </td>
@@ -215,102 +213,115 @@ export default function AdminOrders() {
       {/* Order Detail Modal */}
       {showDetailModal && selectedOrder && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-white/20`}>
-            <div className="flex justify-between items-center mb-4">
+          <div className={`rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-white/20`}>
+            <div className="flex justify-between items-center mb-6">
               <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📋 Order Details</h2>
-              <button onClick={() => setShowDetailModal(false)} className="text-gray-400 text-2xl">&times;</button>
+              <button onClick={() => setShowDetailModal(false)} className="text-gray-400 text-2xl hover:text-white transition">&times;</button>
             </div>
             
-            <div className="space-y-4">
-              <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><span className="text-gray-400">Order ID:</span></div>
-                  <div className="font-mono text-xs">{selectedOrder.id}</div>
-                  <div><span className="text-gray-400">Customer:</span></div>
-                  <div>{selectedOrder.username || selectedOrder.user_id}</div>
-                  <div><span className="text-gray-400">Date:</span></div>
-                  <div>{new Date(selectedOrder.created_at).toLocaleString()}</div>
-                  <div><span className="text-gray-400">Payment Method:</span></div>
-                  <div>{selectedOrder.payment_method || 'Manual'}</div>
-                  {selectedOrder.userData && (
-                    <>
-                      <div><span className="text-gray-400">First Purchase Discount:</span></div>
-                      <div className={selectedOrder.userData.first_purchase_discount_used ? 'text-red-400' : 'text-green-400'}>
-                        {selectedOrder.userData.first_purchase_discount_used ? '❌ Used' : '✅ Available'}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-              
-              <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
-                <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🛍️ Product</h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><span className="text-gray-400">Product:</span></div>
-                  <div>{selectedOrder.product_name}</div>
-                  <div><span className="text-gray-400">Duration:</span></div>
-                  <div>{selectedOrder.duration}</div>
-                  <div><span className="text-gray-400">Original Price:</span></div>
-                  <div>{selectedOrder.original_price?.toLocaleString()} MMK</div>
-                  <div><span className="text-gray-400">Final Price:</span></div>
-                  <div className="text-[#FF6B35] font-bold">{selectedOrder.final_price?.toLocaleString()} MMK</div>
-                </div>
-              </div>
-              
-              {selectedOrder.discount_breakdown && selectedOrder.discount_breakdown.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column: Info */}
+              <div className="space-y-4">
                 <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
-                  <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🎁 Discounts Applied</h3>
-                  <div className="space-y-1">
-                    {selectedOrder.discount_breakdown.map((discount, idx) => (
-                      <div key={idx} className="flex justify-between text-sm text-green-400">
-                        <span>{discount.label}</span>
-                        <span>-{discount.amount.toLocaleString()} MMK</span>
-                      </div>
-                    ))}
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Customer & Product</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-500">Username:</span> <span>{selectedOrder.username}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Product:</span> <span className="font-bold">{selectedOrder.product_name}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Duration:</span> <span>{selectedOrder.duration}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Amount:</span> <span className="text-[#FF6B35] font-bold">{selectedOrder.final_price?.toLocaleString()} MMK</span></div>
                   </div>
                 </div>
-              )}
-              
-              {selectedOrder.promo_code_used && (
+
                 <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
-                  <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Code Used</h3>
-                  <p className="text-sm font-mono">{selectedOrder.promo_code_used}</p>
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">User Note</h3>
+                  <p className="text-sm italic text-gray-300">
+                    {selectedOrder.user_note || "No note provided by user."}
+                  </p>
                 </div>
-              )}
-              
-              <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
-                <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📌 Update Status</h3>
-                <div className="flex flex-wrap gap-2">
-                  {['pending', 'processing', 'completed', 'cancelled'].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => updateOrderStatus(selectedOrder.id, status)}
-                      disabled={updating || selectedOrder.status === status}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                        selectedOrder.status === status
-                          ? 'bg-gray-500 cursor-not-allowed'
-                          : status === 'pending' ? 'bg-yellow-600 hover:bg-yellow-700'
-                            : status === 'processing' ? 'bg-blue-600 hover:bg-blue-700'
-                              : status === 'completed' ? 'bg-green-600 hover:bg-green-700'
-                                : 'bg-red-600 hover:bg-red-700'
-                      } text-white`}
-                    >
-                      {status === 'pending' ? '⏳ Pending' : status === 'processing' ? '🔄 Processing' : status === 'completed' ? '✅ Completed' : '❌ Cancelled'}
-                    </button>
-                  ))}
+
+                {selectedOrder.cancellation_reason && (
+                  <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                    <h3 className="text-xs font-bold text-red-400 uppercase tracking-widest mb-2">Cancellation Reason</h3>
+                    <p className="text-sm text-red-300">{selectedOrder.cancellation_reason}</p>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-4">
+                  <button 
+                    disabled={updating}
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'processing')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold"
+                  >
+                    🔄 Mark Processing
+                  </button>
+                  <button 
+                    disabled={updating}
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'completed')}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold"
+                  >
+                    ✅ Mark Completed
+                  </button>
+                  <button 
+                    disabled={updating}
+                    onClick={() => setShowCancelModal(true)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold"
+                  >
+                    ❌ Cancel Order
+                  </button>
                 </div>
               </div>
-              
-              <div className="p-4 bg-yellow-500/10 rounded-xl">
-                <p className="text-yellow-500 text-sm">
-                  📸 Payment proof should be sent to Telegram: <span className="font-bold">@william815</span>
-                </p>
+
+              {/* Right Column: Screenshot */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Payment Proof</h3>
+                {selectedOrder.payment_screenshot ? (
+                  <div className="border border-white/10 rounded-xl overflow-hidden bg-black">
+                    <img 
+                      src={selectedOrder.payment_screenshot} 
+                      className="w-full h-auto cursor-zoom-in" 
+                      alt="Payment Proof" 
+                      onClick={() => window.open(selectedOrder.payment_screenshot, '_blank')}
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-video flex items-center justify-center border-2 border-dashed border-white/10 rounded-xl text-gray-500 text-sm">
+                    No screenshot uploaded
+                  </div>
+                )}
               </div>
             </div>
-            
-            <button onClick={() => setShowDetailModal(false)} className="w-full bg-[#FF6B35] text-white p-2 rounded-lg mt-4">
-              Close
-            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cancellation Reason Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+          <div className={`rounded-2xl p-6 w-full max-w-md ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-red-500/30 shadow-2xl shadow-red-500/10`}>
+            <h2 className="text-xl font-bold text-red-400 mb-4">❌ Cancel Order</h2>
+            <p className="text-sm text-gray-400 mb-4">Please provide a reason for cancellation. This will be visible to the user.</p>
+            <textarea 
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="e.g., Screenshot မမှန်ကန်ပါ၊ ငွေမဝင်သေးပါ..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-red-500/50 focus:outline-none mb-4"
+              rows="4"
+            ></textarea>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg font-bold"
+              >
+                Go Back
+              </button>
+              <button 
+                onClick={() => updateOrderStatus(selectedOrder.id, 'cancelled', cancelReason)}
+                disabled={!cancelReason || updating}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-bold disabled:opacity-50"
+              >
+                Confirm Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
