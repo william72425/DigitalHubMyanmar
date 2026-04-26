@@ -43,6 +43,12 @@ service cloud.firestore {
       allow write: if false; // Admin only
     }
 
+    // Reviews - Public read, user submit via API only
+    match /reviews/{reviewId} {
+      allow read: if resource.data.isPublic == true;
+      allow write: if false; // Handle via API endpoints only
+    }
+
     // Other collections
     match /{path=**} {
       allow read, write: if false;
