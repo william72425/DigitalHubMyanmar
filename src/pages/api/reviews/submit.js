@@ -6,10 +6,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userName, rating, comment } = req.body;
+  const { userName, rating, comment, userId, userEmail } = req.body;
 
   // Validation
-  if (!userName || !rating || !comment) {
+  if (!userName || !rating || !comment || !userId) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -31,6 +31,8 @@ export default async function handler(req, res) {
       userName: userName.trim(),
       rating: parseInt(rating),
       comment: comment.trim(),
+      userId: userId,
+      userEmail: userEmail,
       isPublic: true,
       createdAt: serverTimestamp(),
     });
