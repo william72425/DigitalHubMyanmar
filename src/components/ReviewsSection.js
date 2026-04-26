@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { Star } from 'lucide-react';
 import ReviewCard from './ReviewCard';
 import ReviewForm from './ReviewForm';
 
@@ -8,6 +9,7 @@ export default function ReviewsSection() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [averageRating, setAverageRating] = useState(0);
   const [displayType, setDisplayType] = useState('daily');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -29,6 +31,7 @@ export default function ReviewsSection() {
         const data = await response.json();
         setReviews(data.reviews);
         setTotalCount(data.totalCount);
+        setAverageRating(data.averageRating || 0);
         setDisplayType(type);
       }
     } catch (error) {
@@ -90,7 +93,7 @@ export default function ReviewsSection() {
         : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'
     }`}>
       <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
+        {/* Header with Rating Summary */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -98,18 +101,59 @@ export default function ReviewsSection() {
           viewport={{ once: true }}
           className="mb-12"
         >
-          <h2 className={`text-3xl md:text-5xl font-bold mb-3 ${
-            isDarkMode 
-              ? 'bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent'
-              : 'text-gray-900'
-          }`}>
-            💬 Reviews
-          </h2>
-          <p className={`text-sm md:text-base ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            {totalCount > 5
-              ? `Showing ${displayType === 'daily' ? 'daily rotation' : displayType} reviews`
-              : 'Customer reviews'}
-          </p>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-6">
+            <div>
+              <h2 className={`text-3xl md:text-5xl font-bold mb-3 ${
+                isDarkMode 
+                  ? 'bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent'
+                  : 'text-gray-900'
+              }`}>
+                Reviews
+              </h2>
+              <p className={`text-sm md:text-base ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                {totalCount > 5
+                  ? `Showing ${displayType === 'daily' ? 'daily rotation' : displayType} reviews`
+                  : 'Customer reviews'}
+              </p>
+            </div>
+
+            {/* Overall Rating Card */}
+            {totalCount > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+                viewport={{ once: true }}
+                className={`p-6 rounded-2xl border-2 backdrop-blur-sm ${
+                  isDarkMode
+                    ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30'
+                    : 'bg-yellow-50/60 border-yellow-200/60'
+                }`}
+              >
+                <div className="text-center">
+                  <div className="flex justify-center gap-1 mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        size={24}
+                        className={`${
+                          i < Math.round(averageRating)
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : isDarkMode ? 'text-gray-600' : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`}>
+                    {averageRating.toFixed(1)}
+                  </p>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {totalCount} {totalCount === 1 ? 'review' : 'reviews'}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </div>
         </motion.div>
 
         {reviews.length > 0 ? (

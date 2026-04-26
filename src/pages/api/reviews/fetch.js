@@ -29,6 +29,11 @@ export default async function handler(req, res) {
 
     let displayReviews;
 
+    // Calculate average rating
+    const averageRating = allReviews.length > 0
+      ? (allReviews.reduce((sum, review) => sum + (review.rating || 0), 0) / allReviews.length).toFixed(1)
+      : 0;
+
     if (type === 'all') {
       // Return all reviews
       displayReviews = allReviews;
@@ -55,6 +60,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       reviews: displayReviews,
       totalCount: allReviews.length,
+      averageRating: parseFloat(averageRating),
       type,
     });
   } catch (error) {
