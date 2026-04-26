@@ -6,6 +6,7 @@ import { auth, db } from '@/utils/firebase';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import productsData from '@/data/products.json';
 import Navbar from '@/components/Navbar';
+import ReviewsSection from '@/components/ReviewsSection';
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
@@ -429,6 +430,9 @@ export default function Home() {
             })}
           </motion.div>
         </div>
+
+        {/* Reviews Section */}
+        <ReviewsSection />
       </div>
 
       <style jsx global>{`
