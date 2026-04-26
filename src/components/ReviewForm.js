@@ -253,7 +253,7 @@ export default function ReviewForm({ isOpen, onClose, onSuccess, isDarkMode = tr
             </motion.div>
           )}
 
-          {/* Username (Auto-filled) */}
+          {/* Username (Auto-filled, Read-only) */}
           <div>
             <label className={`block text-sm font-semibold mb-2 ${
               isDarkMode ? 'text-gray-300' : 'text-gray-700'
@@ -263,15 +263,15 @@ export default function ReviewForm({ isOpen, onClose, onSuccess, isDarkMode = tr
             <input
               type="text"
               value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              className={`w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-[#FF6B35] transition-all ${
+              readOnly
+              className={`w-full px-4 py-2 rounded-lg border-2 focus:outline-none transition-all ${
                 isDarkMode
-                  ? 'bg-white/5 border-white/10 text-white placeholder-gray-500'
-                  : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400'
+                  ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 cursor-not-allowed'
+                  : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400 cursor-not-allowed'
               }`}
             />
             <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              Auto-filled from your account
+              Auto-filled from your account (cannot be changed)
             </p>
           </div>
 
