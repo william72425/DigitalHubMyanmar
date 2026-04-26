@@ -1,5 +1,5 @@
 import { db } from '../../../utils/firebase';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -10,19 +10,22 @@ export default async function handler(req, res) {
 
   try {
     const reviewsRef = collection(db, 'reviews');
+    // Simplified query - no composite index needed
     const q = query(
       reviewsRef,
-      where('isPublic', '==', true),
       orderBy('createdAt', 'desc'),
       limit(100)
     );
 
     const snapshot = await getDocs(q);
-    const allReviews = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt),
-    }));
+    const allReviews = snapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt),
+      }))
+      // Filter for public reviews in code
+      .filter(review => review.isPublic !== false);
 
     let displayReviews;
 
