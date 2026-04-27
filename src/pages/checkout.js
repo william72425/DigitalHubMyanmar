@@ -253,6 +253,18 @@ export default function Checkout() {
                   <span className="text-gray-400">Duration</span>
                   <span className="text-gray-300 font-medium">{product.duration}</span>
                 </div>
+                {product.account_status && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">Account Status</span>
+                    <span className="text-[#00D4FF] font-medium">{product.account_status}</span>
+                  </div>
+                )}
+                {product.warranty && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">Warranty</span>
+                    <span className="text-green-400 font-medium">{product.warranty}</span>
+                  </div>
+                )}
                 
                 <div className="h-px bg-white/5 my-2" />
                 
