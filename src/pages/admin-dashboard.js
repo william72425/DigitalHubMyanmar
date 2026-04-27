@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import { auth, db } from '@/utils/firebase';
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
-import AdminThemeSwitcher from '@/components/AdminThemeSwitcher';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function AdminDashboard() {
@@ -94,11 +93,6 @@ export default function AdminDashboard() {
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Admin Dashboard</h1>
 
-          {/* Global Theme Switcher */}
-          <div className="mb-6">
-            <AdminThemeSwitcher />
-          </div>
-          
           {/* Tabs */}
           <div className="flex gap-2 mb-6 border-b border-white/20 pb-2 flex-wrap">
             <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg ${activeTab === 'users' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>

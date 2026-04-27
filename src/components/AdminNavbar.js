@@ -49,6 +49,7 @@ export default function AdminNavbar() {
                   <Link href="/admin/users" className="block px-4 py-2 text-sm hover:opacity-80" style={{ color: 'var(--text-primary)' }}>Users & Promo</Link>
                   <Link href="/admin/orders" className="block px-4 py-2 text-sm hover:opacity-80" style={{ color: 'var(--text-primary)' }}>Orders</Link>
                   <Link href="/admin/reviews" className="block px-4 py-2 text-sm hover:opacity-80" style={{ color: 'var(--text-primary)' }}>Reviews</Link>
+                  <Link href="/admin/themes" className="block px-4 py-2 text-sm hover:opacity-80" style={{ color: 'var(--text-primary)' }}>Themes</Link>
                 </div>
               </div>
             )}
@@ -90,6 +91,9 @@ export default function AdminNavbar() {
                 </Link>
                 <Link href="/admin/reviews" onClick={() => setMobileMenuOpen(false)} className="text-sm hover:underline" style={{ color: 'var(--brand-primary)' }}>
                   Reviews
+                </Link>
+                <Link href="/admin/themes" onClick={() => setMobileMenuOpen(false)} className="text-sm hover:underline" style={{ color: 'var(--brand-primary)' }}>
+                  Themes
                 </Link>
               </>
             )}

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db, auth } from '@/utils/firebase';
+import { db } from '@/utils/firebase';
 
 const ThemeContext = createContext(null);
 
@@ -254,13 +254,10 @@ export function ThemeProvider({ children }) {
       const password = typeof window !== 'undefined'
         ? sessionStorage.getItem('admin_password') || ''
         : '';
-      const authToken = auth.currentUser
-        ? await auth.currentUser.getIdToken()
-        : '';
       const res = await fetch('/api/admin/update-theme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ themeId: newThemeId, password, authToken }),
+        body: JSON.stringify({ themeId: newThemeId, password }),
       });
       if (!res.ok) {
         // Revert on failure so admin sees the actual state
