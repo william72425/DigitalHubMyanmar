@@ -76,11 +76,7 @@ export default function ReviewsPage() {
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       </Head>
 
-      <div className={`min-h-screen transition-all duration-300 relative overflow-x-hidden ${
-        isDarkMode
-          ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]'
-          : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'
-      }`}>
+      <div className="min-h-screen transition-all duration-300 relative overflow-x-hidden" style={{ background: 'linear-gradient(135deg, var(--bg-primary), var(--bg-secondary), var(--bg-primary))' }}>
         {/* Background blobs */}
         <motion.div 
           className={`absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl ${
