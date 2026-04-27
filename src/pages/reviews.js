@@ -5,21 +5,17 @@ import Link from 'next/link';
 import ReviewCard from '../components/ReviewCard';
 import ReviewForm from '../components/ReviewForm';
 import { ChevronLeft } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const reviewsPerPage = 10;
 
   useEffect(() => {
-    // Check dark mode from localStorage
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else setIsDarkMode(true);
-
     fetchAllReviews();
   }, []);
 

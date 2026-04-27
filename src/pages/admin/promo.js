@@ -5,6 +5,7 @@ import { db } from '@/utils/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import AdminNavbar from '@/components/AdminNavbar';
 import productsData from '@/data/products.json';
+import { useTheme } from '@/context/ThemeContext';
 
 // Product Selector Component
 const ProductSelector = ({ settings, onChange }) => {
@@ -112,7 +113,7 @@ const OptionFields = ({ optionType, settings, onChange }) => {
 
 export default function AdminPromo() {
   const router = useRouter();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [promoCodes, setPromoCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -129,26 +130,11 @@ export default function AdminPromo() {
   });
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
     const adminAuth = sessionStorage.getItem('admin_auth');
     if (adminAuth !== 'true') { router.push('/admin'); return; }
     fetchPromoCodes();
   }, []);
 
-  const toggleTheme = () => { const newTheme = !isDarkMode; setIsDarkMode(newTheme); localStorage.setItem('theme', newTheme ? 'dark' : 'light'); };
-  const fetchPromoCodes = async () => { setLoading(true); try { const snapshot = await getDocs(collection(db, 'promo_codes')); setPromoCodes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); } catch (error) { console.error(error); } setLoading(false); };
-  const handleSettingChange = (key, value) => { setFormData(prev => ({ ...prev, settings: { ...prev.settings, [key]: value } })); };
-  
-  const resetForm = () => {
-    setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, used_count: 0, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} });
-    setIsPartner(false);
-    setPartnerName('');
-    setPartnerPassword('');
-    setCommissionPercent(10);
-    setEditingCode(null);
-  };
 
   const createPromoCode = async () => {
     if (!formData.code.trim()) { alert('Please enter a promo code'); return; }
@@ -273,7 +259,7 @@ export default function AdminPromo() {
     <>
       <Head><title>Admin - Promo Codes</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <AdminNavbar />
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex justify-between items-center mb-6">
             <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Codes</h1>

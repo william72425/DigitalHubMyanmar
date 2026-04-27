@@ -5,10 +5,11 @@ import { db } from '@/utils/firebase';
 import { collection, getDocs, updateDoc, doc, query, where, getDoc } from 'firebase/firestore';
 import AdminNavbar from '@/components/AdminNavbar';
 import { awardPurchasePoints } from '@/utils/pointsSystem';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function AdminOrders() {
   const router = useRouter();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -20,9 +21,6 @@ export default function AdminOrders() {
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
     
     const adminAuth = sessionStorage.getItem('admin_auth');
     if (adminAuth !== 'true') {
@@ -32,11 +30,6 @@ export default function AdminOrders() {
     fetchOrders();
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -138,7 +131,7 @@ export default function AdminOrders() {
     <>
       <Head><title>Admin - Orders | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <AdminNavbar />
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex justify-between items-center mb-6">

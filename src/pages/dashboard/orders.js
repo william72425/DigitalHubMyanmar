@@ -5,21 +5,18 @@ import { auth, db } from '@/utils/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function UserOrders() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
-
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
         router.push('/auth');
@@ -70,11 +67,6 @@ export default function UserOrders() {
     setShowModal(true);
   };
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   if (loading) {
     return (
@@ -88,7 +80,7 @@ export default function UserOrders() {
     <>
       <Head><title>My Orders | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <Navbar />
         
         <div className="container mx-auto px-4 py-24 max-w-6xl">
           <div className="flex justify-between items-center mb-6">

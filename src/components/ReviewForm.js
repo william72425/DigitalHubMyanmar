@@ -5,8 +5,10 @@ import { auth, db } from '@/utils/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
+import { useTheme } from '@/context/ThemeContext';
 
-export default function ReviewForm({ isOpen, onClose, onSuccess, isDarkMode = true }) {
+export default function ReviewForm({ isOpen, onClose, onSuccess }) {
+  const { isDarkMode } = useTheme();
   const [currentUser, setCurrentUser] = useState(null);
   const [userName, setUserName] = useState('');
   const [rating, setRating] = useState(5);
