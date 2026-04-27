@@ -461,7 +461,7 @@ export default function Admin() {
                             value={['Private', 'Team Account', 'Share Account'].includes(product.account_status) ? product.account_status : (product.account_status ? '__custom__' : '')} 
                             onChange={(e) => {
                               if (e.target.value === '__custom__') {
-                                updateProduct(product.id, 'account_status', product.account_status || '');
+                                updateProduct(product.id, 'account_status', product.account_status && !['Private', 'Team Account', 'Share Account'].includes(product.account_status) ? product.account_status : 'Custom');
                               } else {
                                 updateProduct(product.id, 'account_status', e.target.value);
                               }
