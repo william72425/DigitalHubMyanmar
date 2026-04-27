@@ -135,6 +135,17 @@ export default function AdminPromo() {
     fetchPromoCodes();
   }, []);
 
+  const fetchPromoCodes = async () => { setLoading(true); try { const snapshot = await getDocs(collection(db, 'promo_codes')); setPromoCodes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); } catch (error) { console.error(error); } setLoading(false); };
+  const handleSettingChange = (key, value) => { setFormData(prev => ({ ...prev, settings: { ...prev.settings, [key]: value } })); };
+
+  const resetForm = () => {
+    setFormData({ code: '', option_type: 'first_purchase_discount', usage_limit: 100, used_count: 0, valid_from: new Date().toISOString().split('T')[0], valid_until: '', is_active: true, settings: {} });
+    setIsPartner(false);
+    setPartnerName('');
+    setPartnerPassword('');
+    setCommissionPercent(10);
+    setEditingCode(null);
+  };
 
   const createPromoCode = async () => {
     if (!formData.code.trim()) { alert('Please enter a promo code'); return; }
