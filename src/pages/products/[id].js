@@ -370,7 +370,7 @@ export default function ProductDetail() {
 
               <button 
                 onClick={() => setShowBuyOptions(!showBuyOptions)}
-                className={`w-full ${isDarkMode ? "bg-white/5 border-white/10 hover:bg-white/10" : "bg-black/5 border-black/10 hover:bg-black/10"} py-4 rounded-2xl font-bold text-sm transition-all`} style={{color: "var(--text-primary)"}}
+                className={`w-full ${isDarkMode ? "bg-white/5 border-white/10 hover:bg-white/10" : "bg-black/5 border-black/10 hover:bg-black/10"} border py-4 rounded-2xl font-bold text-sm transition-all`} style={{color: "var(--text-primary)"}}
               >
                 {showBuyOptions ? '🔼 ပိတ်ရန်' : '💬 အခြားနည်းလမ်းဖြင့် ဝယ်ယူရန်'}
               </button>

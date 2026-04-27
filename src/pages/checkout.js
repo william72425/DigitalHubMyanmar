@@ -364,7 +364,7 @@ export default function Checkout() {
                     value={userNote}
                     onChange={(e) => setUserNote(e.target.value)}
                     placeholder="Account Email သို့မဟုတ် အခြားမှတ်ချက်များ ရေးပေးပါ..."
-                    className={`w-full ${isDarkMode ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"} rounded-2xl p-4 text-sm focus:border-[#FF6B35]/50 focus:outline-none transition-all`} style={{color: "var(--text-primary)"}}
+                    className={`w-full ${isDarkMode ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"} border rounded-2xl p-4 text-sm focus:border-[#FF6B35]/50 focus:outline-none transition-all`} style={{color: "var(--text-primary)"}}
                     rows="3"
                   ></textarea>
                 </div>
