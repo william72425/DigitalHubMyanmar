@@ -15,7 +15,9 @@
     "logo_size": 45,
     "is_featured": true,
     "poster_16x9": "/posters/1776151147608-16x9-1776448688332.jpg",
-    "category_3x4": "/posters/1776151147608-3x4-1776448691953.jpg"
+    "category_3x4": "/posters/1776151147608-3x4-1776448691953.jpg",
+    "account_status": "Private",
+    "warranty": "1 Month"
   },
   {
     "id": 1,
@@ -34,7 +36,9 @@
     ],
     "special_price": 90000,
     "discount_percent": "25",
-    "logo_size": 45
+    "logo_size": 45,
+    "account_status": "Private",
+    "warranty": "1 Month"
   },
   {
     "id": 2,
