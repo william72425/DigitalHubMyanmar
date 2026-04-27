@@ -3,16 +3,13 @@ import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 
 export default function ReviewCard({ review, index, isDarkMode }) {
-  const containerVariants = {
+  const hoverVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
       y: 0,
       transition: { delay: index * 0.1, duration: 0.5 },
     },
-  };
-
-  const hoverVariants = {
     hover: {
       y: -4,
       boxShadow: isDarkMode 
@@ -52,11 +49,10 @@ export default function ReviewCard({ review, index, isDarkMode }) {
 
   return (
     <motion.div
-      variants={containerVariants}
+      variants={hoverVariants}
       initial="hidden"
       animate="visible"
       whileHover="hover"
-      variants={hoverVariants}
       className={`p-5 md:p-6 rounded-2xl border-2 transition-all h-full backdrop-blur-sm ${
         isDarkMode
           ? 'bg-white/5 border-white/10 hover:border-[#FF6B35]/50'
@@ -83,11 +79,34 @@ export default function ReviewCard({ review, index, isDarkMode }) {
       </div>
 
       {/* Review Comment */}
-      <p className={`text-sm md:text-base leading-relaxed line-clamp-3 ${
-        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-      }`}>
+      <p className={`text-sm md:text-base leading-relaxed ${
+        review.adminReply ? '' : 'line-clamp-3'
+      } ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
         {review.comment}
       </p>
+
+      {/* Admin Reply */}
+      {review.adminReply && (
+        <div className={`mt-4 p-3 rounded-lg border-l-4 ${
+          isDarkMode
+            ? 'bg-blue-500/10 border-blue-500/50'
+            : 'bg-blue-50 border-blue-400'
+        }`}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className={`text-xs font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+              Admin
+            </span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-blue-400">
+              <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.2"/>
+              <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+            </svg>
+          </div>
+          <p className={`text-xs md:text-sm leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            {review.adminReply}
+          </p>
+        </div>
+      )}
     </motion.div>
   );
 }

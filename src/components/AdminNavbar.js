@@ -46,6 +46,7 @@ export default function AdminNavbar({ isDarkMode, toggleTheme }) {
                   <Link href="/admin" className="block px-4 py-2 text-sm hover:bg-white/10">📦 Products & Features</Link>
                   <Link href="/admin/users" className="block px-4 py-2 text-sm hover:bg-white/10">👥 Users & Promo</Link>
                   <Link href="/admin/orders" className="block px-4 py-2 text-sm hover:bg-white/10">📦 Orders</Link>
+                  <Link href="/admin/reviews" className="block px-4 py-2 text-sm hover:bg-white/10">💬 Reviews</Link>
                 </div>
               </div>
             )}
@@ -84,6 +85,9 @@ export default function AdminNavbar({ isDarkMode, toggleTheme }) {
                 </Link>
                 <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[#FF6B35] hover:underline">
                   👥 Users & Promo
+                </Link>
+                <Link href="/admin/reviews" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[#FF6B35] hover:underline">
+                  💬 Reviews
                 </Link>
               </>
             )}

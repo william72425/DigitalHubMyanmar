@@ -1,16 +1,15 @@
 import { db } from '../../../utils/firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { type = 'daily' } = req.query;
+  const { type = 'daily', admin } = req.query;
 
   try {
     const reviewsRef = collection(db, 'reviews');
-    // Simplified query - no composite index needed
     const q = query(
       reviewsRef,
       orderBy('createdAt', 'desc'),
@@ -23,43 +22,78 @@ export default async function handler(req, res) {
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt),
-      }))
-      // Filter for public reviews in code
-      .filter(review => review.isPublic !== false);
+      }));
 
-    let displayReviews;
+    // For admin, return all reviews including hidden ones
+    if (admin === 'true') {
+      const averageRating = allReviews.length > 0
+        ? (allReviews.reduce((sum, review) => sum + (review.rating || 0), 0) / allReviews.length).toFixed(1)
+        : 0;
 
-    // Calculate average rating
-    const averageRating = allReviews.length > 0
-      ? (allReviews.reduce((sum, review) => sum + (review.rating || 0), 0) / allReviews.length).toFixed(1)
-      : 0;
-
-    if (type === 'all') {
-      // Return all reviews
-      displayReviews = allReviews;
-    } else if (type === 'random') {
-      // Random 5 reviews
-      displayReviews = allReviews.sort(() => Math.random() - 0.5).slice(0, 5);
-    } else if (type === 'oldest') {
-      // Oldest 5 reviews
-      displayReviews = allReviews.reverse().slice(0, 5);
-    } else if (type === 'recent') {
-      // Recent 5 reviews
-      displayReviews = allReviews.slice(0, 5);
-    } else {
-      // Daily rotation based on date
-      const today = new Date().toDateString();
-      const dayNumber = new Date().getDate();
-      const startIndex = (dayNumber % Math.max(1, Math.ceil(allReviews.length / 5))) * 5;
-      displayReviews = allReviews.slice(startIndex, startIndex + 5);
-      if (displayReviews.length < 5) {
-        displayReviews = [...displayReviews, ...allReviews.slice(0, 5 - displayReviews.length)];
-      }
+      return res.status(200).json({
+        reviews: allReviews,
+        totalCount: allReviews.length,
+        averageRating: parseFloat(averageRating),
+        type: 'all',
+      });
     }
 
+    // For public, filter out hidden reviews
+    const publicReviews = allReviews.filter(review => review.isPublic !== false && review.isHidden !== true);
+
+    // Track view count for non-admin requests
+    if (type !== 'all') {
+      const displayedIds = [];
+      let displayReviews;
+
+      if (type === 'random') {
+        displayReviews = [...publicReviews].sort(() => Math.random() - 0.5).slice(0, 5);
+      } else if (type === 'oldest') {
+        displayReviews = [...publicReviews].reverse().slice(0, 5);
+      } else if (type === 'recent') {
+        displayReviews = publicReviews.slice(0, 5);
+      } else {
+        // Daily rotation
+        const dayNumber = new Date().getDate();
+        const startIndex = (dayNumber % Math.max(1, Math.ceil(publicReviews.length / 5))) * 5;
+        displayReviews = publicReviews.slice(startIndex, startIndex + 5);
+        if (displayReviews.length < 5 && publicReviews.length >= 5) {
+          displayReviews = [...displayReviews, ...publicReviews.slice(0, 5 - displayReviews.length)];
+        }
+      }
+
+      // Increment view counts for displayed reviews
+      for (const review of displayReviews) {
+        displayedIds.push(review.id);
+        try {
+          await updateDoc(doc(db, 'reviews', review.id), {
+            viewCount: increment(1)
+          });
+        } catch (e) {
+          // Ignore view count errors
+        }
+      }
+
+      const averageRating = publicReviews.length > 0
+        ? (publicReviews.reduce((sum, review) => sum + (review.rating || 0), 0) / publicReviews.length).toFixed(1)
+        : 0;
+
+      return res.status(200).json({
+        reviews: displayReviews,
+        totalCount: publicReviews.length,
+        averageRating: parseFloat(averageRating),
+        type,
+      });
+    }
+
+    // type === 'all' for public
+    const averageRating = publicReviews.length > 0
+      ? (publicReviews.reduce((sum, review) => sum + (review.rating || 0), 0) / publicReviews.length).toFixed(1)
+      : 0;
+
     return res.status(200).json({
-      reviews: displayReviews,
-      totalCount: allReviews.length,
+      reviews: publicReviews,
+      totalCount: publicReviews.length,
       averageRating: parseFloat(averageRating),
       type,
     });
