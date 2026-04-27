@@ -328,6 +328,7 @@ export default function Admin() {
     const data = await res.json();
     if (data.success) {
       sessionStorage.setItem('admin_auth', 'true');
+      sessionStorage.setItem('admin_password', password);
       setIsAuthenticated(true);
       fetchProducts();
       fetchFeatures();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Star, X, Check, LogIn } from 'lucide-react';
 import { auth, db } from '@/utils/firebase';
@@ -15,6 +15,7 @@ export default function ReviewForm({ isOpen, onClose, onSuccess, isDarkMode = tr
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     // Check current user
@@ -46,11 +47,14 @@ export default function ReviewForm({ isOpen, onClose, onSuccess, isDarkMode = tr
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (isSubmittingRef.current) return;
+    
     if (!currentUser) {
       setError('Please login to write a review');
       return;
     }
 
+    isSubmittingRef.current = true;
     setError('');
     setLoading(true);
 
@@ -87,6 +91,7 @@ export default function ReviewForm({ isOpen, onClose, onSuccess, isDarkMode = tr
       setError(err.message);
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
