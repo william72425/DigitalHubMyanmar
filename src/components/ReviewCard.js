@@ -1,25 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 
 export default function ReviewCard({ review, index, isDarkMode }) {
-  // Track view when component mounts
-  useEffect(() => {
-    const trackView = async () => {
-      try {
-        await fetch('/api/reviews/track-view', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reviewId: review.id }),
-        });
-      } catch (error) {
-        console.error('Error tracking view:', error);
-      }
-    };
-    
-    trackView();
-  }, [review.id]);
-
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
