@@ -197,7 +197,7 @@ export default function Checkout() {
           >
             <h1 className="text-3xl font-black tracking-tight">🛒 Checkout</h1>
             <div className="text-right">
-              <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold block">Order ID</span>
+              <span className={`text-[10px] uppercase tracking-widest ${isDarkMode ? "text-gray-500" : "text-gray-500"} font-bold block`}>Order ID</span>
               <span className="text-xs font-mono text-[#FF6B35]">#{orderId}</span>
             </div>
           </motion.div>
@@ -209,21 +209,21 @@ export default function Checkout() {
             initial="hidden"
             animate="visible"
           >
-            <div className="absolute top-5 left-0 w-full h-[2px] bg-white/5 z-0" />
+            <div className={`absolute top-5 left-0 w-full h-[2px] ${isDarkMode ? "bg-white/5" : "bg-black/5"} z-0`} />
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex flex-col items-center flex-1 relative z-10">
                 <motion.div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all ${
                     currentStep >= step
                       ? 'bg-[#FF6B35] border-[#FF6B35] text-white shadow-[0_0_20px_rgba(255,107,53,0.4)]'
-                      : 'bg-[#0a0f2a] border-white/10 text-gray-500'
+                      : `${isDarkMode ? "bg-[#0a0f2a] border-white/10" : "bg-gray-100 border-black/10"} text-gray-500`
                   }`}
                   animate={currentStep === step ? { scale: [1, 1.1, 1] } : {}}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
                   {step === 1 ? '📋' : step === 2 ? '💳' : '✅'}
                 </motion.div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${currentStep >= step ? 'text-white' : 'text-gray-500'}`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${currentStep >= step ? (isDarkMode ? 'text-white' : 'text-gray-900') : 'text-gray-500'}`}>
                   {step === 1 ? 'Review' : step === 2 ? 'Payment' : 'Confirm'}
                 </span>
               </div>
@@ -238,7 +238,7 @@ export default function Checkout() {
           >
             {/* Order Summary Card */}
             <motion.div 
-              className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl"
+              className={`${isDarkMode ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"} backdrop-blur-xl rounded-3xl p-6 border shadow-2xl`}
               variants={itemVariants}
             >
               <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
@@ -247,19 +247,19 @@ export default function Checkout() {
               
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400">Product</span>
-                  <span className="font-bold text-white">{product.name}</span>
+                  <span className={isDarkMode ? "text-gray-400" : "text-gray-600"}>Product</span>
+                  <span className="font-bold" style={{color: "var(--text-primary)"}}>{product.name}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400">Duration</span>
-                  <span className="text-gray-300 font-medium">{product.duration}</span>
+                  <span className={isDarkMode ? "text-gray-400" : "text-gray-600"}>Duration</span>
+                  <span className={`${isDarkMode ? "text-gray-300" : "text-gray-700"} font-medium`}>{product.duration}</span>
                 </div>
                 
-                <div className="h-px bg-white/5 my-2" />
+                <div className={`h-px ${isDarkMode ? "bg-white/5" : "bg-black/5"} my-2`} />
                 
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400">Hubby Store ဈေး</span>
-                  <span className="text-gray-300 font-bold">{product.hubby_price?.toLocaleString()} MMK</span>
+                  <span className={isDarkMode ? "text-gray-400" : "text-gray-600"}>Hubby Store ဈေး</span>
+                  <span className={`${isDarkMode ? "text-gray-300" : "text-gray-700"} font-bold`}>{product.hubby_price?.toLocaleString()} MMK</span>
                 </div>
                 
                 {specialDiscount > 0 && (
@@ -277,7 +277,7 @@ export default function Checkout() {
                 )}
                 
                 <div className="pt-4 flex justify-between items-end">
-                  <span className="text-gray-300 font-black uppercase tracking-widest text-xs">Total Amount</span>
+                  <span className={`${isDarkMode ? "text-gray-300" : "text-gray-700"} font-black uppercase tracking-widest text-xs`}>Total Amount</span>
                   <div className="text-right">
                     <motion.div 
                       className="text-3xl font-black text-[#FF6B35] tracking-tighter"
@@ -293,7 +293,7 @@ export default function Checkout() {
             
             {/* Payment Instructions Card */}
             <motion.div 
-              className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl"
+              className={`${isDarkMode ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"} backdrop-blur-xl rounded-3xl p-6 border shadow-2xl`}
               variants={itemVariants}
             >
               <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
@@ -302,27 +302,27 @@ export default function Checkout() {
               
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-3">
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 hover:border-[#FF6B35]/30 transition-all group">
+                  <div className={`p-4 ${isDarkMode ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"} rounded-2xl border hover:border-[#FF6B35]/30 transition-all group`}>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">🏦 KBZ Bank</span>
+                      <span className={`text-xs font-bold ${isDarkMode ? "text-gray-400" : "text-gray-600"} uppercase tracking-widest`}>🏦 KBZ Bank</span>
                       <span className="text-[10px] text-[#FF6B35] font-black">SCAN TO PAY</span>
                     </div>
-                    <p className="text-lg font-black text-white group-hover:text-[#FF6B35] transition-colors">0987654321</p>
-                    <p className="text-xs text-gray-500 font-bold">Name: William</p>
+                    <p className={`text-lg font-black ${isDarkMode ? "text-white" : "text-gray-900"} group-hover:text-[#FF6B35] transition-colors`}>0987654321</p>
+                    <p className={`text-xs ${isDarkMode ? "text-gray-500" : "text-gray-500"} font-bold`}>Name: William</p>
                   </div>
                   
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 hover:border-[#00D4FF]/30 transition-all group">
+                  <div className={`p-4 ${isDarkMode ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"} rounded-2xl border hover:border-[#00D4FF]/30 transition-all group`}>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">📱 WavePay</span>
+                      <span className={`text-xs font-bold ${isDarkMode ? "text-gray-400" : "text-gray-600"} uppercase tracking-widest`}>📱 WavePay</span>
                     </div>
-                    <p className="text-lg font-black text-white group-hover:text-[#00D4FF] transition-colors">09798268154</p>
-                    <p className="text-xs text-gray-500 font-bold">Name: Digital Hub Myanmar</p>
+                    <p className={`text-lg font-black ${isDarkMode ? "text-white" : "text-gray-900"} group-hover:text-[#00D4FF] transition-colors`}>09798268154</p>
+                    <p className={`text-xs ${isDarkMode ? "text-gray-500" : "text-gray-500"} font-bold`}>Name: Digital Hub Myanmar</p>
                   </div>
                 </div>
 
                 {/* New Feature: Screenshot Upload */}
                 <div className="pt-4">
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                  <label className={`block text-xs font-bold ${isDarkMode ? "text-gray-400" : "text-gray-600"} uppercase tracking-widest mb-2`}>
                     📸 Upload Payment Screenshot
                   </label>
                   <div 
@@ -330,7 +330,7 @@ export default function Checkout() {
                     className={`cursor-pointer border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center transition-all ${
                       screenshotPreview 
                         ? 'border-green-500/50 bg-green-500/5' 
-                        : 'border-white/10 bg-white/5 hover:border-[#FF6B35]/50'
+                        : `${isDarkMode ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5"} hover:border-[#FF6B35]/50`
                     }`}
                   >
                     <input 
@@ -348,7 +348,7 @@ export default function Checkout() {
                     ) : (
                       <>
                         <span className="text-3xl mb-2">📤</span>
-                        <span className="text-xs text-gray-400 font-medium">Click to upload screenshot</span>
+                        <span className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-600"} font-medium`}>Click to upload screenshot</span>
                         <span className="text-[10px] text-gray-500 mt-1">Max 5MB (JPG, PNG)</span>
                       </>
                     )}
@@ -357,14 +357,14 @@ export default function Checkout() {
 
                 {/* New Feature: Note to Admin */}
                 <div className="pt-2">
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                  <label className={`block text-xs font-bold ${isDarkMode ? "text-gray-400" : "text-gray-600"} uppercase tracking-widest mb-2`}>
                     📝 Note to Admin (Optional)
                   </label>
                   <textarea 
                     value={userNote}
                     onChange={(e) => setUserNote(e.target.value)}
                     placeholder="Account Email သို့မဟုတ် အခြားမှတ်ချက်များ ရေးပေးပါ..."
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-[#FF6B35]/50 focus:outline-none transition-all"
+                    className={`w-full ${isDarkMode ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"} rounded-2xl p-4 text-sm focus:border-[#FF6B35]/50 focus:outline-none transition-all`} style={{color: "var(--text-primary)"}}
                     rows="3"
                   ></textarea>
                 </div>
@@ -379,7 +379,7 @@ export default function Checkout() {
                 className={`w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 ${
                   screenshot 
                     ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF8C35] text-white shadow-[0_10px_30px_rgba(255,107,53,0.3)]' 
-                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                    : `${isDarkMode ? "bg-gray-700 text-gray-400" : "bg-gray-300 text-gray-500"} cursor-not-allowed`
                 }`}
                 whileHover={screenshot ? { scale: 1.02, y: -2 } : {}}
                 whileTap={screenshot ? { scale: 0.98 } : {}}
