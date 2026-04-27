@@ -1,6 +1,5 @@
 import Head from 'next/head';
 import Navbar from '@/components/Navbar';
-import AdminThemeSwitcher from '@/components/AdminThemeSwitcher';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function ThemePage() {
@@ -23,11 +22,6 @@ export default function ThemePage() {
                 {isDarkMode ? 'Switch to Light' : 'Switch to Dark'}
               </button>
             </div>
-          </div>
-
-          {/* Global Theme Switcher */}
-          <div className="max-w-md mx-auto mt-6">
-            <AdminThemeSwitcher />
           </div>
         </div>
       </div>

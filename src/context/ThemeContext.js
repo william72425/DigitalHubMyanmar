@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/utils/firebase';
 
 const ThemeContext = createContext(null);
 
@@ -194,13 +196,35 @@ export function ThemeProvider({ children }) {
   const [mode, setMode] = useState('dark');
   const [mounted, setMounted] = useState(false);
 
-  // Load persisted theme on mount
+  // Load global theme from Firestore (admin-controlled), fall back to localStorage cache
   useEffect(() => {
-    const savedThemeId = localStorage.getItem('global_theme') || 'midnight-matrix';
     const savedMode = localStorage.getItem('theme') || 'dark';
-    setThemeId(savedThemeId);
     setMode(savedMode);
-    setMounted(true);
+
+    const loadGlobalTheme = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'theme'));
+        if (snap.exists()) {
+          const data = snap.data();
+          const firestoreTheme = data.themeId || 'midnight-matrix';
+          if (themes[firestoreTheme]) {
+            setThemeId(firestoreTheme);
+            localStorage.setItem('global_theme', firestoreTheme);
+          }
+        } else {
+          // No Firestore doc yet — use localStorage cache or default
+          const cached = localStorage.getItem('global_theme');
+          if (cached && themes[cached]) setThemeId(cached);
+        }
+      } catch {
+        // Firestore unavailable — use localStorage cache
+        const cached = localStorage.getItem('global_theme');
+        if (cached && themes[cached]) setThemeId(cached);
+      }
+      setMounted(true);
+    };
+
+    loadGlobalTheme();
   }, []);
 
   // Apply CSS variables whenever theme or mode changes
@@ -220,12 +244,19 @@ export function ThemeProvider({ children }) {
     document.body.style.fontFamily = vars['--font-body'];
   }, [themeId, mode, mounted]);
 
-  const setTheme = useCallback((newThemeId) => {
+  // Admin-only: save theme to Firestore so all users see the change
+  const setTheme = useCallback(async (newThemeId) => {
     if (!themes[newThemeId]) return;
     setThemeId(newThemeId);
     localStorage.setItem('global_theme', newThemeId);
+    try {
+      await setDoc(doc(db, 'settings', 'theme'), { themeId: newThemeId }, { merge: true });
+    } catch (err) {
+      console.error('Failed to save theme to Firestore:', err);
+    }
   }, []);
 
+  // User-controlled: Day/Dark mode stays in localStorage (per-browser)
   const toggleMode = useCallback(() => {
     setMode(prev => {
       const next = prev === 'dark' ? 'light' : 'dark';
