@@ -92,20 +92,20 @@ export default function PartnerDashboard() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+        <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-primary)', borderTopColor: 'transparent' }}></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 font-sans selection:bg-[#FF6B35]/30">
+    <div className="min-h-screen font-sans selection:bg-[#FF6B35]/30" style={{ background: 'linear-gradient(135deg, var(--bg-primary), var(--bg-secondary), var(--bg-primary))', color: 'var(--text-primary)' }}>
       <Head>
         <title>Partner Elite Dashboard | Digital Hub Myanmar</title>
       </Head>
 
       {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5">
+      <nav className="fixed top-0 w-full z-50 backdrop-blur-xl" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-tr from-[#FF6B35] to-[#f97316] rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">

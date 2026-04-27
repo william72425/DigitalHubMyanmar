@@ -151,7 +151,7 @@ export default function ProductDetail() {
 
   if (loading || !product) {
     return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <motion.div 
           className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full"
           animate={{ rotate: 360 }}
@@ -182,7 +182,7 @@ export default function ProductDetail() {
   return (
     <>
       <Head><title>{product.name} | Digital Hub Myanmar</title></Head>
-      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30">
+      <div className="min-h-screen selection:bg-[#FF6B35]/30" style={{ background: 'linear-gradient(135deg, var(--bg-primary), var(--bg-secondary), var(--bg-primary))', color: 'var(--text-primary)' }}>
         {/* Background glow effects */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#FF6B35]/10 blur-[120px] rounded-full" />

@@ -44,8 +44,8 @@ export default function OrdersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+        <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-primary)', borderTopColor: 'transparent' }}></div>
       </div>
     );
   }
@@ -53,7 +53,7 @@ export default function OrdersPage() {
   return (
     <>
       <Head><title>My Orders | Digital Hub Myanmar</title></Head>
-      <div className={`min-h-screen ${isDarkMode ? 'bg-[#020617]' : 'bg-gray-50'}`}>
+      <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
         <Navbar />
         
         <div className="container mx-auto px-4 py-24 max-w-4xl">
