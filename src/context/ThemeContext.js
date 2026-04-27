@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/utils/firebase';
+import { db, auth } from '@/utils/firebase';
 
 const ThemeContext = createContext(null);
 
@@ -247,24 +247,33 @@ export function ThemeProvider({ children }) {
   // Admin-only: save theme via API so all users see the change
   const setTheme = useCallback(async (newThemeId) => {
     if (!themes[newThemeId]) return;
+    const prevThemeId = themeId;
     setThemeId(newThemeId);
     localStorage.setItem('global_theme', newThemeId);
     try {
       const password = typeof window !== 'undefined'
         ? sessionStorage.getItem('admin_password') || ''
         : '';
+      const authToken = auth.currentUser
+        ? await auth.currentUser.getIdToken()
+        : '';
       const res = await fetch('/api/admin/update-theme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ themeId: newThemeId, password }),
+        body: JSON.stringify({ themeId: newThemeId, password, authToken }),
       });
       if (!res.ok) {
+        // Revert on failure so admin sees the actual state
+        setThemeId(prevThemeId);
+        localStorage.setItem('global_theme', prevThemeId);
         console.error('Failed to save theme:', await res.text());
       }
     } catch (err) {
+      setThemeId(prevThemeId);
+      localStorage.setItem('global_theme', prevThemeId);
       console.error('Failed to save theme:', err);
     }
-  }, []);
+  }, [themeId]);
 
   // User-controlled: Day/Dark mode stays in localStorage (per-browser)
   const toggleMode = useCallback(() => {
