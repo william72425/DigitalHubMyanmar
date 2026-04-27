@@ -254,6 +254,18 @@ export default function Checkout() {
                   <span className={isDarkMode ? "text-gray-400" : "text-gray-600"}>Duration</span>
                   <span className={`${isDarkMode ? "text-gray-300" : "text-gray-700"} font-medium`}>{product.duration}</span>
                 </div>
+                {product.account_status && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">Account Status</span>
+                    <span className="text-[#00D4FF] font-medium">{product.account_status}</span>
+                  </div>
+                )}
+                {product.warranty && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">Warranty</span>
+                    <span className="text-green-400 font-medium">{product.warranty}</span>
+                  </div>
+                )}
                 
                 <div className={`h-px ${isDarkMode ? "bg-white/5" : "bg-black/5"} my-2`} />
                 

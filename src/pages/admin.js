@@ -151,6 +151,8 @@ export default function Admin() {
       logo_url: null,
       logo_size: 70,
       duration: '1 month',
+      account_status: '',
+      warranty: '',
       sort_order: products.length
     };
     setProducts([...products, newProduct]);
@@ -443,7 +445,7 @@ export default function Admin() {
                         </div>
                       </div>
                       
-                      <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-2">
+                      <div className="flex-1 grid grid-cols-2 md:grid-cols-8 gap-2">
                         <input type="text" value={product.name || ''} onChange={(e) => updateProduct(product.id, 'name', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm col-span-2" placeholder="Name" />
                         <select value={product.category || 'Others'} onChange={(e) => updateProduct(product.id, 'category', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm">
                           <option>Video Editing</option><option>Photo Editing</option><option>AI Tools</option><option>AI Chatbots</option><option>VPNs</option><option>Others</option>
@@ -454,6 +456,49 @@ export default function Admin() {
                         <input type="number" value={product.market_price || 0} onChange={(e) => updateProduct(product.id, 'market_price', parseInt(e.target.value) || 0)} className="bg-white/10 text-white p-2 rounded text-sm" placeholder="Market" />
                         <input type="number" value={product.hubby_price || 0} onChange={(e) => updateProduct(product.id, 'hubby_price', parseInt(e.target.value) || 0)} className="bg-white/10 text-white p-2 rounded text-sm" placeholder="Hubby" />
                         <input type="number" value={product.discount_percent || ''} onChange={(e) => updateProduct(product.id, 'discount_percent', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm" placeholder="%" />
+                        <div className="relative">
+                          <select 
+                            value={['Private', 'Team Account', 'Share Account'].includes(product.account_status) ? product.account_status : (product.account_status ? '__custom__' : '')} 
+                            onChange={(e) => {
+                              if (e.target.value === '__custom__') {
+                                updateProduct(product.id, 'account_status', product.account_status && !['Private', 'Team Account', 'Share Account'].includes(product.account_status) ? product.account_status : 'Custom');
+                              } else {
+                                updateProduct(product.id, 'account_status', e.target.value);
+                              }
+                            }} 
+                            className="bg-white/10 text-white p-2 rounded text-sm w-full"
+                          >
+                            <option value="">Account Status</option>
+                            <option value="Private">Private</option>
+                            <option value="Team Account">Team Account</option>
+                            <option value="Share Account">Share Account</option>
+                            <option value="__custom__">Custom...</option>
+                          </select>
+                          {product.account_status && !['Private', 'Team Account', 'Share Account'].includes(product.account_status) && (
+                            <input 
+                              type="text" 
+                              value={product.account_status} 
+                              onChange={(e) => updateProduct(product.id, 'account_status', e.target.value)} 
+                              className="bg-white/10 text-white p-2 rounded text-sm w-full mt-1" 
+                              placeholder="Custom status" 
+                            />
+                          )}
+                        </div>
+                        <select value={product.warranty || ''} onChange={(e) => updateProduct(product.id, 'warranty', e.target.value)} className="bg-white/10 text-white p-2 rounded text-sm">
+                          <option value="">Warranty</option>
+                          <option value="3 Days">3 Days</option>
+                          <option value="7 Days">7 Days</option>
+                          <option value="14 Days">14 Days</option>
+                          <option value="1 Week">1 Week</option>
+                          <option value="2 Weeks">2 Weeks</option>
+                          <option value="1 Month">1 Month</option>
+                          <option value="2 Months">2 Months</option>
+                          <option value="3 Months">3 Months</option>
+                          <option value="6 Months">6 Months</option>
+                          <option value="1 Year">1 Year</option>
+                          <option value="Lifetime">Lifetime</option>
+                          <option value="No Warranty">No Warranty</option>
+                        </select>
                       </div>
                       
                       <button onClick={() => deleteProduct(product.id)} className="bg-red-600/50 text-white px-3 py-2 rounded-lg text-sm">Delete</button>
