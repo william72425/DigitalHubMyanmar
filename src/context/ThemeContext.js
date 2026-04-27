@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/utils/firebase';
 
 const ThemeContext = createContext(null);
@@ -244,15 +244,25 @@ export function ThemeProvider({ children }) {
     document.body.style.fontFamily = vars['--font-body'];
   }, [themeId, mode, mounted]);
 
-  // Admin-only: save theme to Firestore so all users see the change
+  // Admin-only: save theme via API so all users see the change
   const setTheme = useCallback(async (newThemeId) => {
     if (!themes[newThemeId]) return;
     setThemeId(newThemeId);
     localStorage.setItem('global_theme', newThemeId);
     try {
-      await setDoc(doc(db, 'settings', 'theme'), { themeId: newThemeId }, { merge: true });
+      const password = typeof window !== 'undefined'
+        ? sessionStorage.getItem('admin_password') || ''
+        : '';
+      const res = await fetch('/api/admin/update-theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ themeId: newThemeId, password }),
+      });
+      if (!res.ok) {
+        console.error('Failed to save theme:', await res.text());
+      }
     } catch (err) {
-      console.error('Failed to save theme to Firestore:', err);
+      console.error('Failed to save theme:', err);
     }
   }, []);
 
