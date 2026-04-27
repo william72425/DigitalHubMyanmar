@@ -172,40 +172,6 @@ export default function ReviewsSection() {
                 </motion.div>
               ))}
             </motion.div>
-
-            {/* Action Buttons */}
-            <motion.div 
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              viewport={{ once: true }}
-            >
-              {totalCount > 5 && (
-                <Link href="/reviews">
-                  <motion.button 
-                    className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
-                      isDarkMode
-                        ? 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
-                        : 'bg-white/60 text-gray-800 hover:bg-white/80 border border-gray-200'
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    📖 View All Reviews
-                  </motion.button>
-                </Link>
-              )}
-              
-              <motion.button
-                onClick={() => setIsFormOpen(true)}
-                className="px-6 py-3 rounded-lg font-medium bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white transition-all whitespace-nowrap"
-                whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(255, 107, 53, 0.3)" }}
-                whileTap={{ scale: 0.95 }}
-              >
-                ✏️ Write Review
-              </motion.button>
-            </motion.div>
           </>
         ) : (
           <motion.div 
@@ -214,11 +180,45 @@ export default function ReviewsSection() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
           >
-            <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              No reviews yet. Be the first to review! 🎉
+            <p className={`text-lg mb-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              No reviews yet. Be the first to share your experience!
             </p>
           </motion.div>
         )}
+
+        {/* Action Buttons - Always Visible */}
+        <motion.div 
+          className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          viewport={{ once: true }}
+        >
+          {totalCount > 5 && (
+            <Link href="/reviews">
+              <motion.button 
+                className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  isDarkMode
+                    ? 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                    : 'bg-white/60 text-gray-800 hover:bg-white/80 border border-gray-200'
+                }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                📖 View All Reviews
+              </motion.button>
+            </Link>
+          )}
+          
+          <motion.button
+            onClick={() => setIsFormOpen(true)}
+            className="px-6 py-3 rounded-lg font-medium bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white transition-all whitespace-nowrap"
+            whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(255, 107, 53, 0.3)" }}
+            whileTap={{ scale: 0.95 }}
+          >
+            ✏️ Write Review
+          </motion.button>
+        </motion.div>
       </div>
 
       <ReviewForm
