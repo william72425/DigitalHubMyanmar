@@ -264,7 +264,7 @@ export default function AdminPromo() {
 
   const deletePromoCode = async (id) => { if (confirm('Delete this promo code?')) { await deleteDoc(doc(db, 'promo_codes', id)); fetchPromoCodes(); } };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}><div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-primary)', borderTopColor: 'transparent' }}></div></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}><div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-secondary)', borderTopColor: 'transparent' }}></div></div>;
 
   return (
     <>

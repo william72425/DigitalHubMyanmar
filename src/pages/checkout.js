@@ -154,7 +154,8 @@ export default function Checkout() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <motion.div 
-          className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full"
+          className="w-12 h-12 border-4 border-t-transparent rounded-full"
+          style={{ borderColor: 'var(--brand-secondary)', borderTopColor: 'transparent' }}
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         ></motion.div>
