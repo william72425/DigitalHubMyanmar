@@ -229,12 +229,26 @@ export default function ProductDetail() {
                   <h1 className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
                     {product.name}
                   </h1>
-                  <div className="flex items-center gap-2 mt-2">
-                    {/* Duration Box - Replaced Premium Label */}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {/* Duration Box */}
                     <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Duration</span>
                       <span className="text-xs font-black text-[#FF6B35]">{product.duration}</span>
                     </div>
+                    {/* Account Status Box */}
+                    {product.account_status && (
+                      <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Account</span>
+                        <span className="text-xs font-black text-[#00D4FF]">{product.account_status}</span>
+                      </div>
+                    )}
+                    {/* Warranty Box */}
+                    {product.warranty && (
+                      <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Warranty</span>
+                        <span className="text-xs font-black text-green-400">{product.warranty}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
