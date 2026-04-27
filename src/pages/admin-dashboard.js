@@ -4,10 +4,11 @@ import { useRouter } from 'next/router';
 import { auth, db } from '@/utils/firebase';
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [users, setUsers] = useState([]);
   const [promoCodes, setPromoCodes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,10 +16,6 @@ export default function AdminDashboard() {
   const [newCode, setNewCode] = useState({ code: '', discount_percent: 10, usage_limit: 100 });
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
-    
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user || user.email !== 'thantzin84727@gmail.com') {
         router.push('/');
@@ -30,11 +27,6 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -96,11 +88,11 @@ export default function AdminDashboard() {
     <>
       <Head><title>Admin Dashboard | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <Navbar />
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
-          <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🔧 Admin Dashboard</h1>
-          
+          <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Admin Dashboard</h1>
+
           {/* Tabs */}
           <div className="flex gap-2 mb-6 border-b border-white/20 pb-2 flex-wrap">
             <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg ${activeTab === 'users' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>

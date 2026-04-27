@@ -4,11 +4,12 @@ import { useRouter } from 'next/router';
 import { auth, db } from '@/utils/firebase';
 import { doc, getDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function GiveawayPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [giveaways, setGiveaways] = useState([]);
   const [userEntries, setUserEntries] = useState({});
@@ -16,10 +17,6 @@ export default function GiveawayPage() {
   const [showEntries, setShowEntries] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
-
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
         router.push('/auth');
@@ -101,11 +98,6 @@ export default function GiveawayPage() {
     setShowEntries(true);
   };
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   if (loading) {
     return (
@@ -119,7 +111,7 @@ export default function GiveawayPage() {
     <>
       <Head><title>Giveaways | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <Navbar />
         
         <div className="container mx-auto px-4 py-24 max-w-6xl">
           <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🎁 Active Giveaways</h1>

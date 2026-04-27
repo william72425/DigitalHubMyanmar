@@ -5,21 +5,18 @@ import { auth, db } from '@/utils/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function OrdersPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
-
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
         router.push('/auth');
@@ -44,11 +41,6 @@ export default function OrdersPage() {
     }
   };
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   if (loading) {
     return (
@@ -62,7 +54,7 @@ export default function OrdersPage() {
     <>
       <Head><title>My Orders | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-[#020617]' : 'bg-gray-50'}`}>
-        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <Navbar />
         
         <div className="container mx-auto px-4 py-24 max-w-4xl">
           <h1 className={`text-3xl font-black mb-8 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📦 My Orders</h1>

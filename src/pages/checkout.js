@@ -6,6 +6,7 @@ import { auth, db } from '@/utils/firebase';
 import { doc, getDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import Navbar from '@/components/Navbar';
 import productsData from '@/data/products.json';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function Checkout() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function Checkout() {
   const [user, setUser] = useState(null);
   const [product, setProduct] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [finalPrice, setFinalPrice] = useState(0);
@@ -148,11 +149,6 @@ export default function Checkout() {
     setProcessing(false);
   };
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   if (loading || !product) {
     return (
@@ -190,7 +186,7 @@ export default function Checkout() {
     <>
       <Head><title>Checkout | Digital Hub Myanmar</title></Head>
       <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30">
-        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <Navbar />
         
         <div className="container mx-auto px-4 py-24 max-w-2xl relative z-10">
           <motion.div

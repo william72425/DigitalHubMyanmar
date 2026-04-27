@@ -7,12 +7,13 @@ import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firesto
 import productsData from '@/data/products.json';
 import Navbar from '@/components/Navbar';
 import ReviewsSection from '@/components/ReviewsSection';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode } = useTheme();
   const [user, setUser] = useState(null);
   const [userDiscountPercent, setUserDiscountPercent] = useState(0);
   const [loadingDiscounts, setLoadingDiscounts] = useState(true);
@@ -25,13 +26,6 @@ export default function Home() {
     setServices(sorted);
     const uniqueCategories = ['All', ...new Set(sorted.map(p => p.category))];
     setCategories(uniqueCategories);
-  }, []);
-
-  // Load theme
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
   }, []);
 
   // Auth and User Discounts
@@ -92,12 +86,6 @@ export default function Home() {
       setUserDataLoaded(true);
     }
     setLoadingDiscounts(false);
-  };
-
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
   };
 
   const filteredServices = activeCategory === 'All'
@@ -233,7 +221,7 @@ export default function Home() {
           transition={{ duration: 8, repeat: Infinity, delay: 1 }}
         ></motion.div>
 
-        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <Navbar />
 
         <div className="container mx-auto px-4 py-20 max-w-6xl relative z-10">
           

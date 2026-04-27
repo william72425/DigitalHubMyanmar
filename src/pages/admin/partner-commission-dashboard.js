@@ -5,10 +5,11 @@ import { db } from '@/utils/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import AdminNavbar from '@/components/AdminNavbar';
 import { motion } from 'framer-motion';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function PartnerCommissionDashboard() {
   const router = useRouter();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [partnerCodes, setPartnerCodes] = useState([]);
   const [commissionDataMap, setCommissionDataMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -22,9 +23,6 @@ export default function PartnerCommissionDashboard() {
   });
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
     const adminAuth = sessionStorage.getItem('admin_auth');
     if (adminAuth !== 'true') {
       router.push('/admin');
@@ -106,11 +104,6 @@ export default function PartnerCommissionDashboard() {
     }
   };
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   if (loading) {
     return (
@@ -128,7 +121,7 @@ export default function PartnerCommissionDashboard() {
     <>
       <Head><title>Partner Commission Dashboard | Admin</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <AdminNavbar />
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>💼 Partner Commission Dashboard</h1>

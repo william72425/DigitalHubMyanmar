@@ -7,6 +7,7 @@ import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebas
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { getUserPointsHistory, getRedeemItems, getTasks } from '@/utils/pointsSystem';
+import { useTheme } from '@/context/ThemeContext';
 
 // Interesting loading animation component
 const InterestingLoader = () => (
@@ -49,7 +50,7 @@ export default function UserDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('referral');
   
@@ -74,10 +75,6 @@ export default function UserDashboard() {
   const [activeGiveaways, setActiveGiveaways] = useState([]);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
-
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
         router.push('/auth');
@@ -209,11 +206,6 @@ export default function UserDashboard() {
     alert('Copied to clipboard!');
   };
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   if (loading) {
     return (
@@ -272,7 +264,7 @@ export default function UserDashboard() {
     <>
       <Head><title>My Dashboard | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <Navbar />
         
         <motion.div 
           className="container mx-auto px-4 py-24 max-w-6xl"

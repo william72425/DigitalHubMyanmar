@@ -1,8 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
-export default function ReviewCard({ review, index, isDarkMode }) {
+export default function ReviewCard({ review, index }) {
+  const { isDarkMode } = useTheme();
+
   const hoverVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -53,21 +56,20 @@ export default function ReviewCard({ review, index, isDarkMode }) {
       initial="hidden"
       animate="visible"
       whileHover="hover"
-      className={`p-5 md:p-6 rounded-2xl border-2 transition-all h-full backdrop-blur-sm ${
-        isDarkMode
-          ? 'bg-white/5 border-white/10 hover:border-[#FF6B35]/50'
-          : 'bg-white/60 border-gray-200 hover:border-[#FF6B35]/50'
-      }`}
+      className="p-5 md:p-6 border-2 transition-all h-full backdrop-blur-sm"
+      style={{
+        background: 'var(--surface)',
+        borderColor: 'var(--border)',
+        borderRadius: 'var(--radius-xl)',
+      }}
     >
       {/* User Info */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h4 className={`font-bold text-base md:text-lg ${
-            isDarkMode ? 'text-white' : 'text-gray-900'
-          }`}>
+          <h4 className="font-bold text-base md:text-lg" style={{ color: 'var(--text-primary)' }}>
             {review.userName}
           </h4>
-          <p className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+          <p className="text-xs md:text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             {formatDate(review.createdAt)}
           </p>
         </div>
@@ -79,9 +81,7 @@ export default function ReviewCard({ review, index, isDarkMode }) {
       </div>
 
       {/* Review Comment */}
-      <p className={`text-sm md:text-base leading-relaxed ${
-        review.adminReply ? '' : 'line-clamp-3'
-      } ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+      <p className={`text-sm md:text-base leading-relaxed ${review.adminReply ? '' : 'line-clamp-3'}`} style={{ color: 'var(--text-secondary)' }}>
         {review.comment}
       </p>
 

@@ -3,10 +3,11 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import AdminNavbar from '@/components/AdminNavbar';
 import { Star, Eye, EyeOff, Trash2, MessageSquare, Send, X, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function AdminReviews() {
   const router = useRouter();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -21,9 +22,6 @@ export default function AdminReviews() {
   const [expandedReview, setExpandedReview] = useState(null);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
     
     const adminAuth = sessionStorage.getItem('admin_auth');
     if (adminAuth !== 'true') {
@@ -33,11 +31,6 @@ export default function AdminReviews() {
     fetchReviews();
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -153,7 +146,7 @@ export default function AdminReviews() {
           ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]'
           : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'
       }`}>
-        <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <AdminNavbar />
 
         <div className="max-w-7xl mx-auto px-4 pt-20 pb-12">
           {/* Header */}

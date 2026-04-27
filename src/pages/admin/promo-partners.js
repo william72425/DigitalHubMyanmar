@@ -4,10 +4,11 @@ import { useRouter } from 'next/router';
 import { db } from '@/utils/firebase';
 import { collection, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
 import AdminNavbar from '@/components/AdminNavbar';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function AdminPromoPartners() {
   const router = useRouter();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [promoCodes, setPromoCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPartnerModal, setShowPartnerModal] = useState(false);
@@ -24,9 +25,6 @@ export default function AdminPromoPartners() {
   const [customEndDate, setCustomEndDate] = useState('');
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
     const adminAuth = sessionStorage.getItem('admin_auth');
     if (adminAuth !== 'true') {
       router.push('/admin');
@@ -48,11 +46,6 @@ export default function AdminPromoPartners() {
     setLoading(false);
   };
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   const handleEditPartner = (code) => {
     setEditingCode(code);
@@ -163,7 +156,7 @@ export default function AdminPromoPartners() {
     <>
       <Head><title>Partner Management | Admin</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <AdminNavbar />
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <h1 className={`text-3xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🤝 Partner Management</h1>

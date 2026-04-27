@@ -4,10 +4,11 @@ import { useRouter } from 'next/router';
 import { db } from '@/utils/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import AdminNavbar from '@/components/AdminNavbar';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function AdminUsers() {
   const router = useRouter();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleMode } = useTheme();
   const [users, setUsers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,9 +20,6 @@ export default function AdminUsers() {
   const [showCodeUsers, setShowCodeUsers] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else if (savedTheme === 'dark') setIsDarkMode(true);
     const adminAuth = sessionStorage.getItem('admin_auth');
     if (adminAuth !== 'true') {
       router.push('/admin');
@@ -100,11 +98,6 @@ export default function AdminUsers() {
       .reduce((sum, o) => sum + (Number(o.final_price) || 0), 0);
   };
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   const viewCodeUsers = async (code) => {
     const q = query(collection(db, 'users'), where('used_promote_code', '==', code));
@@ -126,7 +119,7 @@ export default function AdminUsers() {
     <>
       <Head><title>Admin - Users | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
-        <AdminNavbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        <AdminNavbar />
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex flex-wrap justify-between items-center mb-6 gap-4">

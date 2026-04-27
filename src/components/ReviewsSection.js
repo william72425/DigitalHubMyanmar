@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import ReviewCard from './ReviewCard';
 import ReviewForm from './ReviewForm';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function ReviewsSection() {
   const [reviews, setReviews] = useState([]);
@@ -12,15 +13,11 @@ export default function ReviewsSection() {
   const [averageRating, setAverageRating] = useState(0);
   const [displayType, setDisplayType] = useState('daily');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode } = useTheme();
   const [showAll, setShowAll] = useState(false);
   const [loadingAll, setLoadingAll] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') setIsDarkMode(false);
-    else setIsDarkMode(true);
-
     fetchReviews('daily');
   }, []);
 
@@ -194,7 +191,7 @@ export default function ReviewsSection() {
             >
               {displayedReviews.map((review, index) => (
                 <motion.div key={review.id} variants={itemVariants}>
-                  <ReviewCard review={review} index={index} isDarkMode={isDarkMode} />
+                  <ReviewCard review={review} index={index} />
                 </motion.div>
               ))}
             </motion.div>
@@ -251,7 +248,6 @@ export default function ReviewsSection() {
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         onSuccess={() => fetchReviews(displayType)}
-        isDarkMode={isDarkMode}
       />
     </section>
   );

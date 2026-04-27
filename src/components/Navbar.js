@@ -5,9 +5,11 @@ import { signOut } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '@/context/ThemeContext';
 
-export default function Navbar({ isDarkMode, toggleTheme }) {
+export default function Navbar() {
   const router = useRouter();
+  const { isDarkMode, toggleMode } = useTheme();
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -41,7 +43,7 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
     try {
       await updateDoc(doc(db, 'users', user.uid), {
         telegram_username: telegram,
-        telegram_locked: true // Lock after first update
+        telegram_locked: true
       });
       setUserData({ ...userData, telegram_username: telegram, telegram_locked: true });
       alert('Telegram username saved successfully!');
@@ -55,23 +57,24 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-40 bg-white/5 backdrop-blur-xl border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-40" style={{ background: 'var(--surface)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--border)' }}>
         <div className="container mx-auto px-4 py-4 max-w-7xl">
           <div className="flex justify-between items-center">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FF6B35] to-[#FF8C35] flex items-center justify-center text-white font-black shadow-lg shadow-[#FF6B35]/20 group-hover:scale-110 transition-transform">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shadow-lg group-hover:scale-110 transition-transform" style={{ background: 'var(--accent-gradient)' }}>
                 D
               </div>
-              <span className="text-xl font-black tracking-tighter text-white">
-                Digital Hub <span className="text-[#FF6B35]">MM</span>
+              <span className="text-xl font-black tracking-tighter" style={{ color: 'var(--text-primary)' }}>
+                Digital Hub <span style={{ color: 'var(--brand-secondary)' }}>MM</span>
               </span>
             </Link>
             
             <button 
               onClick={() => setDrawerOpen(true)}
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all active:scale-90"
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 transition-all active:scale-90"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
             >
-              <span className="text-xl">☰</span>
+              <span className="text-xl" style={{ color: 'var(--text-primary)' }}>&#9776;</span>
             </button>
           </div>
         </div>
@@ -81,7 +84,6 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
       <AnimatePresence>
         {drawerOpen && (
           <>
-            {/* Backdrop */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -90,67 +92,63 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
               className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm"
             />
             
-            {/* Drawer Content */}
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 z-[70] h-full w-[80%] md:w-[40%] lg:w-[30%] bg-[#020617] border-l border-white/10 shadow-2xl flex flex-col"
+              className="fixed top-0 right-0 z-[70] h-full w-[80%] md:w-[40%] lg:w-[30%] shadow-2xl flex flex-col"
+              style={{ background: 'var(--bg-primary)', borderLeft: '1px solid var(--border)' }}
             >
-              {/* Drawer Header */}
-              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-                <h2 className="text-lg font-black text-white uppercase tracking-widest">Menu</h2>
+              <div className="p-6 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+                <h2 className="text-lg font-black uppercase tracking-widest" style={{ color: 'var(--text-primary)' }}>Menu</h2>
                 <button 
                   onClick={() => setDrawerOpen(false)}
-                  className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                  style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}
                 >
-                  ✕
+                  &#10005;
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                {/* Section 1: Navigation */}
                 <div className="space-y-3">
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Main Navigation</p>
-                  <Link href="/" onClick={() => setDrawerOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-[#FF6B35]/10 hover:border-[#FF6B35]/30 transition-all group">
-                    <span className="text-xl group-hover:scale-125 transition-transform">🏠</span>
-                    <span className="font-bold text-gray-200">Main Page</span>
-                  </Link>
-                  <Link href="/dashboard" onClick={() => setDrawerOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-[#FF6B35]/10 hover:border-[#FF6B35]/30 transition-all group">
-                    <span className="text-xl group-hover:scale-125 transition-transform">📊</span>
-                    <span className="font-bold text-gray-200">Referral Dashboard</span>
-                  </Link>
-                  <Link href="/orders" onClick={() => setDrawerOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-[#FF6B35]/10 hover:border-[#FF6B35]/30 transition-all group">
-                    <span className="text-xl group-hover:scale-125 transition-transform">📦</span>
-                    <span className="font-bold text-gray-200">My Orders</span>
-                  </Link>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4" style={{ color: 'var(--text-muted)' }}>Main Navigation</p>
+                  {[
+                    { href: '/', icon: '\u{1F3E0}', label: 'Main Page' },
+                    { href: '/dashboard', icon: '\u{1F4CA}', label: 'Referral Dashboard' },
+                    { href: '/orders', icon: '\u{1F4E6}', label: 'My Orders' },
+                  ].map(item => (
+                    <Link key={item.href} href={item.href} onClick={() => setDrawerOpen(false)} className="flex items-center gap-4 p-4 transition-all group" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
+                      <span className="text-xl group-hover:scale-125 transition-transform">{item.icon}</span>
+                      <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{item.label}</span>
+                    </Link>
+                  ))}
                   {isAdmin && (
-                    <Link href="/admin-dashboard" onClick={() => setDrawerOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all group">
-                      <span className="text-xl group-hover:scale-125 transition-transform">🔧</span>
-                      <span className="font-bold text-gray-200">Admin Panel</span>
+                    <Link href="/admin-dashboard" onClick={() => setDrawerOpen(false)} className="flex items-center gap-4 p-4 transition-all group" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
+                      <span className="text-xl group-hover:scale-125 transition-transform">{'\u{1F527}'}</span>
+                      <span className="font-bold" style={{ color: 'var(--text-primary)' }}>Admin Panel</span>
                     </Link>
                   )}
                 </div>
 
-                {/* Section 2: Account Profile */}
                 <div className="space-y-4">
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Account Profile</p>
-                  <div className="p-5 rounded-3xl bg-white/5 border border-white/5 space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4" style={{ color: 'var(--text-muted)' }}>Account Profile</p>
+                  <div className="p-5 space-y-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)' }}>
                     <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1">Username</label>
-                      <p className="text-sm font-bold text-white bg-white/5 p-3 rounded-xl border border-white/5 opacity-70 cursor-not-allowed">
+                      <label className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Username</label>
+                      <p className="text-sm font-bold p-3 opacity-70 cursor-not-allowed" style={{ color: 'var(--text-primary)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                         {userData?.username || 'User'}
                       </p>
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1">Email Address</label>
-                      <p className="text-sm font-bold text-white bg-white/5 p-3 rounded-xl border border-white/5 opacity-70 cursor-not-allowed">
+                      <label className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Email Address</label>
+                      <p className="text-sm font-bold p-3 opacity-70 cursor-not-allowed" style={{ color: 'var(--text-primary)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                         {user?.email || 'email@example.com'}
                       </p>
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1">Telegram Username</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Telegram Username</label>
                       <div className="flex gap-2">
                         <input 
                           type="text"
@@ -158,53 +156,54 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
                           onChange={(e) => setTelegram(e.target.value)}
                           disabled={userData?.telegram_locked || isUpdating}
                           placeholder="@username"
-                          className={`flex-1 text-sm font-bold text-white bg-white/5 p-3 rounded-xl border border-white/10 focus:outline-none focus:border-[#FF6B35]/50 transition-all ${userData?.telegram_locked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          className={`flex-1 text-sm font-bold p-3 focus:outline-none transition-all ${userData?.telegram_locked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          style={{ color: 'var(--text-primary)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
                         />
                         {!userData?.telegram_locked && (
                           <button 
                             onClick={updateTelegram}
                             disabled={!telegram || isUpdating}
-                            className="bg-[#FF6B35] text-white px-4 rounded-xl font-bold text-xs hover:bg-[#FF8C35] disabled:opacity-50 transition-all"
+                            className="px-4 font-bold text-xs disabled:opacity-50 transition-all theme-btn-primary"
                           >
                             {isUpdating ? '...' : 'Save'}
                           </button>
                         )}
                       </div>
                       {userData?.telegram_locked && (
-                        <p className="text-[9px] text-gray-500 mt-2 italic">* ပြန်ပြင်ချင်ပါက Admin ကို ပြောပေးပါ</p>
+                        <p className="text-[9px] mt-2 italic" style={{ color: 'var(--text-muted)' }}>* &#4117;&#4156;&#4116;&#4154;&#4117;&#4156;&#4100;&#4154;&#4097;&#4155;&#4100;&#4154;&#4117;&#4139;&#4096; Admin &#4096;&#4141;&#4143; &#4117;&#4156;&#4145;&#4140;&#4117;&#4145;&#4152;&#4117;&#4139;</p>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Section 3: Settings */}
                 <div className="space-y-3">
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Settings</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4" style={{ color: 'var(--text-muted)' }}>Settings</p>
                   <button 
-                    onClick={toggleTheme}
-                    className="w-full flex justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all"
+                    onClick={toggleMode}
+                    className="w-full flex justify-between items-center p-4 transition-all"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}
                   >
                     <div className="flex items-center gap-4">
-                      <span className="text-xl">{isDarkMode ? '☀️' : '🌙'}</span>
-                      <span className="font-bold text-gray-200">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                      <span className="text-xl">{isDarkMode ? '\u2600\uFE0F' : '\u{1F319}'}</span>
+                      <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
                     </div>
-                    <div className={`w-10 h-5 rounded-full relative transition-all ${isDarkMode ? 'bg-[#FF6B35]' : 'bg-gray-600'}`}>
+                    <div className="w-10 h-5 rounded-full relative transition-all" style={{ background: isDarkMode ? 'var(--brand-primary)' : 'var(--text-muted)' }}>
                       <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isDarkMode ? 'right-1' : 'left-1'}`} />
                     </div>
                   </button>
                   <button 
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 hover:bg-red-500/10 hover:border-red-500/30 transition-all group"
+                    className="w-full flex items-center gap-4 p-4 bg-red-500/5 border border-red-500/10 hover:bg-red-500/10 hover:border-red-500/30 transition-all group"
+                    style={{ borderRadius: 'var(--radius-lg)' }}
                   >
-                    <span className="text-xl group-hover:rotate-12 transition-transform">🚪</span>
+                    <span className="text-xl group-hover:rotate-12 transition-transform">{'\u{1F6AA}'}</span>
                     <span className="font-bold text-red-400">Log Out</span>
                   </button>
                 </div>
               </div>
 
-              {/* Drawer Footer */}
-              <div className="p-6 border-t border-white/10 bg-white/5 text-center">
-                <p className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.3em]">Digital Hub Myanmar v2.0</p>
+              <div className="p-6 text-center" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>Digital Hub Myanmar v2.0</p>
               </div>
             </motion.div>
           </>
