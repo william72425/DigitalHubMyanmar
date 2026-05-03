@@ -182,14 +182,15 @@ export default function ProductDetail() {
   return (
     <>
       <Head><title>{product.name} | Digital Hub Myanmar</title></Head>
-      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30">
+      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30 overflow-x-hidden">
         {/* Background glow effects */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#FF6B35]/10 blur-[120px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#00D4FF]/10 blur-[120px] rounded-full" />
         </div>
 
-        <div className="container mx-auto px-4 py-6 max-w-2xl relative z-10">
+        {/* 15% Zoom-out effect for mobile using CSS scale */}
+        <div className="container mx-auto px-4 py-6 max-w-2xl relative z-10 origin-top sm:scale-100 scale-[0.88]">
           
           <motion.button 
             onClick={() => router.back()} 

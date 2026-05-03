@@ -185,10 +185,11 @@ export default function Checkout() {
   return (
     <>
       <Head><title>Checkout | Digital Hub Myanmar</title></Head>
-      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30">
+      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30 overflow-x-hidden">
         <Navbar />
         
-        <div className="container mx-auto px-4 py-24 max-w-2xl relative z-10">
+        {/* 15% Zoom-out effect for mobile using CSS scale */}
+        <div className="container mx-auto px-4 py-24 max-w-2xl relative z-10 origin-top sm:scale-100 scale-[0.88]">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -281,7 +282,7 @@ export default function Checkout() {
                 )}
                 
                 {firstPurchaseDiscount > 0 && (
-                  <div className="flex justify-between items-center text-xs py-2 px-3 bg-green-500/10 rounded-xl border border-green-500/20 text-green-400 font-bold">
+                  <div className="flex justify-between items-center text-xs py-2 px-3 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400 font-bold">
                     <span>🎁 First Purchase Discount ({promoPercent}%)</span>
                     <span>-{firstPurchaseDiscount.toLocaleString()} MMK</span>
                   </div>
@@ -359,7 +360,7 @@ export default function Checkout() {
                     ) : (
                       <>
                         <span className="text-3xl mb-2">📤</span>
-                        <span className="text-xs text-gray-400 font-medium">Click to upload screenshot</span>
+                        <span className="text-xs text-gray-500 font-medium">Click to upload screenshot</span>
                         <span className="text-[10px] text-gray-500 mt-1">Max 5MB (JPG, PNG)</span>
                       </>
                     )}
