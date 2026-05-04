@@ -50,8 +50,10 @@ export default function Checkout() {
       setProduct(found);
       
       const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      let userInfo = null;
       if (userDoc.exists()) {
-        setUserData(userDoc.data());
+        userInfo = userDoc.data();
+        setUserData(userInfo);
       }
       
       let price = found.hubby_price;
@@ -64,22 +66,44 @@ export default function Checkout() {
         price = found.special_price;
       }
       
-      const userInfo = userDoc.data();
+      // ============================================
+      // FIXED: First purchase discount check with duration
+      // ============================================
+      let isDiscountValid = false;
+      let shouldApplyDiscount = false;
+      
       if (userInfo && userInfo.used_promote_code && !userInfo.first_purchase_discount_used) {
-        try {
-          const promoRes = await fetch(`/api/promo/check?code=${userInfo.used_promote_code}&productId=${found.id}`);
-          const promoData = await promoRes.json();
-          if (promoData && promoData.option_type === 'first_purchase_discount') {
-            promoDiscountPercent = promoData.settings?.discount_value || 0;
-            if (promoDiscountPercent > 0) {
-              firstDisc = Math.round(price * promoDiscountPercent / 100);
-              if (firstDisc > price) firstDisc = price;
-              price = price - firstDisc;
-            }
+        // Check if discount period is still valid
+        let isDiscountPeriodValid = true;
+        if (userInfo.promo_valid_until) {
+          const today = new Date().toISOString().split('T')[0];
+          if (userInfo.promo_valid_until < today) {
+            isDiscountPeriodValid = false;
+            console.log(`Discount period expired for user ${currentUser.uid}. Valid until: ${userInfo.promo_valid_until}`);
           }
-        } catch (err) {
-          console.error('Promo check failed:', err);
         }
+        
+        if (isDiscountPeriodValid) {
+          try {
+            const promoRes = await fetch(`/api/promo/check?code=${userInfo.used_promote_code}&productId=${found.id}&userId=${currentUser.uid}`);
+            const promoData = await promoRes.json();
+            if (promoData && promoData.option_type === 'first_purchase_discount') {
+              promoDiscountPercent = promoData.settings?.discount_value || 0;
+              if (promoDiscountPercent > 0) {
+                shouldApplyDiscount = true;
+                isDiscountValid = true;
+              }
+            }
+          } catch (err) {
+            console.error('Promo check failed:', err);
+          }
+        }
+      }
+      
+      if (shouldApplyDiscount) {
+        firstDisc = Math.round(price * promoDiscountPercent / 100);
+        if (firstDisc > price) firstDisc = price;
+        price = price - firstDisc;
       }
       
       setPromoPercent(promoDiscountPercent);
@@ -119,7 +143,7 @@ export default function Checkout() {
       const screenshotUrl = screenshotPreview; 
 
       await addDoc(collection(db, 'orders'), {
-        display_id: orderId, // Store the unified ID
+        display_id: orderId,
         user_id: user.uid,
         username: userData?.username,
         product_id: product.id,
@@ -137,6 +161,7 @@ export default function Checkout() {
         created_at: new Date().toISOString()
       });
       
+      // Only mark discount as used if discount was actually applied
       if (userData?.used_promote_code && !userData?.first_purchase_discount_used && firstPurchaseDiscount > 0) {
         await updateDoc(doc(db, 'users', user.uid), { first_purchase_discount_used: true });
       }
@@ -148,7 +173,6 @@ export default function Checkout() {
     }
     setProcessing(false);
   };
-
 
   if (loading || !product) {
     return (
