@@ -4,7 +4,90 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Default CSS Variables (Midnight Matrix Dark) ─────────────────── */
+/* ─── Fix: Prevent White Flash During Theme Switch ─────────────────── */
+* {
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+/* Disable transition for elements that might cause flicker */
+img, picture, video, canvas, svg, iframe {
+  transition: none;
+}
+
+/* Set default background to prevent white flash */
+html {
+  background-color: #020617; /* Dark mode default */
+}
+
+body {
+  background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary), var(--bg-primary));
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  transition: background 0.2s ease-in-out, color 0.2s ease-in-out;
+  min-height: 100vh;
+}
+
+/* Fallback CSS classes for theme switching (prevents flash) */
+body.dark-mode {
+  --bg-primary: #020617;
+  --bg-secondary: #0a0f2a;
+  --bg-tertiary: #0f172a;
+  --surface: rgba(255,255,255,0.05);
+  --surface-hover: rgba(255,255,255,0.10);
+  --surface-active: rgba(255,255,255,0.15);
+  --border: rgba(255,255,255,0.10);
+  --border-hover: rgba(0,212,255,0.40);
+  --brand-primary: #00D4FF;
+  --brand-secondary: #FF6B35;
+  --brand-gradient: linear-gradient(135deg, #00D4FF, #0099CC);
+  --accent-gradient: linear-gradient(135deg, #FF6B35, #00D4FF);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-inverse: #020617;
+  --font-heading: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-body: 'Inter', sans-serif;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.5);
+  --shadow-lg: 0 20px 50px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 20px rgba(0,212,255,0.15);
+}
+
+body.light-mode {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-tertiary: #ffffff;
+  --surface: rgba(0,0,0,0.02);
+  --surface-hover: rgba(0,0,0,0.05);
+  --surface-active: rgba(0,0,0,0.08);
+  --border: rgba(0,0,0,0.08);
+  --border-hover: rgba(0,150,200,0.30);
+  --brand-primary: #0099CC;
+  --brand-secondary: #FF6B35;
+  --brand-gradient: linear-gradient(135deg, #0099CC, #006699);
+  --accent-gradient: linear-gradient(135deg, #FF6B35, #0099CC);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+  --font-heading: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-body: 'Inter', sans-serif;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
+  --shadow-lg: 0 20px 50px rgba(0,0,0,0.10);
+  --shadow-glow: 0 0 20px rgba(0,150,200,0.08);
+}
+
+/* ─── Default CSS Variables (Midnight Matrix Dark - Fallback) ─────── */
 :root {
   --bg-primary: #020617;
   --bg-secondary: #0a0f2a;
@@ -37,10 +120,6 @@
 @layer base {
   body {
     @apply antialiased;
-    background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary), var(--bg-primary));
-    background-attachment: fixed;
-    color: var(--text-primary);
-    font-family: var(--font-body);
   }
 }
 
@@ -127,4 +206,4 @@
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
-}
+  }
