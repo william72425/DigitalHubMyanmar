@@ -26,12 +26,11 @@ export default async function handler(req, res) {
       const userQuery = query(collection(db, 'users'), where('promote_code', '==', code.toUpperCase()));
       const userSnapshot = await getDocs(userQuery);
       if (!userSnapshot.empty) {
-        // It's a valid user referral code
         isUserCode = true;
         promoData = {
           code: code.toUpperCase(),
           option_type: 'first_purchase_discount',
-          settings: { discount_value: 15, discount_type: 'percent' }, // 15% for referral
+          settings: { discount_value: 15, discount_type: 'percent' },
           is_active: true,
           used_count: 0,
           usage_limit: null
@@ -43,14 +42,40 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Promo code not found' });
     }
 
-    // If it's a user code, skip admin checks (like usage_limit, date range)
+    // ⭐ CRITICAL FIX: For user referral codes, skip ALL date checks
     if (!isUserCode) {
-      if (!promoData.is_active) return res.status(400).json({ error: 'Promo code is inactive' });
-      if (promoData.usage_limit && promoData.used_count >= promoData.usage_limit) return res.status(400).json({ error: 'Promo code usage limit exceeded' });
+      // Check if promo code is active
+      if (promoData.is_active === false) {
+        return res.status(400).json({ error: 'Promo code is inactive' });
+      }
       
+      // Check usage limit
+      if (promoData.usage_limit && promoData.used_count >= promoData.usage_limit) {
+        return res.status(400).json({ error: 'Promo code usage limit exceeded' });
+      }
+      
+      // ⭐ FIXED: Date validation with proper handling of empty/undefined
       const today = new Date().toISOString().split('T')[0];
-      if (promoData.valid_from && promoData.valid_from > today) return res.status(400).json({ error: 'Promo code not yet valid' });
-      if (promoData.valid_until && promoData.valid_until < today) return res.status(400).json({ error: 'Promo code has expired' });
+      
+      // Check valid_from (if exists)
+      if (promoData.valid_from && promoData.valid_from.trim() !== '') {
+        if (promoData.valid_from > today) {
+          return res.status(400).json({ error: 'Promo code not yet valid' });
+        }
+      }
+      
+      // Check valid_until (if exists and not empty)
+      if (promoData.valid_until && promoData.valid_until.trim() !== '') {
+        if (promoData.valid_until < today) {
+          return res.status(400).json({ 
+            error: 'Promo code has expired', 
+            expired: true,
+            valid_until: promoData.valid_until,
+            today: today
+          });
+        }
+      }
+      // If valid_until is empty, null, or undefined → NEVER EXPIRE
     }
 
     // Check first purchase eligibility
@@ -72,6 +97,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // Return success with promo data
     res.status(200).json({
       code: promoData.code,
       option_type: promoData.option_type,
@@ -79,12 +105,12 @@ export default async function handler(req, res) {
       is_active: promoData.is_active,
       used_count: promoData.used_count,
       usage_limit: promoData.usage_limit,
-      valid_from: promoData.valid_from,
-      valid_until: promoData.valid_until,
+      valid_from: promoData.valid_from || null,
+      valid_until: promoData.valid_until || null,
       is_user_code: isUserCode
     });
   } catch (error) {
     console.error('Promo check error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-}
+    }
