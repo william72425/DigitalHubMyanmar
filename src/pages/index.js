@@ -45,29 +45,55 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
+  // ============================================
+  // FIXED: loadUserDiscounts with proper logic
+  // ============================================
   const loadUserDiscounts = async (userId) => {
     setLoadingDiscounts(true);
     try {
-      // Check for active orders (pending, processing, completed)
-      const ordersQuery = query(
+      // FIXED: Only 'pending', 'processing', 'confirmed' block discount
+      // 'completed' and 'cancelled' should NOT block discount
+      const activeOrdersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
-        where('status', 'in', ['pending', 'processing', 'completed'])
+        where('status', 'in', ['pending', 'processing', 'confirmed'])
       );
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const hasOrder = !ordersSnapshot.empty;
-      setHasActiveOrder(hasOrder);
+      const activeOrdersSnapshot = await getDocs(activeOrdersQuery);
+      const hasActiveOrderNow = !activeOrdersSnapshot.empty;
+      setHasActiveOrder(hasActiveOrderNow);
       
       let discountPercent = 0;
       
-      // Only apply first purchase discount if user has NO orders
-      if (!hasOrder) {
+      // NEW: Check for completed orders (永久に割引を無効にする)
+      const completedOrdersQuery = query(
+        collection(db, 'orders'),
+        where('user_id', '==', userId),
+        where('status', '==', 'completed')
+      );
+      const completedOrdersSnapshot = await getDocs(completedOrdersQuery);
+      const hasCompletedOrder = !completedOrdersSnapshot.empty;
+      
+      // Only apply first purchase discount if:
+      // 1. No active orders (pending/processing/confirmed)
+      // 2. No completed orders (permanent)
+      if (!hasActiveOrderNow && !hasCompletedOrder) {
         const userDoc = await getDoc(doc(db, 'users', userId));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          if (userData.used_promote_code && !userData.first_purchase_discount_used) {
+          
+          // 🆕 NEW: Check if discount period is still valid
+          let isDiscountPeriodValid = true;
+          if (userData.promo_valid_until) {
+            const today = new Date().toISOString().split('T')[0];
+            if (userData.promo_valid_until < today) {
+              isDiscountPeriodValid = false;
+              console.log(`Discount period expired for user ${userId}. Valid until: ${userData.promo_valid_until}`);
+            }
+          }
+          
+          if (userData.used_promote_code && !userData.first_purchase_discount_used && isDiscountPeriodValid) {
             try {
-              const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}`);
+              const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}&userId=${userId}`);
               const promoData = await promoRes.json();
               if (promoData && promoData.option_type === 'first_purchase_discount') {
                 discountPercent = promoData.settings?.discount_value || 0;
@@ -189,11 +215,11 @@ export default function Home() {
   return (
     <>
       <Head>
-  <meta name="google-site-verification" content="abCJLqbY2J_i8FU3SwX_NOkkh5RlESldCaTbfFvojjk" />
-  <title>Digital Hub Myanmar - Hubby Store</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-</Head>
+        <meta name="google-site-verification" content="abCJLqbY2J_i8FU3SwX_NOkkh5RlESldCaTbfFvojjk" />
+        <title>Digital Hub Myanmar - Hubby Store</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+      </Head>
 
       <div className={`min-h-screen transition-all duration-300 relative overflow-x-hidden ${
         isDarkMode 
@@ -225,37 +251,37 @@ export default function Home() {
         <Navbar />
 
         <div className="container mx-auto px-4 py-6 max-w-6xl relative z-10">
-  
-  <motion.div 
-    className="text-center py-4 md:py-6"
-    variants={heroVariants}
-    initial="hidden"
-    animate="visible"
-  >
-    <motion.h1 
-      className="text-xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent font-['Poppins'] tracking-tight"
-      style={{
-        fontFamily: "'Poppins', 'Inter', system-ui, -apple-system, sans-serif",
-        fontWeight: '700',
-        letterSpacing: '-0.02em'
-      }}
-      animate={{ 
-        backgroundPosition: ['0%', '100%', '0%']
-      }}
-      transition={{ duration: 3, repeat: Infinity }}
-    >
-      Digital Hubမှ ကြိုဆိုပါတယ် 
-    </motion.h1>
-    <motion.p 
-      className={`mt-2 text-xs md:text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} font-['Inter'] leading-relaxed`}
-      style={{
-        fontFamily: "'Inter', system-ui, sans-serif",
-        fontWeight: '400'
-      }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.3, duration: 0.6 }}
-    >
+    
+          <motion.div 
+            className="text-center py-4 md:py-6"
+            variants={heroVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.h1 
+              className="text-xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent font-['Poppins'] tracking-tight"
+              style={{
+                fontFamily: "'Poppins', 'Inter', system-ui, -apple-system, sans-serif",
+                fontWeight: '700',
+                letterSpacing: '-0.02em'
+              }}
+              animate={{ 
+                backgroundPosition: ['0%', '100%', '0%']
+              }}
+              transition={{ duration: 3, repeat: Infinity }}
+            >
+              Digital Hubမှ ကြိုဆိုပါတယ် 
+            </motion.h1>
+            <motion.p 
+              className={`mt-2 text-xs md:text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} font-['Inter'] leading-relaxed`}
+              style={{
+                fontFamily: "'Inter', system-ui, sans-serif",
+                fontWeight: '400'
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+            >
               🎁 လတိုင်းFree Giveawaysများ၊ လက်ဆောင်များနှင့်အတူ Premium services များကို ပျားရည်ထက် ချိုတဲ့ဈေးနှုန်းများဖြင့် ရယူလိုက်ပါ!
             </motion.p>
             {user && userDiscountPercent > 0 && !hasActiveOrder && userDataLoaded && (
@@ -334,7 +360,7 @@ export default function Home() {
                           animate={{ rotate: [0, 5, -5, 0] }}
                           transition={{ duration: 2, repeat: Infinity }}
                         >
-                          🔥 {service.discount_percent}% ‌လျှော့ဈေး
+                          🔥 {service.discount_percent}% လျှော့ဈေး
                         </motion.div>
                       )}
                       
@@ -379,10 +405,10 @@ export default function Home() {
                           <p className="text-xs text-gray-400 mt-0.5">📅 {service.duration}</p>
                           
                           <div className="mt-2 space-y-0.5">
-                            {/* Offical Price */}
+                            {/* Official Price */}
                             {service.market_price > 0 && (
                               <div className="text-[10px] md:text-xs text-gray-500">
-                                <span className="text-gray-400">Offical price</span>{' '}
+                                <span className="text-gray-400">Official price</span>{' '}
                                 <span className="line-through">{service.market_price.toLocaleString()} MMK</span>
                               </div>
                             )}
@@ -415,7 +441,7 @@ export default function Home() {
                             {/* First Purchase Discount Note */}
                             {user && userDiscountPercent > 0 && !hasActiveOrder && userDataLoaded && (
                               <div className="text-[9px] text-blue-400 mt-1">
-                                🎁 ပထမဆုံးဝယ်ယူမှု လျှော့ဈေး : {userDiscountPercent}% OFF included!
+                                🎉 ပထမဆုံးဝယ်ယူမှု လျှော့ဈေး : {userDiscountPercent}% OFF included!
                               </div>
                             )}
                           </div>
@@ -451,6 +477,3 @@ export default function Home() {
     </>
   );
 }
-
-
-    
