@@ -224,30 +224,39 @@ export default function Home() {
 
         <Navbar />
 
-        <div className="container mx-auto px-4 py-20 max-w-6xl relative z-10">
-          
-          <motion.div 
-            className="text-center py-6 md:py-8"
-            variants={heroVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <motion.h1 
-              className="text-3xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent"
-              animate={{ 
-                backgroundPosition: ['0%', '100%', '0%']
-              }}
-              transition={{ duration: 3, repeat: Infinity }}
-            >
-              Digital Hub Myanmar
-            </motion.h1>
-            <motion.p 
-              className={`mt-2 text-sm md:text-base ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-            >
-              🎁 Hubby Store မှ ကြိုဆိုပါတယ်! အထူးလျှော့စျေးများ ရယူလိုက်ပါ!
+        <div className="container mx-auto px-4 py-6 max-w-6xl relative z-10">
+  
+  <motion.div 
+    className="text-center py-4 md:py-6"
+    variants={heroVariants}
+    initial="hidden"
+    animate="visible"
+  >
+    <motion.h1 
+      className="text-xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-[#FF6B35] via-yellow-500 to-[#00D4FF] bg-clip-text text-transparent font-['Poppins'] tracking-tight"
+      style={{
+        fontFamily: "'Poppins', 'Inter', system-ui, -apple-system, sans-serif",
+        fontWeight: '700',
+        letterSpacing: '-0.02em'
+      }}
+      animate={{ 
+        backgroundPosition: ['0%', '100%', '0%']
+      }}
+      transition={{ duration: 3, repeat: Infinity }}
+    >
+      Digital Hubမှ ကြိုဆိုပါတယ် 
+    </motion.h1>
+    <motion.p 
+      className={`mt-2 text-xs md:text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} font-['Inter'] leading-relaxed`}
+      style={{
+        fontFamily: "'Inter', system-ui, sans-serif",
+        fontWeight: '400'
+      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.3, duration: 0.6 }}
+    >
+              🎁 လတိုင်းFree Giveawaysများ၊ လက်ဆောင်များနှင့်အတူ Premium services များကို ပျားရည်ထက် ချိုတဲ့ဈေးနှုန်းများဖြင့် ရယူလိုက်ပါ!
             </motion.p>
             {user && userDiscountPercent > 0 && !hasActiveOrder && userDataLoaded && (
               <motion.div 
@@ -325,7 +334,7 @@ export default function Home() {
                           animate={{ rotate: [0, 5, -5, 0] }}
                           transition={{ duration: 2, repeat: Infinity }}
                         >
-                          🔥 {service.discount_percent}% လျှော့
+                          🔥 {service.discount_percent}% ‌လျှော့ဈေး
                         </motion.div>
                       )}
                       
@@ -336,7 +345,7 @@ export default function Home() {
                           animate={{ scale: [1, 1.1, 1] }}
                           transition={{ duration: 1.5, repeat: Infinity }}
                         >
-                          {hasStackedDiscount ? `✨ ${discountPercent}% OFF` : '✨ အထူးဈေး'}
+                          {hasStackedDiscount ? `✨ ${discountPercent}% OFF` : '✨ Special price'}
                         </motion.div>
                       )}
                       
@@ -370,10 +379,10 @@ export default function Home() {
                           <p className="text-xs text-gray-400 mt-0.5">📅 {service.duration}</p>
                           
                           <div className="mt-2 space-y-0.5">
-                            {/* Market Price */}
+                            {/* Offical Price */}
                             {service.market_price > 0 && (
                               <div className="text-[10px] md:text-xs text-gray-500">
-                                <span className="text-gray-400">ဈေးကွက်ဈေး:</span>{' '}
+                                <span className="text-gray-400">Offical price</span>{' '}
                                 <span className="line-through">{service.market_price.toLocaleString()} MMK</span>
                               </div>
                             )}
@@ -381,7 +390,7 @@ export default function Home() {
                             {/* Hubby Price (if special or stacked, show line-through) */}
                             {(isSpecial || hasStackedDiscount) ? (
                               <div className="text-[10px] md:text-xs text-gray-500">
-                                <span className="text-gray-400">ဟပ်စတိုးဈေး:</span>{' '}
+                                <span className="text-gray-400">Digital Hub ဈေးနှုန်း</span>{' '}
                                 <span className="line-through">{service.hubby_price?.toLocaleString()} MMK</span>
                               </div>
                             ) : (
@@ -406,7 +415,7 @@ export default function Home() {
                             {/* First Purchase Discount Note */}
                             {user && userDiscountPercent > 0 && !hasActiveOrder && userDataLoaded && (
                               <div className="text-[9px] text-blue-400 mt-1">
-                                🎁 First purchase: {userDiscountPercent}% OFF included!
+                                🎁 ပထမဆုံးဝယ်ယူမှု လျှော့ဈေး : {userDiscountPercent}% OFF included!
                               </div>
                             )}
                           </div>
@@ -442,3 +451,6 @@ export default function Home() {
     </>
   );
 }
+
+
+    
