@@ -220,28 +220,40 @@ export function ThemeProvider({ children }) {
         // Firestore unavailable — use localStorage cache
         const cached = localStorage.getItem('global_theme');
         if (cached && themes[cached]) setThemeId(cached);
+      } finally {
+        // Ensure mounted is set to true regardless of success/failure
+        setMounted(true);
       }
-      setMounted(true);
     };
 
     loadGlobalTheme();
   }, []);
 
-  // Apply CSS variables whenever theme or mode changes
+  // Apply CSS variables whenever theme or mode changes (with transition fix)
   useEffect(() => {
     if (!mounted) return;
-    const vars = themes[themeId]?.[mode];
-    if (!vars) return;
+    
+    // Small delay to ensure DOM is ready for transition
+    const timeoutId = setTimeout(() => {
+      const vars = themes[themeId]?.[mode];
+      if (!vars) return;
 
-    const root = document.documentElement;
-    Object.entries(vars).forEach(([key, value]) => {
-      root.style.setProperty(key, value);
-    });
+      const root = document.documentElement;
+      Object.entries(vars).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+      });
 
-    // Set background on body
-    document.body.style.background = `linear-gradient(135deg, ${vars['--bg-primary']}, ${vars['--bg-secondary']}, ${vars['--bg-primary']})`;
-    document.body.style.color = vars['--text-primary'];
-    document.body.style.fontFamily = vars['--font-body'];
+      // Add class to body for CSS transitions
+      if (mode === 'dark') {
+        document.body.classList.add('dark-mode');
+        document.body.classList.remove('light-mode');
+      } else {
+        document.body.classList.add('light-mode');
+        document.body.classList.remove('dark-mode');
+      }
+    }, 10);
+    
+    return () => clearTimeout(timeoutId);
   }, [themeId, mode, mounted]);
 
   // Admin-only: save theme via API so all users see the change
@@ -290,19 +302,22 @@ export function ThemeProvider({ children }) {
   const currentTheme = themes[themeId] || themes['midnight-matrix'];
   const currentVars = currentTheme[mode] || currentTheme.dark;
 
+  // Provide default values for server-side rendering
+  const value = {
+    themeId,
+    setTheme,
+    mode,
+    isDarkMode,
+    toggleMode,
+    setMode: setModeDirectly,
+    currentTheme,
+    currentVars,
+    themes,
+    mounted,
+  };
+
   return (
-    <ThemeContext.Provider value={{
-      themeId,
-      setTheme,
-      mode,
-      isDarkMode,
-      toggleMode,
-      setMode: setModeDirectly,
-      currentTheme,
-      currentVars,
-      themes,
-      mounted,
-    }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
@@ -311,7 +326,8 @@ export function ThemeProvider({ children }) {
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) {
-    // Fallback for components not wrapped in ThemeProvider
+    // Fallback for components not wrapped in ThemeProvider (SSR safe)
+    const fallbackTheme = themes['midnight-matrix'];
     return {
       themeId: 'midnight-matrix',
       setTheme: () => {},
@@ -319,8 +335,8 @@ export function useTheme() {
       isDarkMode: true,
       toggleMode: () => {},
       setMode: () => {},
-      currentTheme: themes['midnight-matrix'],
-      currentVars: themes['midnight-matrix'].dark,
+      currentTheme: fallbackTheme,
+      currentVars: fallbackTheme.dark,
       themes,
       mounted: false,
     };
