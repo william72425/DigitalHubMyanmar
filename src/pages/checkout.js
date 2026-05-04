@@ -188,8 +188,19 @@ export default function Checkout() {
       <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30 overflow-x-hidden">
         <Navbar />
         
-        {/* 15% Zoom-out effect for mobile using CSS scale */}
-        <div className="container mx-auto px-4 py-24 max-w-2xl relative z-10 origin-top sm:scale-100 scale-[0.88]">
+        {/* 15% Zoom-out effect for mobile using CSS scale on the main container */}
+        <style jsx global>{`
+          @media (max-width: 640px) {
+            .mobile-zoom-out {
+              transform: scale(0.85);
+              transform-origin: top center;
+              width: 117.6%; /* Compensate for scale(0.85) to keep full width: 100 / 0.85 */
+              margin-left: -8.8%; /* Center the scaled content: (117.6 - 100) / 2 */
+            }
+          }
+        `}</style>
+
+        <div className="container mx-auto px-4 py-24 max-w-2xl relative z-10 mobile-zoom-out">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}

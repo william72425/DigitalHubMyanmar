@@ -34,9 +34,7 @@ export default function ProductDetail() {
         try {
           const res = await fetch('/api/admin/features');
           const freshData = await res.json();
-          // Fix field mapping: admin uses feature_name, free, pro
           setFeatures(freshData.features?.filter(f => f.product_id === productId) || []);
-          // Fix field mapping: admin uses content, not note
           setProductNote(freshData.product_notes?.find(n => n.product_id === productId) || null);
         } catch (error) {
           console.error('Failed to load features:', error);
@@ -183,14 +181,25 @@ export default function ProductDetail() {
     <>
       <Head><title>{product.name} | Digital Hub Myanmar</title></Head>
       <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30 overflow-x-hidden">
+        {/* 15% Zoom-out effect for mobile using CSS scale on the main container */}
+        <style jsx global>{`
+          @media (max-width: 640px) {
+            .mobile-zoom-out {
+              transform: scale(0.85);
+              transform-origin: top center;
+              width: 117.6%; /* Compensate for scale(0.85) to keep full width: 100 / 0.85 */
+              margin-left: -8.8%; /* Center the scaled content: (117.6 - 100) / 2 */
+            }
+          }
+        `}</style>
+
         {/* Background glow effects */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#FF6B35]/10 blur-[120px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#00D4FF]/10 blur-[120px] rounded-full" />
         </div>
 
-        {/* 15% Zoom-out effect for mobile using CSS scale */}
-        <div className="container mx-auto px-4 py-6 max-w-2xl relative z-10 origin-top sm:scale-100 scale-[0.88]">
+        <div className="container mx-auto px-4 py-6 max-w-2xl relative z-10 mobile-zoom-out">
           
           <motion.button 
             onClick={() => router.back()} 
