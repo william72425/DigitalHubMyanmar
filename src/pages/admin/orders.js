@@ -11,6 +11,7 @@ export default function AdminOrders() {
   const router = useRouter();
   const { isDarkMode, toggleMode } = useTheme();
   const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -19,9 +20,25 @@ export default function AdminOrders() {
   // Cancellation Reason
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
+  
+  // Dashboard Stats
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    completedOrders: 0,
+    pendingProcessing: 0,
+    cancelledOrders: 0,
+    totalRevenue: 0,
+    firstPurchaseRevenue: 0,
+    firstPurchaseUsers: 0
+  });
+  
+  // Date Filters
+  const [dateFilter, setDateFilter] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
 
   useEffect(() => {
-    
     const adminAuth = sessionStorage.getItem('admin_auth');
     if (adminAuth !== 'true') {
       router.push('/admin');
@@ -30,7 +47,6 @@ export default function AdminOrders() {
     fetchOrders();
   }, []);
 
-
   const fetchOrders = async () => {
     setLoading(true);
     try {
@@ -38,10 +54,115 @@ export default function AdminOrders() {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setOrders(list);
+      applyFilter(list, dateFilter);
+      calculateStats(list);
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
     setLoading(false);
+  };
+
+  // Calculate Dashboard Statistics
+  const calculateStats = (ordersList) => {
+    const completed = ordersList.filter(o => o.status === 'completed');
+    const pendingProc = ordersList.filter(o => o.status === 'pending' || o.status === 'processing');
+    const cancelled = ordersList.filter(o => o.status === 'cancelled');
+    
+    const totalRevenue = completed.reduce((sum, o) => sum + (o.final_price || 0), 0);
+    
+    // First purchase revenue (orders where first_purchase_discount > 0)
+    const firstPurchaseOrders = ordersList.filter(o => o.first_purchase_discount > 0);
+    const firstPurchaseRevenue = firstPurchaseOrders.reduce((sum, o) => sum + (o.final_price || 0), 0);
+    
+    // Unique users who made first purchase
+    const uniqueFirstPurchaseUsers = new Set();
+    firstPurchaseOrders.forEach(o => {
+      if (o.user_id) uniqueFirstPurchaseUsers.add(o.user_id);
+    });
+    
+    setStats({
+      totalOrders: ordersList.length,
+      completedOrders: completed.length,
+      pendingProcessing: pendingProc.length,
+      cancelledOrders: cancelled.length,
+      totalRevenue: totalRevenue,
+      firstPurchaseRevenue: firstPurchaseRevenue,
+      firstPurchaseUsers: uniqueFirstPurchaseUsers.size
+    });
+  };
+
+  // Apply Date Filter
+  const applyFilter = (ordersList, filterType) => {
+    if (filterType === 'all') {
+      setFilteredOrders(ordersList);
+      return;
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    let filtered = [];
+    const now = new Date();
+    
+    switch(filterType) {
+      case 'today':
+        filtered = ordersList.filter(o => {
+          const orderDate = new Date(o.created_at);
+          orderDate.setHours(0, 0, 0, 0);
+          return orderDate.getTime() === today.getTime();
+        });
+        break;
+      case 'week':
+        filtered = ordersList.filter(o => {
+          const orderDate = new Date(o.created_at);
+          return orderDate >= startOfWeek;
+        });
+        break;
+      case 'month':
+        filtered = ordersList.filter(o => {
+          const orderDate = new Date(o.created_at);
+          return orderDate >= startOfMonth;
+        });
+        break;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          const start = new Date(customStartDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(customEndDate);
+          end.setHours(23, 59, 59, 999);
+          filtered = ordersList.filter(o => {
+            const orderDate = new Date(o.created_at);
+            return orderDate >= start && orderDate <= end;
+          });
+        } else {
+          filtered = ordersList;
+        }
+        break;
+      default:
+        filtered = ordersList;
+    }
+    
+    setFilteredOrders(filtered);
+  };
+
+  const handleDateFilterChange = (filter) => {
+    setDateFilter(filter);
+    if (filter === 'custom') {
+      setShowCustomPicker(true);
+    } else {
+      setShowCustomPicker(false);
+      applyFilter(orders, filter);
+    }
+  };
+  
+  const handleCustomDateApply = () => {
+    setShowCustomPicker(false);
+    applyFilter(orders, 'custom');
   };
 
   const updateOrderStatus = async (orderId, newStatus, reason = '') => {
@@ -129,13 +250,13 @@ export default function AdminOrders() {
 
   return (
     <>
-      <Head><title>Admin - Orders | Digital Hub Myanmar</title></Head>
+      <Head><title>Admin - Orders Dashboard | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
         <AdminNavbar />
         
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex justify-between items-center mb-6">
-            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📦 Order Management</h1>
+            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📊 Order Management Dashboard</h1>
             <div className="flex gap-2">
               <button 
                 onClick={async () => {
@@ -156,9 +277,93 @@ export default function AdminOrders() {
             </div>
           </div>
           
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Orders</p>
+                  <p className="text-2xl font-black mt-1">{stats.totalOrders}</p>
+                </div>
+                <div className="text-3xl">📦</div>
+              </div>
+            </div>
+            
+            <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Completed</p>
+                  <p className="text-2xl font-black mt-1 text-green-500">{stats.completedOrders}</p>
+                </div>
+                <div className="text-3xl">✅</div>
+              </div>
+            </div>
+            
+            <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Pending/Processing</p>
+                  <p className="text-2xl font-black mt-1 text-yellow-500">{stats.pendingProcessing}</p>
+                </div>
+                <div className="text-3xl">⏳</div>
+              </div>
+            </div>
+            
+            <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Cancelled</p>
+                  <p className="text-2xl font-black mt-1 text-red-500">{stats.cancelledOrders}</p>
+                </div>
+                <div className="text-3xl">❌</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Revenue Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+              <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Revenue (Completed)</p>
+              <p className="text-xl font-black mt-1 text-[#FF6B35]">{stats.totalRevenue.toLocaleString()} MMK</p>
+            </div>
+            <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+              <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>First Purchase Revenue</p>
+              <p className="text-xl font-black mt-1 text-green-500">{stats.firstPurchaseRevenue.toLocaleString()} MMK</p>
+            </div>
+            <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+              <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>First Purchase Users</p>
+              <p className="text-xl font-black mt-1 text-blue-500">{stats.firstPurchaseUsers}</p>
+            </div>
+          </div>
+          
+          {/* Filter Bar */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            <button onClick={() => handleDateFilterChange('all')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'all' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>All Orders</button>
+            <button onClick={() => handleDateFilterChange('today')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'today' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Today</button>
+            <button onClick={() => handleDateFilterChange('week')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'week' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>This Week</button>
+            <button onClick={() => handleDateFilterChange('month')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'month' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>This Month</button>
+            <button onClick={() => handleDateFilterChange('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'custom' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Custom Range</button>
+          </div>
+          
+          {/* Custom Date Picker */}
+          {showCustomPicker && (
+            <div className={`p-4 rounded-2xl mb-6 flex flex-wrap gap-3 items-end ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider block mb-1">Start Date</label>
+                <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className={`px-3 py-2 rounded-lg text-sm ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'} border`} />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider block mb-1">End Date</label>
+                <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className={`px-3 py-2 rounded-lg text-sm ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'} border`} />
+              </div>
+              <button onClick={handleCustomDateApply} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg text-sm font-bold">Apply</button>
+            </div>
+          )}
+          
+          {/* Orders Table */}
           <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
-            {orders.length === 0 ? (
-              <p className="text-center text-gray-400 py-8">No orders found.</p>
+            {filteredOrders.length === 0 ? (
+              <p className="text-center text-gray-400 py-8">No orders found for selected period.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
@@ -174,7 +379,7 @@ export default function AdminOrders() {
                 </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => (
+                  {filteredOrders.map((order) => (
                     <tr key={order.id} className="border-b border-white/10 hover:bg-white/5">
                       <td className="py-3 px-2 font-mono text-xs text-[#FF6B35] font-bold">#{order.display_id || order.id.slice(-8)}</td>
                       <td className="py-3 px-2">{order.username || order.user_id?.slice(-8)}</td>
@@ -193,11 +398,11 @@ export default function AdminOrders() {
                         <button onClick={() => viewOrderDetail(order)} className="text-blue-400 hover:text-blue-300 text-sm font-bold">
                           View Details
                         </button>
-                      </td>
-                    </tr>
+                       </td>
+                     </tr>
                   ))}
                 </tbody>
-              </table>
+               </table>
             )}
           </div>
         </div>
@@ -216,7 +421,6 @@ export default function AdminOrders() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column: Info */}
               <div className="space-y-4">
                 <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Customer & Product</h3>
@@ -225,6 +429,9 @@ export default function AdminOrders() {
                     <div className="flex justify-between"><span className="text-gray-500">Product:</span> <span className="font-bold">{selectedOrder.product_name}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Duration:</span> <span>{selectedOrder.duration}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Amount:</span> <span className="text-[#FF6B35] font-bold">{selectedOrder.final_price?.toLocaleString()} MMK</span></div>
+                    {selectedOrder.first_purchase_discount > 0 && (
+                      <div className="flex justify-between"><span className="text-green-500">First Purchase Discount:</span> <span>-{selectedOrder.first_purchase_discount.toLocaleString()} MMK</span></div>
+                    )}
                   </div>
                 </div>
 
@@ -267,7 +474,6 @@ export default function AdminOrders() {
                 </div>
               </div>
 
-              {/* Right Column: Screenshot */}
               <div className="space-y-4">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Payment Proof</h3>
                 {selectedOrder.payment_screenshot ? (
