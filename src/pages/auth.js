@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'fire
 import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,12 +15,14 @@ export default function Auth() {
   const [promoteCodeValid, setPromoteCodeValid] = useState(null);
   const [promoteCodeDiscount, setPromoteCodeDiscount] = useState(0);
   const [promoteCodeType, setPromoteCodeType] = useState(null);
-  const [isCheckingCode, setIsCheckingCode] = useState(false); // ADDED: Track validation status
+  const [isCheckingCode, setIsCheckingCode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState(0);
   const router = useRouter();
 
+  // Check URL for referral code
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const ref = urlParams.get('ref');
@@ -42,11 +44,10 @@ export default function Auth() {
       return;
     }
     
-    setIsCheckingCode(true); // START loading
-    setPromoteCodeValid(null); // Reset to neutral while checking
+    setIsCheckingCode(true);
+    setPromoteCodeValid(null);
     
     try {
-      // Check in promo_codes collection (Admin created)
       const promoQuery = query(collection(db, 'promo_codes'), where('code', '==', code.toUpperCase()));
       const promoSnapshot = await getDocs(promoQuery);
       
@@ -61,13 +62,12 @@ export default function Auth() {
         return;
       }
       
-      // Check in users collection (User referral code)
       const userQuery = query(collection(db, 'users'), where('promote_code', '==', code.toUpperCase()));
       const userSnapshot = await getDocs(userQuery);
       
       if (!userSnapshot.empty) {
         setPromoteCodeValid(true);
-        setPromoteCodeDiscount(15); // 15% discount for referral
+        setPromoteCodeDiscount(15);
         setPromoteCodeType('user');
         setIsCheckingCode(false);
         return;
@@ -81,6 +81,15 @@ export default function Auth() {
       setPromoteCodeValid(false);
     }
     setIsCheckingCode(false);
+  };
+
+  const checkPasswordStrength = (pass) => {
+    let strength = 0;
+    if (pass.length >= 6) strength++;
+    if (pass.match(/[a-z]/)) strength++;
+    if (pass.match(/[0-9]/)) strength++;
+    if (pass.match(/[^a-zA-Z0-9]/)) strength++;
+    setPasswordStrength(strength);
   };
 
   const handleLogin = async (e) => {
@@ -100,7 +109,6 @@ export default function Auth() {
   const handleRegister = async (e) => {
     e.preventDefault();
     
-    // CRITICAL FIX: If still checking the code, prevent submission
     if (isCheckingCode) {
       setError('Please wait, validating promo code...');
       return;
@@ -117,8 +125,9 @@ export default function Auth() {
       let usedPromoteCode = null;
       let referredBy = null;
       let discountPercent = 0;
+      let promoValidUntil = null;
+      let promoDurationDays = 0;
       
-      // Use the already validated state, don't re-fetch
       if (promoteCodeValid && promoteCode) {
         usedPromoteCode = promoteCode.toUpperCase();
         discountPercent = promoteCodeDiscount;
@@ -131,6 +140,13 @@ export default function Auth() {
             await updateDoc(doc(db, 'promo_codes', promoDoc.id), {
               used_count: (promoDoc.data().used_count || 0) + 1
             });
+            
+            // 🆕 Get duration from promo code settings
+            promoDurationDays = promoDoc.data().settings?.valid_duration_value || 30;
+            const registeredAt = new Date();
+            const validUntil = new Date(registeredAt);
+            validUntil.setDate(validUntil.getDate() + promoDurationDays);
+            promoValidUntil = validUntil.toISOString().split('T')[0];
           }
         }
         
@@ -139,10 +155,17 @@ export default function Auth() {
           const userSnapshot = await getDocs(userQuery);
           if (!userSnapshot.empty) {
             referredBy = userSnapshot.docs[0].id;
+            // Default 30 days for referral codes
+            promoDurationDays = 30;
+            const registeredAt = new Date();
+            const validUntil = new Date(registeredAt);
+            validUntil.setDate(validUntil.getDate() + 30);
+            promoValidUntil = validUntil.toISOString().split('T')[0];
           }
         }
       }
       
+      // 🆕 Save user with duration fields
       await setDoc(doc(db, 'users', user.uid), {
         username: username,
         email: email,
@@ -152,7 +175,11 @@ export default function Auth() {
         discount_percent: discountPercent,
         discount_used: false,
         created_at: new Date().toISOString(),
-        last_login: new Date().toISOString()
+        last_login: new Date().toISOString(),
+        // 🆕 Duration tracking fields
+        promo_registered_at: new Date().toISOString(),
+        promo_valid_until: promoValidUntil,
+        promo_duration_days: promoDurationDays
       });
       
       if (referredBy) {
@@ -165,7 +192,7 @@ export default function Auth() {
       }
       
       if (usedPromoteCode && discountPercent > 0) {
-        setMessage(`✅ Account created! You got ${discountPercent}% discount on your first purchase!`);
+        setMessage(`✅ Account created! You got ${discountPercent}% discount on your first purchase! Valid for ${promoDurationDays} days.`);
       } else {
         setMessage('✅ Account created! Share your promote code to get discounts!');
       }
@@ -180,58 +207,234 @@ export default function Auth() {
     setLoading(false);
   };
 
-  // --- UI Rendering (Remains the same, just added disabled state based on isCheckingCode) ---
   return (
     <>
-      <Head><title>Login | Digital Hub Myanmar</title></Head>
-      <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617] flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
+      <Head><title>Digital Hub Myanmar - Login / Register</title></Head>
+      <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617] flex items-center justify-center p-4 relative overflow-hidden">
+        
+        {/* Animated Background Blobs */}
+        <motion.div 
+          className="absolute top-20 left-10 w-72 h-72 rounded-full bg-[#FF6B35]/20 blur-3xl"
+          animate={{ scale: [1, 1.2, 1], x: [0, 20, 0] }}
+          transition={{ duration: 8, repeat: Infinity }}
+        />
+        <motion.div 
+          className="absolute bottom-20 right-10 w-80 h-80 rounded-full bg-[#00D4FF]/20 blur-3xl"
+          animate={{ scale: [1.2, 1, 1.2], y: [0, -30, 0] }}
+          transition={{ duration: 10, repeat: Infinity }}
+        />
+
+        <div className="w-full max-w-md relative z-10">
+          {/* Logo & Brand */}
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] shadow-lg mb-4">
+              <span className="text-3xl font-black text-white">DH</span>
+            </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] bg-clip-text text-transparent">Digital Hub Myanmar</h1>
-            <p className="text-gray-400 text-sm mt-2">Hubby Store Member Login</p>
+            <p className="text-gray-400 text-sm mt-2">Hubby Store Member Portal</p>
+          </motion.div>
+
+          {/* Tab Switcher */}
+          <div className="flex gap-2 mb-6 p-1 bg-white/5 rounded-xl backdrop-blur-sm">
+            <button 
+              onClick={() => { setIsLogin(true); setError(''); setMessage(''); }} 
+              className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-300 ${isLogin ? 'bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+            >
+              Login
+            </button>
+            <button 
+              onClick={() => { setIsLogin(false); setError(''); setMessage(''); setPromoteCodeValid(null); }} 
+              className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-300 ${!isLogin ? 'bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+            >
+              Register
+            </button>
           </div>
 
-          <div className="flex gap-2 mb-6">
-            <button onClick={() => { setIsLogin(true); setError(''); setMessage(''); }} className={`flex-1 py-3 rounded-xl font-semibold transition-all ${isLogin ? 'bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white shadow-lg' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}>Login</button>
-            <button onClick={() => { setIsLogin(false); setError(''); setMessage(''); setPromoteCodeValid(null); }} className={`flex-1 py-3 rounded-xl font-semibold transition-all ${!isLogin ? 'bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white shadow-lg' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}>Register</button>
-          </div>
-
-          {error && <div className="mb-4 p-3 bg-red-600/20 border border-red-500 rounded-xl text-red-400 text-sm text-center">{error}</div>}
-          {message && <div className="mb-4 p-3 bg-green-600/20 border border-green-500 rounded-xl text-green-400 text-sm text-center">{message}</div>}
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm text-center backdrop-blur-sm"
+              >
+                {error}
+              </motion.div>
+            )}
+            {message && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm text-center backdrop-blur-sm"
+              >
+                {message}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {isLogin ? (
-            <motion.form initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} onSubmit={handleLogin} className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <div className="mb-4"><label className="block text-gray-300 text-sm mb-2">Email Address</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 rounded-xl bg-white/10 text-white border border-white/20 focus:border-[#FF6B35] outline-none" placeholder="your@email.com" required /></div>
-              <div className="mb-6"><label className="block text-gray-300 text-sm mb-2">Password</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 rounded-xl bg-white/10 text-white border border-white/20 focus:border-[#FF6B35] outline-none" placeholder="••••••••" required /></div>
-              <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-xl font-semibold disabled:opacity-50">{loading ? 'Logging in...' : 'Login'}</button>
+            <motion.form 
+              key="login"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              onSubmit={handleLogin} 
+              className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl"
+            >
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Email Address</label>
+                  <input 
+                    type="email" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    className="w-full p-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-[#FF6B35] outline-none transition-all focus:ring-2 focus:ring-[#FF6B35]/50" 
+                    placeholder="your@email.com" 
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Password</label>
+                  <input 
+                    type="password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    className="w-full p-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-[#FF6B35] outline-none transition-all focus:ring-2 focus:ring-[#FF6B35]/50" 
+                    placeholder="••••••••" 
+                    required 
+                  />
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-xl font-semibold hover:opacity-90 transition-all disabled:opacity-50 shadow-lg"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Logging in...
+                    </span>
+                  ) : 'Login'}
+                </button>
+              </div>
             </motion.form>
           ) : (
-            <motion.form initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} onSubmit={handleRegister} className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <div className="mb-4"><label className="block text-gray-300 text-sm mb-2">Username</label><input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-3 rounded-xl bg-white/10 text-white border border-white/20 focus:border-[#FF6B35] outline-none" placeholder="Choose a username" required /></div>
-              <div className="mb-4"><label className="block text-gray-300 text-sm mb-2">Email Address</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 rounded-xl bg-white/10 text-white border border-white/20 focus:border-[#FF6B35] outline-none" placeholder="your@email.com" required /></div>
-              <div className="mb-4"><label className="block text-gray-300 text-sm mb-2">Password</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 rounded-xl bg-white/10 text-white border border-white/20 focus:border-[#FF6B35] outline-none" placeholder="At least 6 characters" required /></div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-300 text-sm mb-2">Promote Code (Optional)</label>
-                <input 
-                  type="text" 
-                  value={promoteCode} 
-                  onChange={(e) => { 
-                    setPromoteCode(e.target.value); 
-                    checkPromoteCode(e.target.value); 
-                  }} 
-                  className="w-full p-3 rounded-xl bg-white/10 text-white border border-white/20 focus:border-[#FF6B35] outline-none" 
-                  placeholder="Enter promote code if you have" 
-                />
-                {isCheckingCode && <p className="text-yellow-400 text-xs mt-1">⏳ Checking code...</p>}
-                {!isCheckingCode && promoteCodeValid === true && <p className="text-green-400 text-xs mt-1">✅ Valid! You'll get {promoteCodeDiscount}% discount on first purchase!</p>}
-                {!isCheckingCode && promoteCodeValid === false && <p className="text-red-400 text-xs mt-1">❌ Invalid promote code</p>}
+            <motion.form 
+              key="register"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              onSubmit={handleRegister} 
+              className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl"
+            >
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Username</label>
+                  <input 
+                    type="text" 
+                    value={username} 
+                    onChange={(e) => setUsername(e.target.value)} 
+                    className="w-full p-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-[#FF6B35] outline-none transition-all focus:ring-2 focus:ring-[#FF6B35]/50" 
+                    placeholder="Choose a username" 
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Email Address</label>
+                  <input 
+                    type="email" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    className="w-full p-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-[#FF6B35] outline-none transition-all focus:ring-2 focus:ring-[#FF6B35]/50" 
+                    placeholder="your@email.com" 
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Password</label>
+                  <input 
+                    type="password" 
+                    value={password} 
+                    onChange={(e) => { 
+                      setPassword(e.target.value); 
+                      checkPasswordStrength(e.target.value);
+                    }} 
+                    className="w-full p-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-[#FF6B35] outline-none transition-all focus:ring-2 focus:ring-[#FF6B35]/50" 
+                    placeholder="At least 6 characters" 
+                    required 
+                  />
+                  {password && (
+                    <div className="mt-2 flex gap-1">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i < passwordStrength ? 'bg-[#FF6B35]' : 'bg-white/20'}`} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Promo Code (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={promoteCode} 
+                    onChange={(e) => { 
+                      setPromoteCode(e.target.value); 
+                      checkPromoteCode(e.target.value); 
+                    }} 
+                    className="w-full p-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-[#FF6B35] outline-none transition-all focus:ring-2 focus:ring-[#FF6B35]/50" 
+                    placeholder="Enter promo code" 
+                  />
+                  <AnimatePresence>
+                    {isCheckingCode && (
+                      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-yellow-400 text-xs mt-1 flex items-center gap-1">
+                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Checking code...
+                      </motion.p>
+                    )}
+                    {!isCheckingCode && promoteCodeValid === true && (
+                      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-green-400 text-xs mt-1">
+                        ✅ Valid! You'll get {promoteCodeDiscount}% OFF on first purchase!
+                      </motion.p>
+                    )}
+                    {!isCheckingCode && promoteCodeValid === false && (
+                      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 text-xs mt-1">
+                        ❌ Invalid promo code
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
+                
+                <button 
+                  type="submit" 
+                  disabled={loading || isCheckingCode} 
+                  className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-xl font-semibold hover:opacity-90 transition-all disabled:opacity-50 shadow-lg"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Creating account...
+                    </span>
+                  ) : 'Create Account'}
+                </button>
               </div>
-              
-              <button type="submit" disabled={loading || isCheckingCode} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] text-white p-3 rounded-xl font-semibold disabled:opacity-50">{loading ? 'Creating account...' : 'Create Account'}</button>
             </motion.form>
           )}
-          <p className="text-center text-gray-500 text-xs mt-6">🔐 Browser will ask to save password</p>
+          
+          <p className="text-center text-gray-500 text-xs mt-6">🔐 Secure authentication powered by Firebase</p>
         </div>
       </div>
     </>
