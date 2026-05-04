@@ -180,15 +180,13 @@ export default function ProductDetail() {
   return (
     <>
       <Head><title>{product.name} | Digital Hub Myanmar</title></Head>
-      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30 overflow-x-hidden">
-        {/* 15% Zoom-out effect for mobile using CSS scale on the main container */}
+      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30">
         <style jsx global>{`
           @media (max-width: 640px) {
             .mobile-zoom-out {
-              transform: scale(0.85);
-              transform-origin: top center;
-              width: 117.6%; /* Compensate for scale(0.85) to keep full width: 100 / 0.85 */
-              margin-left: -8.8%; /* Center the scaled content: (117.6 - 100) / 2 */
+              zoom: 0.85;
+              -moz-transform: scale(0.85);
+              -moz-transform-origin: top center;
             }
           }
         `}</style>
@@ -240,19 +238,16 @@ export default function ProductDetail() {
                     {product.name}
                   </h1>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    {/* Duration Box */}
                     <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Duration</span>
                       <span className="text-xs font-black text-[#FF6B35]">{product.duration}</span>
                     </div>
-                    {/* Account Status Box */}
                     {product.account_status && (
                       <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
                         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Account</span>
                         <span className="text-xs font-black text-[#00D4FF]">{product.account_status}</span>
                       </div>
                     )}
-                    {/* Warranty Box */}
                     {product.warranty && (
                       <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
                         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Warranty</span>
@@ -358,7 +353,7 @@ export default function ProductDetail() {
               </motion.div>
             )}
 
-            {/* Product Note - Show only if exists */}
+            {/* Product Note */}
             {productNote && productNote.content && (
               <motion.div 
                 className="bg-blue-500/10 backdrop-blur-xl rounded-2xl p-4 border border-blue-500/20"

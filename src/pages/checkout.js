@@ -24,13 +24,11 @@ export default function Checkout() {
   const [promoPercent, setPromoPercent] = useState(0);
   const [currentStep, setCurrentStep] = useState(1);
   
-  // New features: Note and Screenshot
   const [userNote, setUserNote] = useState('');
   const [screenshot, setScreenshot] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
   const [orderId] = useState(`DH-${Math.random().toString(36).substr(2, 6).toUpperCase()}`);
 
-  // Load everything in one go
   useEffect(() => {
     const loadData = async () => {
       if (!id) return;
@@ -119,7 +117,7 @@ export default function Checkout() {
       const screenshotUrl = screenshotPreview; 
 
       await addDoc(collection(db, 'orders'), {
-        display_id: orderId, // Store the unified ID
+        display_id: orderId,
         user_id: user.uid,
         username: userData?.username,
         product_id: product.id,
@@ -149,7 +147,6 @@ export default function Checkout() {
     setProcessing(false);
   };
 
-
   if (loading || !product) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
@@ -164,7 +161,6 @@ export default function Checkout() {
 
   const displayPrice = finalPrice > 0 ? finalPrice : product.hubby_price;
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -185,17 +181,15 @@ export default function Checkout() {
   return (
     <>
       <Head><title>Checkout | Digital Hub Myanmar</title></Head>
-      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30 overflow-x-hidden">
+      <div className="min-h-screen bg-[#020617] text-white selection:bg-[#FF6B35]/30">
         <Navbar />
         
-        {/* 15% Zoom-out effect for mobile using CSS scale on the main container */}
         <style jsx global>{`
           @media (max-width: 640px) {
             .mobile-zoom-out {
-              transform: scale(0.85);
-              transform-origin: top center;
-              width: 117.6%; /* Compensate for scale(0.85) to keep full width: 100 / 0.85 */
-              margin-left: -8.8%; /* Center the scaled content: (117.6 - 100) / 2 */
+              zoom: 0.85;
+              -moz-transform: scale(0.85);
+              -moz-transform-origin: top center;
             }
           }
         `}</style>
@@ -213,7 +207,6 @@ export default function Checkout() {
             </div>
           </motion.div>
           
-          {/* Progress Steps */}
           <motion.div 
             className="flex justify-between mb-10 relative"
             variants={containerVariants}
@@ -247,7 +240,6 @@ export default function Checkout() {
             initial="hidden"
             animate="visible"
           >
-            {/* Order Summary Card */}
             <motion.div 
               className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl"
               variants={itemVariants}
@@ -265,18 +257,6 @@ export default function Checkout() {
                   <span className="text-gray-400">Duration</span>
                   <span className="text-gray-300 font-medium">{product.duration}</span>
                 </div>
-                {product.account_status && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-400">Account Status</span>
-                    <span className="text-[#00D4FF] font-medium">{product.account_status}</span>
-                  </div>
-                )}
-                {product.warranty && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-400">Warranty</span>
-                    <span className="text-green-400 font-medium">{product.warranty}</span>
-                  </div>
-                )}
                 
                 <div className="h-px bg-white/5 my-2" />
                 
@@ -314,7 +294,6 @@ export default function Checkout() {
               </div>
             </motion.div>
             
-            {/* Payment Instructions Card */}
             <motion.div 
               className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl"
               variants={itemVariants}
@@ -328,7 +307,6 @@ export default function Checkout() {
                   <div className="p-4 bg-white/5 rounded-2xl border border-white/10 hover:border-[#FF6B35]/30 transition-all group">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">🏦 KBZ Bank</span>
-                      <span className="text-[10px] text-[#FF6B35] font-black">SCAN TO PAY</span>
                     </div>
                     <p className="text-lg font-black text-white group-hover:text-[#FF6B35] transition-colors">0987654321</p>
                     <p className="text-xs text-gray-500 font-bold">Name: William</p>
@@ -343,7 +321,6 @@ export default function Checkout() {
                   </div>
                 </div>
 
-                {/* New Feature: Screenshot Upload */}
                 <div className="pt-4">
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
                     📸 Upload Payment Screenshot
@@ -378,7 +355,6 @@ export default function Checkout() {
                   </div>
                 </div>
 
-                {/* New Feature: Note to Admin */}
                 <div className="pt-2">
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
                     📝 Note to Admin (Optional)
@@ -394,7 +370,6 @@ export default function Checkout() {
               </div>
             </motion.div>
             
-            {/* Confirm Button */}
             <motion.div variants={itemVariants} className="pt-4">
               <motion.button
                 onClick={createOrder}
@@ -425,10 +400,6 @@ export default function Checkout() {
                   * ကျေးဇူးပြု၍ ငွေလွှဲ Screenshot အရင်တင်ပေးပါ
                 </p>
               )}
-              
-              <p className="text-center text-gray-500 text-[10px] mt-6 leading-relaxed">
-                Order တင်ပြီးပါက ကျွန်ုပ်တို့ဘက်မှ အမြန်ဆုံး စစ်ဆေးပေးသွားမည် ဖြစ်ပါသည်။
-              </p>
             </motion.div>
           </motion.div>
         </div>
