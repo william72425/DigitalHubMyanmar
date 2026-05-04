@@ -78,13 +78,47 @@ export default async function handler(req, res) {
       // If valid_until is empty, null, or undefined → NEVER EXPIRE
     }
 
-    // Check first purchase eligibility
+    // ============================================
+    // 🆕 NEW: Check User-Specific Valid Duration
+    // ============================================
     if (userId && promoData.option_type === 'first_purchase_discount') {
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        
+        // Check if user already used first purchase discount
         if (userData.first_purchase_discount_used === true) {
           return res.status(400).json({ error: 'First purchase discount already used' });
+        }
+        
+        // 🆕 Check if user has a valid duration from registration
+        if (userData.promo_registered_at && userData.promo_valid_until) {
+          const today = new Date().toISOString().split('T')[0];
+          const validUntil = userData.promo_valid_until;
+          
+          if (validUntil < today) {
+            return res.status(400).json({ 
+              error: 'Your first purchase discount period has expired',
+              expired: true,
+              valid_until: validUntil,
+              registered_at: userData.promo_registered_at
+            });
+          }
+        }
+        // If no promo_registered_at/promo_valid_until, fall back to checking hasCompletedOrder
+        else {
+          // Check if user has any completed order (permanent)
+          const ordersQuery = query(
+            collection(db, 'orders'),
+            where('user_id', '==', userId),
+            where('status', '==', 'completed')
+          );
+          const ordersSnapshot = await getDocs(ordersQuery);
+          const hasCompletedOrder = !ordersSnapshot.empty;
+          
+          if (hasCompletedOrder) {
+            return res.status(400).json({ error: 'First purchase discount already used (completed order exists)' });
+          }
         }
       }
     }
@@ -113,4 +147,4 @@ export default async function handler(req, res) {
     console.error('Promo check error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-    }
+}
