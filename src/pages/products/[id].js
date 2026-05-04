@@ -36,9 +36,7 @@ export default function ProductDetail() {
         try {
           const res = await fetch('/api/admin/features');
           const freshData = await res.json();
-          // Fix field mapping: admin uses feature_name, free, pro
           setFeatures(freshData.features?.filter(f => f.product_id === productId) || []);
-          // Fix field mapping: admin uses content, not note
           setProductNote(freshData.product_notes?.find(n => n.product_id === productId) || null);
         } catch (error) {
           console.error('Failed to load features:', error);
@@ -68,38 +66,68 @@ export default function ProductDetail() {
     return () => unsubscribe();
   }, [product]);
 
+  // ============================================
+  // FIXED: loadUserDiscounts with active order status and duration check
+  // ============================================
   const loadUserDiscounts = async (userId) => {
     try {
-      const ordersQuery = query(
+      // FIXED: Only 'pending', 'processing', 'confirmed' block discount
+      const activeOrdersQuery = query(
         collection(db, 'orders'),
         where('user_id', '==', userId),
-        where('status', 'in', ['pending', 'processing', 'completed'])
+        where('status', 'in', ['pending', 'processing', 'confirmed'])
       );
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const hasOrder = !ordersSnapshot.empty;
-      setHasActiveOrder(hasOrder);
+      const activeOrdersSnapshot = await getDocs(activeOrdersQuery);
+      const hasActiveOrderNow = !activeOrdersSnapshot.empty;
+      setHasActiveOrder(hasActiveOrderNow);
+      
+      // Check for completed orders (permanent disqualification)
+      const completedOrdersQuery = query(
+        collection(db, 'orders'),
+        where('user_id', '==', userId),
+        where('status', '==', 'completed')
+      );
+      const completedOrdersSnapshot = await getDocs(completedOrdersQuery);
+      const hasCompletedOrder = !completedOrdersSnapshot.empty;
       
       const userDoc = await getDoc(doc(db, 'users', userId));
       let discountPercent = 0;
       let promoType = 'percent';
       let maxDiscountAmount = 0;
+      let isDiscountValid = false;
       
-      if (!hasOrder && userDoc.exists()) {
+      // Only check discount if:
+      // 1. No active orders
+      // 2. No completed orders (permanent)
+      if (!hasActiveOrderNow && !hasCompletedOrder && userDoc.exists()) {
         const userData = userDoc.data();
-        if (userData.used_promote_code && !userData.first_purchase_discount_used && product) {
+        
+        // Check if discount period is still valid (duration check)
+        let isDiscountPeriodValid = true;
+        if (userData.promo_valid_until) {
+          const today = new Date().toISOString().split('T')[0];
+          if (userData.promo_valid_until < today) {
+            isDiscountPeriodValid = false;
+            console.log(`Discount period expired for user ${userId}. Valid until: ${userData.promo_valid_until}`);
+          }
+        }
+        
+        if (userData.used_promote_code && !userData.first_purchase_discount_used && isDiscountPeriodValid && product) {
           try {
-            const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}&productId=${product.id}`);
+            const promoRes = await fetch(`/api/promo/check?code=${userData.used_promote_code}&productId=${product.id}&userId=${userId}`);
             const promoData = await promoRes.json();
             if (promoData && promoData.option_type === 'first_purchase_discount') {
               discountPercent = promoData.settings?.discount_value || 0;
               promoType = promoData.settings?.discount_type || 'percent';
               maxDiscountAmount = promoData.settings?.max_discount || 0;
+              isDiscountValid = true;
             }
           } catch (err) {
             console.error('Promo check failed:', err);
           }
         }
       }
+      
       setPromoDiscountPercent(discountPercent);
       
       if (product) {
@@ -109,7 +137,7 @@ export default function ProductDetail() {
           maxDiscountAmount
         };
         const userDataObj = { 
-          hasActiveOrder: hasOrder,
+          hasActiveOrder: hasActiveOrderNow,
           first_purchase_discount_used: userDoc.exists() ? userDoc.data().first_purchase_discount_used : false
         };
         
@@ -117,7 +145,7 @@ export default function ProductDetail() {
         setFinalPrice(result.finalPrice);
         setTotalDiscount(result.totalDiscount);
         setAppliedDiscounts(result.appliedDiscounts);
-        setIsFirstPurchaseEligible(result.isFirstPurchaseEligible);
+        setIsFirstPurchaseEligible(result.isFirstPurchaseEligible && isDiscountValid);
       }
       setLoading(false);
     } catch (error) {
