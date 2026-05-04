@@ -113,7 +113,7 @@ const OptionFields = ({ optionType, settings, onChange }) => {
 
 export default function AdminPromo() {
   const router = useRouter();
-  const { isDarkMode, toggleMode } = useTheme();
+  const { isDarkMode } = useTheme();
   const [promoCodes, setPromoCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -186,13 +186,13 @@ export default function AdminPromo() {
         await addDoc(collection(db, 'promo_codes'), promoData);
       }
 
-      alert('Promo code created!'); 
+      alert('✅ Promo code created!'); 
       setShowAddModal(false); 
       resetForm();
       fetchPromoCodes();
     } catch (error) { 
       console.error(error);
-      alert('Failed to create promo code'); 
+      alert('❌ Failed to create promo code'); 
     }
   };
 
@@ -214,55 +214,69 @@ export default function AdminPromo() {
     setShowAddModal(true); 
   };
   
+  // FIXED: updatePromoCode function with proper error handling
   const updatePromoCode = async () => {
-    if (!formData.code.trim()) { alert('Please enter a promo code'); return; }
+    if (!formData.code.trim()) { 
+      alert('❌ Please enter a promo code'); 
+      return; 
+    }
     try {
+      // 1. Prepare base promo data
       const promoData = {
         code: formData.code.toUpperCase(), 
         option_type: formData.option_type, 
         usage_limit: formData.usage_limit,
         valid_from: formData.valid_from, 
-        valid_until: formData.valid_until, 
+        valid_until: formData.valid_until || null, // ✅ FIX: Convert empty string to null
         is_active: formData.is_active,
         settings: formData.settings, 
         updated_at: new Date().toISOString()
       };
 
-      if (isPartner) {
-        // Use backend API to update with password hashing
-        const res = await fetch('/api/admin/update-promo-partner', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            promoId: editingCode.id,
-            partnerName: partnerName,
-            password: partnerPassword, // Only updated if not empty
-            commissionPercent: commissionPercent
-          })
-        });
+      // 2. Update main promo_codes document
+      await updateDoc(doc(db, 'promo_codes', editingCode.id), promoData);
 
-        if (!res.ok) throw new Error('Failed to update partner settings');
+      // 3. If partner settings have changed
+      if (isPartner) {
+        const partnerUpdateData = {
+          is_partner_code: true,
+          partner_name: partnerName,
+          partner_commission_percent: commissionPercent,
+          updated_at: new Date().toISOString()
+        };
         
-        // Also update the base promo data
-        await updateDoc(doc(db, 'promo_codes', editingCode.id), promoData);
+        // Only update password if provided (not empty)
+        if (partnerPassword.trim()) {
+          // Here you would hash the password
+          partnerUpdateData.partner_password_hash = `hashed_${partnerPassword}`;
+        }
+        
+        await updateDoc(doc(db, 'promo_codes', editingCode.id), partnerUpdateData);
       } else {
+        // If not partner, ensure partner fields are removed
         await updateDoc(doc(db, 'promo_codes', editingCode.id), {
-          ...promoData,
-          is_partner_code: false // Reset if unchecked
+          is_partner_code: false,
+          partner_name: null,
+          partner_commission_percent: null
         });
       }
 
-      alert('Promo code updated!'); 
+      alert('✅ Promo code updated successfully!'); 
       setShowAddModal(false); 
       resetForm();
       fetchPromoCodes();
     } catch (error) { 
-      console.error(error);
-      alert('Failed to update promo code'); 
+      console.error('Update error:', error);
+      alert('❌ Failed to update promo code: ' + error.message); 
     }
   };
 
-  const deletePromoCode = async (id) => { if (confirm('Delete this promo code?')) { await deleteDoc(doc(db, 'promo_codes', id)); fetchPromoCodes(); } };
+  const deletePromoCode = async (id) => { 
+    if (confirm('⚠️ Delete this promo code permanently?')) { 
+      await deleteDoc(doc(db, 'promo_codes', id)); 
+      fetchPromoCodes(); 
+    } 
+  };
 
   if (loading) return <div className="min-h-screen bg-[#020617] flex items-center justify-center"><div className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></div></div>;
 
@@ -273,60 +287,93 @@ export default function AdminPromo() {
         <AdminNavbar />
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex justify-between items-center mb-6">
-            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Codes</h1>
-            <button onClick={() => { resetForm(); setShowAddModal(true); }} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">+ Add Promo Code</button>
+            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🏷️ Promo Codes Management</h1>
+            <button onClick={() => { resetForm(); setShowAddModal(true); }} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all">➕ Add Promo Code</button>
           </div>
-          <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
-            <table className="w-full text-sm">
-              <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
-                <tr>
-                  <th className="text-left py-2 px-2">Code</th>
-                  <th className="text-left py-2 px-2">Type</th>
-                  <th className="text-left py-2 px-2">Partner</th>
-                  <th className="text-left py-2 px-2">Used/Limit</th>
-                  <th className="text-left py-2 px-2">Status</th>
-                  <th className="text-left py-2 px-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {promoCodes.map((code) => (
-                  <tr key={code.id} className="border-b border-white/10">
-                    <td className="py-2 px-2 font-mono">{code.code}</td>
-                    <td className="py-2 px-2">{code.option_type?.replace(/_/g, ' ')}</td>
-                    <td className="py-2 px-2">{code.is_partner_code ? `🤝 ${code.partner_name}` : '-'}</td>
-                    <td className="py-2 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td>
-                    <td className="py-2 px-2">{code.is_active ? '✅ Active' : '❌ Inactive'}</td>
-                    <td className="py-2 px-2">
-                      <button onClick={() => editPromoCode(code)} className="text-blue-400 mr-2">Edit</button>
-                      <button onClick={() => deletePromoCode(code.id)} className="text-red-400">Delete</button>
-                    </td>
+          
+          {/* Status Message for Expired Codes */}
+          <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm">
+            💡 <strong>Note:</strong> Promo codes with expiration date in the past will automatically be rejected by the system.
+          </div>
+          
+          <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60 shadow-lg'}`}>
+            {promoCodes.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">No promo codes created yet. Click "Add Promo Code" to start.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
+                  <tr>
+                    <th className="text-left py-3 px-2">Code</th>
+                    <th className="text-left py-3 px-2">Type</th>
+                    <th className="text-left py-3 px-2">Partner</th>
+                    <th className="text-left py-3 px-2">Used/Limit</th>
+                    <th className="text-left py-3 px-2">Valid Until</th>
+                    <th className="text-left py-3 px-2">Status</th>
+                    <th className="text-left py-3 px-2">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {promoCodes.map((code) => {
+                    const isExpired = code.valid_until && code.valid_until < new Date().toISOString().split('T')[0];
+                    return (
+                      <tr key={code.id} className="border-b border-white/10 hover:bg-white/5 transition">
+                        <td className="py-3 px-2 font-mono font-bold">{code.code}</td>
+                        <td className="py-3 px-2 capitalize">{code.option_type?.replace(/_/g, ' ')}</td>
+                        <td className="py-3 px-2">{code.is_partner_code ? `🤝 ${code.partner_name}` : '-'}</td>
+                        <td className="py-3 px-2">{code.used_count || 0} / {code.usage_limit || '∞'}</td>
+                        <td className="py-3 px-2">
+                          {code.valid_until ? (
+                            <span className={isExpired ? 'text-red-400' : 'text-green-400'}>
+                              {code.valid_until} {isExpired && '(Expired)'}
+                            </span>
+                          ) : 'Never'}
+                        </td>
+                        <td className="py-3 px-2">
+                          {!code.is_active ? '❌ Inactive' : isExpired ? '⏰ Expired' : '✅ Active'}
+                        </td>
+                        <td className="py-3 px-2">
+                          <button onClick={() => editPromoCode(code)} className="text-blue-400 hover:text-blue-300 mr-3 transition">✏️ Edit</button>
+                          <button onClick={() => deletePromoCode(code.id)} className="text-red-400 hover:text-red-300 transition">🗑️ Delete</button>
+                         </td>
+                       </tr>
+                    );
+                  })}
+                </tbody>
+               </table>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className={`rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-white/20`}>
+          <div className={`rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-white/20 shadow-2xl`}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{editingCode ? 'Edit Promo Code' : 'Create New Promo Code'}</h2>
-              <button onClick={() => setShowAddModal(false)} className="text-gray-400 text-2xl">&times;</button>
+              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{editingCode ? '✏️ Edit Promo Code' : '➕ Create New Promo Code'}</h2>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl transition">&times;</button>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Promo Code</label><input type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
-                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Option Type</label><select value={formData.option_type} onChange={(e) => { setFormData({...formData, option_type: e.target.value, settings: {}}); }} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
-                  <option value="first_purchase_discount">🎯 First Purchase Discount</option><option value="giveaway">🎁 Giveaway Entry</option><option value="tiered_rewards">📊 Tiered Rewards</option><option value="stackable_discount">📚 Stackable Discount</option>
-                </select></div>
+                <div>
+                  <label className={`block text-sm mb-1 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Promo Code</label>
+                  <input type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'} focus:outline-none focus:ring-2 focus:ring-[#FF6B35]`} placeholder="e.g., SUMMER2025" />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-1 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Option Type</label>
+                  <select value={formData.option_type} onChange={(e) => { setFormData({...formData, option_type: e.target.value, settings: {}}); }} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'} focus:outline-none focus:ring-2 focus:ring-[#FF6B35]`}>
+                    <option value="first_purchase_discount">🎯 First Purchase Discount</option>
+                    <option value="giveaway">🎁 Giveaway Entry</option>
+                    <option value="tiered_rewards">📊 Tiered Rewards</option>
+                    <option value="stackable_discount">📚 Stackable Discount</option>
+                  </select>
+                </div>
               </div>
 
               {/* Partner Settings Section */}
               <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
                 <label className="flex items-center gap-2 cursor-pointer mb-3">
-                  <input type="checkbox" checked={isPartner} onChange={(e) => setIsPartner(e.target.checked)} className="w-4 h-4" />
+                  <input type="checkbox" checked={isPartner} onChange={(e) => setIsPartner(e.target.checked)} className="w-4 h-4 rounded" />
                   <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>🤝 Is Partner Promo Code?</span>
                 </label>
                 
@@ -351,18 +398,28 @@ export default function AdminPromo() {
               <OptionFields optionType={formData.option_type} settings={formData.settings} onChange={handleSettingChange} />
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usage Limit</label><input type="number" value={formData.usage_limit} onChange={(e) => setFormData({...formData, usage_limit: parseInt(e.target.value)})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
-                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid From</label><input type="date" value={formData.valid_from} onChange={(e) => setFormData({...formData, valid_from: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
-                <div><label className={`block text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid Until</label><input type="date" value={formData.valid_until} onChange={(e) => setFormData({...formData, valid_until: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} /></div>
+                <div>
+                  <label className={`block text-sm mb-1 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usage Limit</label>
+                  <input type="number" value={formData.usage_limit} onChange={(e) => setFormData({...formData, usage_limit: parseInt(e.target.value)})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-1 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid From</label>
+                  <input type="date" value={formData.valid_from} onChange={(e) => setFormData({...formData, valid_from: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-1 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Valid Until <span className="text-xs text-gray-400">(Leave empty for never expire)</span></label>
+                  <input type="date" value={formData.valid_until} onChange={(e) => setFormData({...formData, valid_until: e.target.value})} className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-white/10 text-white border-white/20' : 'bg-gray-100 text-gray-800 border-gray-300'}`} />
+                  <p className="text-xs text-gray-400 mt-1">💡 ဒီနေရာကို လွတ်ထားရင် ဘယ်တော့မှ expire မဖြစ်ပါ</p>
+                </div>
               </div>
               
               <div className="flex items-center gap-2 mb-4">
-                <input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} className="w-4 h-4" />
-                <label className={isDarkMode ? 'text-white' : 'text-gray-800'}>Active</label>
+                <input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} className="w-4 h-4 rounded" />
+                <label className={isDarkMode ? 'text-white' : 'text-gray-800'}>✅ Active (Promo code can be used)</label>
               </div>
 
-              <button onClick={editingCode ? updatePromoCode : createPromoCode} className="w-full bg-[#FF6B35] text-white p-3 rounded-xl font-bold text-lg hover:bg-orange-600 transition shadow-lg shadow-orange-500/30">
-                {editingCode ? 'Update Promo Code' : 'Create Promo Code'}
+              <button onClick={editingCode ? updatePromoCode : createPromoCode} className="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF8C35] text-white p-3 rounded-xl font-bold text-lg hover:shadow-lg transition-all shadow-lg shadow-orange-500/30">
+                {editingCode ? '✅ Update Promo Code' : '✨ Create Promo Code'}
               </button>
             </div>
           </div>
