@@ -16,12 +16,21 @@ export default function AdminOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [updating, setUpdating] = useState(false);
-  
+
   // Cancellation Reason
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
-  
-  // Dashboard Stats
+
+  // Date Filters State
+  const [dateFilter, setDateFilter] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+
+  // Order Status Filter State
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Dashboard Stats State
   const [stats, setStats] = useState({
     totalOrders: 0,
     completedOrders: 0,
@@ -31,12 +40,6 @@ export default function AdminOrders() {
     firstPurchaseRevenue: 0,
     firstPurchaseUsers: 0
   });
-  
-  // Date Filters
-  const [dateFilter, setDateFilter] = useState('all');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
-  const [showCustomPicker, setShowCustomPicker] = useState(false);
 
   useEffect(() => {
     const adminAuth = sessionStorage.getItem('admin_auth');
@@ -44,110 +47,116 @@ export default function AdminOrders() {
       router.push('/admin');
       return;
     }
-    fetchOrders();
+    fetchAllOrders();
   }, []);
 
-  const fetchOrders = async () => {
+  // Fetch all orders once
+  const fetchAllOrders = async () => {
     setLoading(true);
     try {
       const snapshot = await getDocs(collection(db, 'orders'));
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setOrders(list);
-      applyFilter(list, dateFilter);
-      calculateStats(list);
+      applyFilters(list, dateFilter, statusFilter);
+      calculateStats(list, dateFilter, statusFilter);
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
     setLoading(false);
   };
 
-  // Calculate Dashboard Statistics
-  const calculateStats = (ordersList) => {
-    const completed = ordersList.filter(o => o.status === 'completed');
-    const pendingProc = ordersList.filter(o => o.status === 'pending' || o.status === 'processing');
-    const cancelled = ordersList.filter(o => o.status === 'cancelled');
-    
-    const totalRevenue = completed.reduce((sum, o) => sum + (o.final_price || 0), 0);
-    
-    // First purchase revenue (orders where first_purchase_discount > 0)
-    const firstPurchaseOrders = ordersList.filter(o => o.first_purchase_discount > 0);
-    const firstPurchaseRevenue = firstPurchaseOrders.reduce((sum, o) => sum + (o.final_price || 0), 0);
-    
-    // Unique users who made first purchase
-    const uniqueFirstPurchaseUsers = new Set();
-    firstPurchaseOrders.forEach(o => {
-      if (o.user_id) uniqueFirstPurchaseUsers.add(o.user_id);
-    });
-    
-    setStats({
-      totalOrders: ordersList.length,
-      completedOrders: completed.length,
-      pendingProcessing: pendingProc.length,
-      cancelledOrders: cancelled.length,
-      totalRevenue: totalRevenue,
-      firstPurchaseRevenue: firstPurchaseRevenue,
-      firstPurchaseUsers: uniqueFirstPurchaseUsers.size
-    });
+  // Apply Date + Status Filters
+  const applyFilters = (ordersList, dateFilterType, statusFilterType) => {
+    let filtered = [...ordersList];
+
+    // 1. Apply Date Filter
+    filtered = applyDateFilter(filtered, dateFilterType);
+
+    // 2. Apply Status Filter
+    if (statusFilterType !== 'all') {
+      if (statusFilterType === 'pending_processing') {
+        filtered = filtered.filter(o => o.status === 'pending' || o.status === 'processing');
+      } else {
+        filtered = filtered.filter(o => o.status === statusFilterType);
+      }
+    }
+
+    setFilteredOrders(filtered);
   };
 
-  // Apply Date Filter
-  const applyFilter = (ordersList, filterType) => {
-    if (filterType === 'all') {
-      setFilteredOrders(ordersList);
-      return;
-    }
-    
+  const applyDateFilter = (ordersList, filterType) => {
+    if (filterType === 'all') return ordersList;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
-    
+
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    
-    let filtered = [];
-    const now = new Date();
-    
-    switch(filterType) {
+
+    switch (filterType) {
       case 'today':
-        filtered = ordersList.filter(o => {
+        return ordersList.filter(o => {
           const orderDate = new Date(o.created_at);
           orderDate.setHours(0, 0, 0, 0);
           return orderDate.getTime() === today.getTime();
         });
-        break;
       case 'week':
-        filtered = ordersList.filter(o => {
-          const orderDate = new Date(o.created_at);
-          return orderDate >= startOfWeek;
-        });
-        break;
+        return ordersList.filter(o => new Date(o.created_at) >= startOfWeek);
       case 'month':
-        filtered = ordersList.filter(o => {
-          const orderDate = new Date(o.created_at);
-          return orderDate >= startOfMonth;
-        });
-        break;
+        return ordersList.filter(o => new Date(o.created_at) >= startOfMonth);
       case 'custom':
         if (customStartDate && customEndDate) {
           const start = new Date(customStartDate);
           start.setHours(0, 0, 0, 0);
           const end = new Date(customEndDate);
           end.setHours(23, 59, 59, 999);
-          filtered = ordersList.filter(o => {
+          return ordersList.filter(o => {
             const orderDate = new Date(o.created_at);
             return orderDate >= start && orderDate <= end;
           });
-        } else {
-          filtered = ordersList;
         }
-        break;
+        return ordersList;
       default:
-        filtered = ordersList;
+        return ordersList;
     }
-    
-    setFilteredOrders(filtered);
+  };
+
+  // Recalculate Stats based on filtered orders (ONLY COMPLETED)
+  const calculateStats = (ordersList, dateFilterType, statusFilterType) => {
+    // First apply date filter to get correct scope
+    let scopedOrders = applyDateFilter(ordersList, dateFilterType);
+
+    // For stats, we need the original orders before status filter,
+    // so we use the date-filtered list only.
+
+    const completedOrdersList = scopedOrders.filter(o => o.status === 'completed');
+    const pendingProcessingList = scopedOrders.filter(o => o.status === 'pending' || o.status === 'processing');
+    const cancelledOrdersList = scopedOrders.filter(o => o.status === 'cancelled');
+
+    const totalRevenue = completedOrdersList.reduce((sum, o) => sum + (o.final_price || 0), 0);
+
+    // First Purchase Revenue: ONLY completed orders that used first purchase discount
+    const firstPurchaseOrders = completedOrdersList.filter(o => o.first_purchase_discount > 0);
+    const firstPurchaseRevenue = firstPurchaseOrders.reduce((sum, o) => sum + (o.final_price || 0), 0);
+
+    // Unique users who completed first purchase (with discount)
+    const uniqueFirstPurchaseUsers = new Set();
+    firstPurchaseOrders.forEach(o => {
+      if (o.user_id) uniqueFirstPurchaseUsers.add(o.user_id);
+    });
+
+    setStats({
+      totalOrders: scopedOrders.length,
+      completedOrders: completedOrdersList.length,
+      pendingProcessing: pendingProcessingList.length,
+      cancelledOrders: cancelledOrdersList.length,
+      totalRevenue,
+      firstPurchaseRevenue,
+      firstPurchaseUsers: uniqueFirstPurchaseUsers.size
+    });
   };
 
   const handleDateFilterChange = (filter) => {
@@ -156,13 +165,22 @@ export default function AdminOrders() {
       setShowCustomPicker(true);
     } else {
       setShowCustomPicker(false);
-      applyFilter(orders, filter);
+      applyFilters(orders, filter, statusFilter);
+      calculateStats(orders, filter, statusFilter);
     }
   };
-  
+
+  const handleStatusFilterChange = (status) => {
+    setStatusFilter(status);
+    applyFilters(orders, dateFilter, status);
+    // Stats should remain based on date filter only, not status filter.
+    calculateStats(orders, dateFilter, status);
+  };
+
   const handleCustomDateApply = () => {
     setShowCustomPicker(false);
-    applyFilter(orders, 'custom');
+    applyFilters(orders, 'custom', statusFilter);
+    calculateStats(orders, 'custom', statusFilter);
   };
 
   const updateOrderStatus = async (orderId, newStatus, reason = '') => {
@@ -172,28 +190,28 @@ export default function AdminOrders() {
         status: newStatus,
         updated_at: new Date().toISOString()
       };
-      
+
       if (reason) {
         updateData.cancellation_reason = reason;
       }
 
       await updateDoc(doc(db, 'orders', orderId), updateData);
-      
+
       const orderDoc = await getDoc(doc(db, 'orders', orderId));
       const orderData = orderDoc.data();
-      
+
       if (orderData && orderData.user_id) {
         if (newStatus === 'cancelled') {
           await updateDoc(doc(db, 'users', orderData.user_id), {
             first_purchase_discount_used: false
           });
         }
-        
+
         if (newStatus === 'completed') {
           await updateDoc(doc(db, 'users', orderData.user_id), {
             first_purchase_discount_used: true
           });
-          
+
           try {
             const totalAmount = orderData.final_price || orderData.total_amount || 0;
             const inviterId = orderData.inviter_id || null;
@@ -203,11 +221,14 @@ export default function AdminOrders() {
           }
         }
       }
-      
-      await fetchOrders();
+
+      // Re-fetch all data to ensure everything is consistent
+      await fetchAllOrders();
+
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder({ ...selectedOrder, status: newStatus, cancellation_reason: reason });
       }
+
       setShowCancelModal(false);
       setCancelReason('');
       alert(`Order status updated to: ${newStatus}`);
@@ -253,19 +274,19 @@ export default function AdminOrders() {
       <Head><title>Admin - Orders Dashboard | Digital Hub Myanmar</title></Head>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#020617] via-[#0a0f2a] to-[#020617]' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
         <AdminNavbar />
-        
+
         <div className="container mx-auto px-4 py-24 max-w-7xl">
           <div className="flex justify-between items-center mb-6">
             <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📊 Order Management Dashboard</h1>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={async () => {
                   if(confirm('Are you sure you want to sync points for all completed orders?')) {
                     try {
                       const res = await fetch('/api/admin/sync-completed-points', { method: 'POST' });
                       const data = await res.json();
                       alert(`Sync Complete! Awarded: ${data.awarded}, Processed: ${data.processed}`);
-                      fetchOrders();
+                      fetchAllOrders();
                     } catch (e) { alert('Sync failed: ' + e.message); }
                   }
                 }}
@@ -273,11 +294,11 @@ export default function AdminOrders() {
               >
                 ✨ Sync Points
               </button>
-              <button onClick={fetchOrders} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">🔄 Refresh</button>
+              <button onClick={fetchAllOrders} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg">🔄 Refresh</button>
             </div>
           </div>
-          
-          {/* Stats Cards */}
+
+          {/* Stats Cards - Affected by DATE FILTER only */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
               <div className="flex items-center justify-between">
@@ -288,7 +309,7 @@ export default function AdminOrders() {
                 <div className="text-3xl">📦</div>
               </div>
             </div>
-            
+
             <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
               <div className="flex items-center justify-between">
                 <div>
@@ -298,7 +319,7 @@ export default function AdminOrders() {
                 <div className="text-3xl">✅</div>
               </div>
             </div>
-            
+
             <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
               <div className="flex items-center justify-between">
                 <div>
@@ -308,7 +329,7 @@ export default function AdminOrders() {
                 <div className="text-3xl">⏳</div>
               </div>
             </div>
-            
+
             <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
               <div className="flex items-center justify-between">
                 <div>
@@ -319,8 +340,8 @@ export default function AdminOrders() {
               </div>
             </div>
           </div>
-          
-          {/* Revenue Stats */}
+
+          {/* Revenue Stats - Affected by DATE FILTER only */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className={`rounded-2xl p-4 ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
               <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Revenue (Completed)</p>
@@ -335,16 +356,27 @@ export default function AdminOrders() {
               <p className="text-xl font-black mt-1 text-blue-500">{stats.firstPurchaseUsers}</p>
             </div>
           </div>
-          
+
           {/* Filter Bar */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            <button onClick={() => handleDateFilterChange('all')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'all' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>All Orders</button>
-            <button onClick={() => handleDateFilterChange('today')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'today' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Today</button>
-            <button onClick={() => handleDateFilterChange('week')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'week' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>This Week</button>
-            <button onClick={() => handleDateFilterChange('month')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'month' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>This Month</button>
-            <button onClick={() => handleDateFilterChange('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'custom' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Custom Range</button>
+          <div className="flex flex-wrap gap-4 mb-6">
+            {/* Date Filters */}
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => handleDateFilterChange('all')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'all' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>All Time</button>
+              <button onClick={() => handleDateFilterChange('today')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'today' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Today</button>
+              <button onClick={() => handleDateFilterChange('week')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'week' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>This Week</button>
+              <button onClick={() => handleDateFilterChange('month')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'month' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>This Month</button>
+              <button onClick={() => handleDateFilterChange('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${dateFilter === 'custom' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Custom Range</button>
+            </div>
+
+            {/* Status Filters */}
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => handleStatusFilterChange('all')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${statusFilter === 'all' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>All Orders</button>
+              <button onClick={() => handleStatusFilterChange('completed')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${statusFilter === 'completed' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Completed</button>
+              <button onClick={() => handleStatusFilterChange('pending_processing')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${statusFilter === 'pending_processing' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Pending/Processing</button>
+              <button onClick={() => handleStatusFilterChange('cancelled')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${statusFilter === 'cancelled' ? 'bg-[#FF6B35] text-white' : isDarkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Cancelled</button>
+            </div>
           </div>
-          
+
           {/* Custom Date Picker */}
           {showCustomPicker && (
             <div className={`p-4 rounded-2xl mb-6 flex flex-wrap gap-3 items-end ${isDarkMode ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
@@ -356,27 +388,27 @@ export default function AdminOrders() {
                 <label className="text-xs font-bold uppercase tracking-wider block mb-1">End Date</label>
                 <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className={`px-3 py-2 rounded-lg text-sm ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'} border`} />
               </div>
-              <button onClick={handleCustomDateApply} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg text-sm font-bold">Apply</button>
+              <button onClick={handleCustomDateApply} className="bg-[#FF6B35] text-white px-4 py-2 rounded-lg text-sm font-bold">Apply Range</button>
             </div>
           )}
-          
+
           {/* Orders Table */}
           <div className={`rounded-2xl p-6 overflow-x-auto ${isDarkMode ? 'bg-white/10' : 'bg-white/60'}`}>
             {filteredOrders.length === 0 ? (
-              <p className="text-center text-gray-400 py-8">No orders found for selected period.</p>
+              <p className="text-center text-gray-400 py-8">No orders found for selected period and status.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className={`border-b ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
-                <tr>
-                  <th className="text-left py-3 px-2">Order ID</th>
-                  <th className="text-left py-3 px-2">Customer</th>
-                  <th className="text-left py-3 px-2">Product</th>
-                  <th className="text-left py-3 px-2">Amount</th>
-                  <th className="text-left py-3 px-2">Proof</th>
-                  <th className="text-left py-3 px-2">Status</th>
-                  <th className="text-left py-3 px-2">Date</th>
-                  <th className="text-left py-3 px-2">Actions</th>
-                </tr>
+                  <tr>
+                    <th className="text-left py-3 px-2">Order ID</th>
+                    <th className="text-left py-3 px-2">Customer</th>
+                    <th className="text-left py-3 px-2">Product</th>
+                    <th className="text-left py-3 px-2">Amount</th>
+                    <th className="text-left py-3 px-2">Proof</th>
+                    <th className="text-left py-3 px-2">Status</th>
+                    <th className="text-left py-3 px-2">Date</th>
+                    <th className="text-left py-3 px-2">Actions</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {filteredOrders.map((order) => (
@@ -398,11 +430,11 @@ export default function AdminOrders() {
                         <button onClick={() => viewOrderDetail(order)} className="text-blue-400 hover:text-blue-300 text-sm font-bold">
                           View Details
                         </button>
-                       </td>
-                     </tr>
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
-               </table>
+              </table>
             )}
           </div>
         </div>
@@ -419,7 +451,7 @@ export default function AdminOrders() {
               </div>
               <button onClick={() => setShowDetailModal(false)} className="text-gray-400 text-2xl hover:text-white transition">&times;</button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
@@ -450,21 +482,21 @@ export default function AdminOrders() {
                 )}
 
                 <div className="flex flex-wrap gap-2 pt-4">
-                  <button 
+                  <button
                     disabled={updating}
                     onClick={() => updateOrderStatus(selectedOrder.id, 'processing')}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold"
                   >
                     🔄 Mark Processing
                   </button>
-                  <button 
+                  <button
                     disabled={updating}
                     onClick={() => updateOrderStatus(selectedOrder.id, 'completed')}
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold"
                   >
                     ✅ Mark Completed
                   </button>
-                  <button 
+                  <button
                     disabled={updating}
                     onClick={() => setShowCancelModal(true)}
                     className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold"
@@ -478,10 +510,10 @@ export default function AdminOrders() {
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Payment Proof</h3>
                 {selectedOrder.payment_screenshot ? (
                   <div className="border border-white/10 rounded-xl overflow-hidden bg-black">
-                    <img 
-                      src={selectedOrder.payment_screenshot} 
-                      className="w-full h-auto cursor-zoom-in" 
-                      alt="Payment Proof" 
+                    <img
+                      src={selectedOrder.payment_screenshot}
+                      className="w-full h-auto cursor-zoom-in"
+                      alt="Payment Proof"
                       onClick={() => window.open(selectedOrder.payment_screenshot, '_blank')}
                     />
                   </div>
@@ -502,7 +534,7 @@ export default function AdminOrders() {
           <div className={`rounded-2xl p-6 w-full max-w-md ${isDarkMode ? 'bg-[#0a0f2a]' : 'bg-white'} border border-red-500/30 shadow-2xl shadow-red-500/10`}>
             <h2 className="text-xl font-bold text-red-400 mb-4">❌ Cancel Order</h2>
             <p className="text-sm text-gray-400 mb-4">Please provide a reason for cancellation. This will be visible to the user.</p>
-            <textarea 
+            <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
               placeholder="e.g., Screenshot မမှန်ကန်ပါ၊ ငွေမဝင်သေးပါ..."
@@ -510,13 +542,13 @@ export default function AdminOrders() {
               rows="4"
             ></textarea>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => setShowCancelModal(false)}
                 className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg font-bold"
               >
                 Go Back
               </button>
-              <button 
+              <button
                 onClick={() => updateOrderStatus(selectedOrder.id, 'cancelled', cancelReason)}
                 disabled={!cancelReason || updating}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-bold disabled:opacity-50"
@@ -529,4 +561,4 @@ export default function AdminOrders() {
       )}
     </>
   );
-}
+                                      }
