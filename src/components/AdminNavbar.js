@@ -11,20 +11,16 @@ export default function AdminNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Check if admin is logged in via sessionStorage (ADMIN_PASSWORD)
     const checkAdminAuth = () => {
       const adminAuth = sessionStorage.getItem('admin_auth');
       setIsAdmin(adminAuth === 'true');
     };
     
     checkAdminAuth();
-    
-    // Optional: Listen for storage changes (if needed)
     window.addEventListener('storage', checkAdminAuth);
     return () => window.removeEventListener('storage', checkAdminAuth);
   }, []);
 
-  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuOpen && !e.target.closest('.admin-menu-container')) {
@@ -42,7 +38,6 @@ export default function AdminNavbar() {
     router.push('/admin');
   };
 
-  // Clean, professional admin page list (no emojis in labels)
   const adminPages = [
     { href: '/admin', label: 'Products & Features' },
     { href: '/admin/rewards', label: 'Rewards' },
@@ -56,29 +51,27 @@ export default function AdminNavbar() {
     { href: '/admin/promo-partners', label: 'Promo Partners' }
   ];
 
-  // If not admin, don't show anything
   if (!isAdmin) return null;
 
   return (
     <div className="fixed top-6 right-6 z-50 admin-menu-container">
-      {/* Menu Button - Clean, no emoji */}
+      {/* Icon Button - Hamburger Menu */}
       <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => setMenuOpen(!menuOpen)}
-        className="w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all duration-200 border"
+        className="w-10 h-10 rounded-lg flex items-center justify-center shadow-md transition-all duration-200 border"
         style={{
           background: isDarkMode ? '#1e293b' : '#ffffff',
           borderColor: isDarkMode ? '#334155' : '#e2e8f0',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
         }}
       >
-        <span className="text-lg font-medium" style={{ color: isDarkMode ? '#f1f5f9' : '#334155' }}>
-          Menu
-        </span>
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: isDarkMode ? '#f1f5f9' : '#334155' }}>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
       </motion.button>
 
-      {/* Dropdown Menu */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -94,14 +87,12 @@ export default function AdminNavbar() {
             }}
           >
             <div className="py-1 max-h-[70vh] overflow-y-auto">
-              {/* Admin Header - Clean */}
               <div className="px-4 py-3 border-b" style={{ borderColor: isDarkMode ? '#334155' : '#e2e8f0' }}>
                 <p className="text-[10px] font-semibold uppercase tracking-wider opacity-60" style={{ color: isDarkMode ? '#94a3b8' : '#475569' }}>
-                  Admin Panel
+                  Admin
                 </p>
               </div>
 
-              {/* Navigation Links - No emojis */}
               <div className="py-1">
                 {adminPages.map((page) => {
                   const isActive = router.pathname === page.href;
@@ -126,10 +117,8 @@ export default function AdminNavbar() {
                 })}
               </div>
 
-              {/* Divider */}
               <div className="border-t my-1" style={{ borderColor: isDarkMode ? '#334155' : '#e2e8f0' }} />
 
-              {/* Settings & Logout */}
               <div className="py-1">
                 <button
                   onClick={toggleMode}
