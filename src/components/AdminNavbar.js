@@ -10,12 +10,19 @@ export default function AdminNavbar() {
   const router = useRouter();
   const { isDarkMode, toggleMode } = useTheme();
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
+    // 1. Check Firebase Auth for user (optional)
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setUser(user);
     });
+
+    // 2. Check if admin is logged in via sessionStorage
+    const adminAuth = sessionStorage.getItem('admin_auth');
+    setIsAdmin(adminAuth === 'true');
+
     return () => unsubscribe();
   }, []);
 
@@ -31,12 +38,12 @@ export default function AdminNavbar() {
   }, [menuOpen]);
 
   const handleLogout = async () => {
+    // Clear session storage and sign out from Firebase
+    sessionStorage.removeItem('admin_auth');
     await signOut(auth);
     setMenuOpen(false);
-    router.push('/auth');
+    router.push('/admin'); // Redirect to admin login page
   };
-
-  const isAdmin = user?.email === 'thantzin84727@gmail.com';
 
   // List of admin pages (from screenshot, excluding partner-commission-dashboard.js)
   const adminPages = [
@@ -52,8 +59,8 @@ export default function AdminNavbar() {
     { href: '/admin/promo-partners', label: '🤝 Promo Partners', icon: '🤝' }
   ];
 
-  // If not admin or not logged in, don't show anything
-  if (!user || !isAdmin) return null;
+  // If not admin, don't show anything
+  if (!isAdmin) return null;
 
   return (
     <div className="fixed top-5 right-5 z-50 admin-menu-container">
