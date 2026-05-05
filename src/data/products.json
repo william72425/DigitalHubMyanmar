@@ -1,44 +1,74 @@
 [
   {
     "id": 1776151147608,
-    "name": "Canva Pro",
+    "name": "Canva Premium",
     "category": "Photo Editing",
     "market_price": 10000,
-    "hubby_price": 8000,
+    "hubby_price": 2500,
     "discount": 25,
     "logo_url": "/logos/1776151147608-1776165836234.png",
     "duration": "1 month",
     "features": [],
     "sort_order": 0,
-    "discount_percent": "25",
-    "special_price": 6000,
+    "discount_percent": "",
+    "special_price": null,
     "logo_size": 45,
     "is_featured": true,
     "poster_16x9": "/posters/1776151147608-16x9-1776448688332.jpg",
     "category_3x4": "/posters/1776151147608-3x4-1776448691953.jpg",
-    "account_status": "Private",
+    "account_status": "Share Account",
     "warranty": "1 Month"
+  },
+  {
+    "id": 1776220603230,
+    "name": "Capcut Pro ",
+    "category": "Video Editing",
+    "market_price": 30000,
+    "hubby_price": 8000,
+    "discount_percent": null,
+    "special_price": null,
+    "logo_url": "/logos/1776220603230-1776220659197.png",
+    "logo_size": 45,
+    "duration": "1 month",
+    "sort_order": 1,
+    "account_status": "Share Account",
+    "warranty": "1 Month"
+  },
+  {
+    "id": 1778001907599,
+    "name": "Gemini AI Pro",
+    "category": "AI Tools",
+    "market_price": 150000,
+    "hubby_price": 15000,
+    "discount_percent": null,
+    "special_price": null,
+    "logo_url": "/logos/1778001907599-1778002344404.webp",
+    "logo_size": 45,
+    "duration": "1 year",
+    "account_status": "",
+    "warranty": "",
+    "sort_order": 2
   },
   {
     "id": 1,
     "name": "ChatGPT Plus",
     "category": "AI Tools",
-    "market_price": 240000,
-    "hubby_price": 120000,
+    "market_price": 70000,
+    "hubby_price": 20000,
     "discount": 46,
     "logo_url": "/logos/1-1776166000844.png",
     "duration": "1 month",
-    "sort_order": 1,
+    "sort_order": 3,
     "features": [
       "GPT-4 အကန့်အသတ်မဲ့",
       "Web browsing",
       "Plugin access"
     ],
-    "special_price": 90000,
-    "discount_percent": "25",
+    "special_price": 17000,
+    "discount_percent": "15",
     "logo_size": 45,
     "account_status": "Private",
-    "warranty": "1 Month"
+    "warranty": "2 Weeks"
   },
   {
     "id": 2,
@@ -49,7 +79,7 @@
     "discount": 40,
     "logo_url": "/logos/2-1776166007324.png",
     "duration": "1 month",
-    "sort_order": 2,
+    "sort_order": 4,
     "features": [
       "Professional video editing",
       "After Effects integration",
@@ -70,7 +100,7 @@
     "logo_url": "/logos/1776220100911-1776220228098.png",
     "logo_size": 45,
     "duration": "1 month",
-    "sort_order": 3
+    "sort_order": 5
   },
   {
     "id": 1776220499012,
@@ -83,20 +113,7 @@
     "logo_url": "/logos/1776220499012-1776220534303.png",
     "logo_size": 45,
     "duration": "1 month",
-    "sort_order": 4
-  },
-  {
-    "id": 1776220603230,
-    "name": "Capcut ",
-    "category": "Video Editing",
-    "market_price": 10000,
-    "hubby_price": 7000,
-    "discount_percent": null,
-    "special_price": null,
-    "logo_url": "/logos/1776220603230-1776220659197.png",
-    "logo_size": 45,
-    "duration": "1 month",
-    "sort_order": 5
+    "sort_order": 6
   },
   {
     "id": 1776236244309,
@@ -109,7 +126,7 @@
     "logo_url": "/logos/1776236244309-1776236367081.webp",
     "logo_size": 45,
     "duration": "1 month",
-    "sort_order": 6
+    "sort_order": 7
   },
   {
     "id": 1776237245641,
@@ -122,6 +139,6 @@
     "logo_url": null,
     "logo_size": 70,
     "duration": "1 month",
-    "sort_order": 7
+    "sort_order": 8
   }
 ]
