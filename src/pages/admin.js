@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import AdminNavbar from '@/components/AdminNavbar';
+
 
 export default function Admin() {
   const [password, setPassword] = useState('');
@@ -344,6 +346,7 @@ export default function Admin() {
     return (
       <>
         <Head><title>Admin Login</title></Head>
+      <AdminNavbar />
         <div className="min-h-screen bg-gradient-to-br from-[#020617] to-[#0a0f2a] flex items-center justify-center p-4">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 w-full max-w-md">
             <h1 className="text-2xl font-bold text-white text-center mb-6">Admin Login</h1>
